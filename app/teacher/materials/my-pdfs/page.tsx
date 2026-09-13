@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import axios from "axios";
-import { FileStack, BookOpen, Loader2, Download, Eye, Trash2 } from "lucide-react"; // Trash2 අලුතින් එක් කරන ලදී
+import { FileStack, BookOpen, Loader2, Download, Eye, Trash2, AlertCircle } from "lucide-react"; 
 import { useTheme } from "@/app/context/ThemeContext";
 
 export default function MyPDFsPage() {
@@ -29,7 +29,6 @@ export default function MyPDFsPage() {
     }
   };
 
-  // PDF එකක් ඉවත් කිරීමේ Function එක
   const handleDelete = async (id: string, title: string) => {
     const isConfirmed = window.confirm(`ඔබට විශ්වාසද "${title}" නිබන්ධනය ඉවත් කළ යුතුයි කියා?`);
     if (!isConfirmed) return;
@@ -74,15 +73,21 @@ export default function MyPDFsPage() {
               
               <div>
                 <div className="flex items-start justify-between mb-4">
-                  <div className="flex flex-col gap-1.5">
-                    <span className={`w-fit px-2.5 py-1 text-xs font-semibold rounded-full ${pdf.type === 'paper' ? (darkMode ? 'bg-teal-500/20 text-teal-400' : 'bg-teal-100 text-teal-700') : (darkMode ? 'bg-orange-500/20 text-orange-400' : 'bg-orange-100 text-orange-700')}`}>
-                      {pdf.type.toUpperCase()}
-                    </span>
+                  <div className="flex flex-col gap-2">
+                    <div className="flex items-center gap-2">
+                      <span className={`w-fit px-2.5 py-1 text-xs font-semibold rounded-full ${pdf.type === 'paper' ? (darkMode ? 'bg-teal-500/20 text-teal-400' : 'bg-teal-100 text-teal-700') : (darkMode ? 'bg-orange-500/20 text-orange-400' : 'bg-orange-100 text-orange-700')}`}>
+                        {pdf.type.toUpperCase()}
+                      </span>
+                      {/* Status Badge */}
+                      {pdf.status === 'pending' && <span className="text-yellow-700 bg-yellow-100 border border-yellow-300 text-[10px] px-2 py-0.5 rounded-full font-bold">⏳ PENDING</span>}
+                      {pdf.status === 'approved' && <span className="text-green-700 bg-green-100 border border-green-300 text-[10px] px-2 py-0.5 rounded-full font-bold">✅ APPROVED</span>}
+                      {pdf.status === 'rejected' && <span className="text-red-700 bg-red-100 border border-red-300 text-[10px] px-2 py-0.5 rounded-full font-bold">❌ REJECTED</span>}
+                    </div>
                     <span className={darkMode ? "text-slate-400 text-xs" : "text-gray-400 text-xs"}>
                       {new Date(pdf.createdAt).toLocaleDateString()}
                     </span>
                   </div>
-                  {/* Delete Button */}
+                  
                   <button
                     onClick={() => handleDelete(pdf._id, pdf.title)}
                     className={`p-2 rounded-lg transition-colors ${darkMode ? "bg-slate-700 hover:bg-red-500/20 text-red-400" : "bg-red-50 hover:bg-red-100 text-red-600"}`}
@@ -94,11 +99,22 @@ export default function MyPDFsPage() {
                 
                 <h3 className={`font-semibold text-lg mb-2 line-clamp-2 ${darkMode ? "text-white" : "text-gray-800"}`}>{pdf.title}</h3>
                 
-                <div className={`flex items-center gap-2 mb-6 text-sm ${darkMode ? "text-slate-400" : "text-gray-600"}`}>
+                <div className={`flex items-center gap-2 mb-4 text-sm ${darkMode ? "text-slate-400" : "text-gray-600"}`}>
                   <BookOpen size={16} />
                   <span>{pdf.subject}</span>
                 </div>
               </div>
+
+              {/* ප්‍රතික්ෂේපිත හේතුව පෙන්වීම */}
+              {pdf.status === 'rejected' && pdf.rejectReason && (
+                <div className="mb-4 flex items-start gap-2 p-3 bg-red-50 border border-red-100 rounded-lg text-xs text-red-700">
+                  <AlertCircle size={14} className="mt-0.5 flex-shrink-0" />
+                  <div>
+                    <strong className="block mb-0.5">ප්‍රතික්ෂේප කිරීමට හේතුව:</strong>
+                    <span>{pdf.rejectReason}</span>
+                  </div>
+                </div>
+              )}
 
               <div className="flex gap-3">
                 <a 

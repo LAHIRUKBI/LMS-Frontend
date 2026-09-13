@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Home, UserPlus, Users, LogOut, GraduationCap, Sun, Moon, ShieldPlus, Shield } from "lucide-react";
+import { Home, UserPlus, Users, LogOut, GraduationCap, Sun, Moon, ShieldPlus, Shield, ClipboardCheck } from "lucide-react";
 import { useTheme } from "@/app/context/ThemeContext";
 
 export default function AdminSidebar() {
@@ -22,6 +22,7 @@ export default function AdminSidebar() {
     { name: "Teacher List", path: "/admin/teachers/list", icon: <Users size={18} /> },
     { name: "Add Admin", path: "/admin/register", icon: <ShieldPlus size={18} /> }, 
     { name: "Admin List", path: "/admin/list", icon: <Shield size={18} /> }, 
+    { name: "Review Materials", path: "/admin/materials/review", icon: <ClipboardCheck size={20} /> },
   ];
 
   return (
