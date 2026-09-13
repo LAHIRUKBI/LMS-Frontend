@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import axios from "axios";
-import { Film, BookOpen, Loader2, Trash2 } from "lucide-react"; // Trash2 අලුතින් එක් කරන ලදී
+import { Film, BookOpen, Loader2, Trash2, AlertCircle } from "lucide-react"; 
 import { useTheme } from "@/app/context/ThemeContext";
 
 export default function MyVideosPage() {
@@ -29,7 +29,6 @@ export default function MyVideosPage() {
     }
   };
 
-  // Video එකක් ඉවත් කිරීමේ Function එක
   const handleDelete = async (id: string, title: string) => {
     const isConfirmed = window.confirm(`ඔබට විශ්වාසද "${title}" වීඩියෝව ඉවත් කළ යුතුයි කියා?`);
     if (!isConfirmed) return;
@@ -39,7 +38,6 @@ export default function MyVideosPage() {
       await axios.delete(`http://localhost:5000/api/materials/${id}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      // සාර්ථකව මැකූ පසු UI එකෙන් අදාළ වීඩියෝව ඉවත් කිරීම
       setVideos(videos.filter((video) => video._id !== id));
       alert("වීඩියෝව සාර්ථකව ඉවත් කරන ලදී.");
     } catch (err) {
@@ -80,22 +78,43 @@ export default function MyVideosPage() {
                   Your browser does not support the video tag.
                 </video>
               </div>
-              <div className="p-4 flex justify-between items-start gap-4">
-                <div className="flex-1">
-                  <h3 className={`font-semibold text-lg truncate ${darkMode ? "text-white" : "text-gray-800"}`}>{video.title}</h3>
-                  <div className={`flex items-center gap-2 mt-2 text-sm ${darkMode ? "text-indigo-400" : "text-indigo-600"}`}>
-                    <BookOpen size={16} />
-                    <span>{video.subject}</span>
+              <div className="p-4 flex flex-col justify-between h-full">
+                <div className="flex justify-between items-start gap-4">
+                  <div className="flex-1">
+                    <h3 className={`font-semibold text-lg truncate ${darkMode ? "text-white" : "text-gray-800"}`}>{video.title}</h3>
+                    
+                    {/* Status Badge */}
+                    <div className="mt-2 flex gap-2">
+                      {video.status === 'pending' && <span className="text-yellow-700 bg-yellow-100 border border-yellow-300 text-[10px] px-2 py-0.5 rounded-full font-bold">⏳ PENDING</span>}
+                      {video.status === 'approved' && <span className="text-green-700 bg-green-100 border border-green-300 text-[10px] px-2 py-0.5 rounded-full font-bold">✅ APPROVED</span>}
+                      {video.status === 'rejected' && <span className="text-red-700 bg-red-100 border border-red-300 text-[10px] px-2 py-0.5 rounded-full font-bold">❌ REJECTED</span>}
+                    </div>
+
+                    <div className={`flex items-center gap-2 mt-3 mb-2 text-sm ${darkMode ? "text-indigo-400" : "text-indigo-600"}`}>
+                      <BookOpen size={16} />
+                      <span>{video.subject}</span>
+                    </div>
                   </div>
+                  
+                  <button
+                    onClick={() => handleDelete(video._id, video.title)}
+                    className={`p-2 rounded-lg transition-colors ${darkMode ? "bg-slate-700 hover:bg-red-500/20 text-red-400" : "bg-red-50 hover:bg-red-100 text-red-600"}`}
+                    title="Delete Video"
+                  >
+                    <Trash2 size={18} />
+                  </button>
                 </div>
-                {/* Delete Button */}
-                <button
-                  onClick={() => handleDelete(video._id, video.title)}
-                  className={`p-2 rounded-lg transition-colors ${darkMode ? "bg-slate-700 hover:bg-red-500/20 text-red-400" : "bg-red-50 hover:bg-red-100 text-red-600"}`}
-                  title="Delete Video"
-                >
-                  <Trash2 size={18} />
-                </button>
+
+                {/* ප්‍රතික්ෂේපිත හේතුව පෙන්වීම */}
+                {video.status === 'rejected' && video.rejectReason && (
+                  <div className="mt-2 flex items-start gap-2 p-3 bg-red-50 border border-red-100 rounded-lg text-xs text-red-700">
+                    <AlertCircle size={14} className="mt-0.5 flex-shrink-0" />
+                    <div>
+                      <strong className="block mb-0.5">ප්‍රතික්ෂේප කිරීමට හේතුව:</strong>
+                      <span>{video.rejectReason}</span>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           ))}
