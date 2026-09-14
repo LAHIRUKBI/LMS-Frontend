@@ -13,10 +13,18 @@ import {
   Phone,
   MapPin,
   Globe,
+  User,
 } from "lucide-react";
 import { FacebookIcon, InstagramIcon } from "@/app/components/BrandIcons";
 import { useTheme } from "@/app/context/ThemeContext";
-import DeleteConfirmPopup from "@/app/components/TeacherDeleteConfirmPopup"; // Popup component එක import කර ඇත
+import DeleteConfirmPopup from "@/app/components/TeacherDeleteConfirmPopup";
+
+interface Qualification {
+  institution: string;
+  degree: string;
+  period: string;
+  description: string;
+}
 
 interface Teacher {
   _id: string;
@@ -29,7 +37,9 @@ interface Teacher {
   website?: string;
   facebook?: string;
   instagram?: string;
-  createdAt?: string; // දවස සහ වෙලාව පෙන්වීමට 
+  createdAt?: string; 
+  profilePhoto?: string;
+  qualifications?: Qualification[];
 }
 
 export default function TeacherListPage() {
@@ -39,7 +49,6 @@ export default function TeacherListPage() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
-  // Delete Popup සඳහා අවශ්‍ය State
   const [teacherToDelete, setTeacherToDelete] = useState<Teacher | null>(null);
 
   const { darkMode } = useTheme();
@@ -62,7 +71,6 @@ export default function TeacherListPage() {
     fetchTeachers();
   }, []);
 
-  // Popup එකෙන් Confirm (Yes) කළ පසු ක්‍රියාත්මක වන function එක
   const executeDelete = async (id: string) => {
     setError("");
     setSuccess("");
@@ -81,7 +89,7 @@ export default function TeacherListPage() {
       setError(err.response?.data?.message || "An error occurred while removing.");
       setTimeout(() => setError(""), 3000);
     } finally {
-      setTeacherToDelete(null); // Popup එක close කිරීම
+      setTeacherToDelete(null);
     }
   };
 
@@ -110,7 +118,7 @@ export default function TeacherListPage() {
         />
       )}
 
-      <div className="mx-auto max-w-[95%] px-4 py-10 xl:max-w-7xl xl:px-6">
+      <div className="mx-auto max-w-[98%] px-2 py-10 xl:max-w-7xl xl:px-6">
         {/* Page Header */}
         <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
@@ -238,7 +246,8 @@ export default function TeacherListPage() {
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full border-collapse text-left text-sm whitespace-nowrap">
+              {/* whitespace-nowrap ඉවත් කර ඇත */}
+              <table className="w-full border-collapse text-left text-sm">
                 <thead
                   className={`text-xs font-semibold uppercase tracking-wider ${
                     darkMode
@@ -247,12 +256,13 @@ export default function TeacherListPage() {
                   }`}
                 >
                   <tr>
-                    <th className="px-6 py-4">ID & Subject</th>
-                    <th className="px-6 py-4">Name & Email</th>
-                    <th className="px-6 py-4">Contact Info</th>
-                    <th className="px-6 py-4">Socials</th>
-                    <th className="px-6 py-4">Registered Date</th>
-                    <th className="px-6 py-4 text-center">Action</th>
+                    <th className="px-3 py-4 sm:px-4">ID & Subject</th>
+                    <th className="px-3 py-4 sm:px-4">Name & Email</th>
+                    <th className="px-3 py-4 sm:px-4">Contact Info</th>
+                    <th className="px-3 py-4 sm:px-4">Qualifications</th>
+                    <th className="px-3 py-4 sm:px-4">Socials</th>
+                    <th className="px-3 py-4 sm:px-4">Registered Date</th>
+                    <th className="px-3 py-4 sm:px-4 text-center">Action</th>
                   </tr>
                 </thead>
                 <tbody
@@ -268,8 +278,8 @@ export default function TeacherListPage() {
                       }`}
                     >
                       {/* ID & Subject */}
-                      <td className="px-6 py-4">
-                        <div className="flex flex-col gap-1.5 items-start">
+                      <td className="px-3 py-4 sm:px-4 align-top">
+                        <div className="flex flex-col gap-2 items-start">
                           <span
                             className={`inline-flex items-center rounded-md px-2.5 py-1 text-xs font-bold ${
                               darkMode
@@ -280,54 +290,69 @@ export default function TeacherListPage() {
                             {t.teacherId}
                           </span>
                           <span
-                            className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold ${
+                            className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold break-words max-w-[120px] leading-tight ${
                               darkMode
                                 ? "bg-blue-500/20 text-blue-300"
                                 : "bg-blue-100 text-blue-700"
                             }`}
                           >
-                            <BookOpen size={10} />
+                            <BookOpen size={10} className="flex-shrink-0" />
                             {t.subject}
                           </span>
                         </div>
                       </td>
 
-                      {/* Name & Email */}
+                      {/* Name, Email & Profile Photo */}
                       <td
-                        className={`px-6 py-4 font-medium ${
+                        className={`px-3 py-4 sm:px-4 align-top font-medium ${
                           darkMode ? "text-white" : "text-slate-900"
                         }`}
                       >
-                        <div className="flex flex-col">
-                          <span className="text-base">{t.name}</span>
-                          <span
-                            className={`text-xs font-normal mt-0.5 ${
-                              darkMode ? "text-slate-400" : "text-gray-500"
-                            }`}
-                          >
-                            {t.email}
-                          </span>
+                        <div className="flex items-start gap-3">
+                          <div className={`h-10 w-10 flex-shrink-0 rounded-full overflow-hidden flex items-center justify-center mt-0.5 ${darkMode ? "bg-slate-700" : "bg-slate-200"}`}>
+                            {t.profilePhoto ? (
+                              <img 
+                                src={`http://localhost:5000/profile_photos/${t.profilePhoto}`} 
+                                alt={t.name} 
+                                className="h-full w-full object-cover" 
+                              />
+                            ) : (
+                              <User size={20} className={darkMode ? "text-slate-500" : "text-slate-400"} />
+                            )}
+                          </div>
+                          <div className="flex flex-col">
+                            <span className="text-sm font-semibold break-words max-w-[140px] leading-tight">{t.name}</span>
+                            <span
+                              className={`text-xs font-normal mt-1 break-words max-w-[140px] ${
+                                darkMode ? "text-slate-400" : "text-gray-500"
+                              }`}
+                            >
+                              {t.email}
+                            </span>
+                          </div>
                         </div>
                       </td>
 
                       {/* Contact Info (Phone & Address) */}
-                      <td className="px-6 py-4">
+                      <td className="px-3 py-4 sm:px-4 align-top">
                         <div
-                          className={`flex flex-col gap-1.5 text-xs ${
+                          className={`flex flex-col gap-2 text-xs ${
                             darkMode ? "text-slate-300" : "text-slate-600"
                           }`}
                         >
                           {t.phone ? (
-                            <div className="flex items-center gap-1.5">
-                              <Phone size={14} className="opacity-70" /> {t.phone}
+                            <div className="flex items-start gap-1.5">
+                              <Phone size={14} className="opacity-70 mt-0.5 flex-shrink-0" /> 
+                              <span className="break-words max-w-[120px]">{t.phone}</span>
                             </div>
                           ) : (
                             <span className="opacity-40 italic">No Phone</span>
                           )}
                           
                           {t.address ? (
-                            <div className="flex items-center gap-1.5">
-                              <MapPin size={14} className="opacity-70" /> {t.address}
+                            <div className="flex items-start gap-1.5">
+                              <MapPin size={14} className="opacity-70 mt-0.5 flex-shrink-0" /> 
+                              <span className="break-words max-w-[120px] leading-tight">{t.address}</span>
                             </div>
                           ) : (
                             <span className="opacity-40 italic">No Address</span>
@@ -335,9 +360,31 @@ export default function TeacherListPage() {
                         </div>
                       </td>
 
+                      {/* Qualifications */}
+                      <td className="px-3 py-4 sm:px-4 align-top">
+                        {t.qualifications && t.qualifications.length > 0 ? (
+                          <div className="flex flex-col gap-3 max-w-[180px]">
+                            {t.qualifications.map((q, idx) => (
+                              <div key={idx} className="flex flex-col text-xs">
+                                <span className={`font-semibold leading-tight break-words ${darkMode ? "text-slate-200" : "text-slate-800"}`}>
+                                  {q.degree}
+                                </span>
+                                <span className={`opacity-80 leading-tight mt-0.5 break-words ${darkMode ? "text-slate-400" : "text-slate-500"}`}>
+                                  {q.institution}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <span className={`text-xs opacity-40 italic ${darkMode ? "text-slate-400" : "text-slate-500"}`}>
+                            No Qualifications
+                          </span>
+                        )}
+                      </td>
+
                       {/* Social Links */}
-                      <td className="px-6 py-4">
-                        <div className="flex gap-2">
+                      <td className="px-3 py-4 sm:px-4 align-top">
+                        <div className="flex flex-wrap gap-2 max-w-[100px]">
                           {t.website ? (
                             <a
                               href={t.website}
@@ -396,7 +443,7 @@ export default function TeacherListPage() {
                       </td>
 
                       {/* Date & Time */}
-                      <td className="px-6 py-4 text-xs">
+                      <td className="px-3 py-4 sm:px-4 align-top text-xs">
                         {t.createdAt ? (
                           <div className="flex flex-col">
                             <span
@@ -407,7 +454,7 @@ export default function TeacherListPage() {
                               {new Date(t.createdAt).toLocaleDateString()}
                             </span>
                             <span
-                              className={`mt-0.5 ${
+                              className={`mt-1 ${
                                 darkMode ? "text-slate-400" : "text-slate-500"
                               }`}
                             >
@@ -423,9 +470,9 @@ export default function TeacherListPage() {
                       </td>
 
                       {/* Actions */}
-                      <td className="px-6 py-4 text-center">
+                      <td className="px-3 py-4 sm:px-4 align-top text-center">
                         <button
-                          onClick={() => setTeacherToDelete(t)} // මෙතැනින් Popup එක Open වේ
+                          onClick={() => setTeacherToDelete(t)} 
                           className={`p-2 transition-colors rounded-lg ${
                             darkMode
                               ? "text-red-400 hover:bg-red-500/20 hover:text-red-300"
