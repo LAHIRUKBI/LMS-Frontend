@@ -68,7 +68,6 @@ export default function TeacherProfilePage() {
         }
 
         if (data.profilePhoto) {
-          // Backend එකෙන් image එක ගන්නා URL එක
           setPhotoPreview(`http://localhost:5000/profile_photos/${data.profilePhoto}`);
         }
       } catch (err) {
@@ -88,11 +87,10 @@ export default function TeacherProfilePage() {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
       setPhotoFile(file);
-      setPhotoPreview(URL.createObjectURL(file)); // Show preview instantly
+      setPhotoPreview(URL.createObjectURL(file)); 
     }
   };
 
-  // Qualifications functions
   const addQualification = () => {
     setQualifications([...qualifications, { institution: "", degree: "", period: "", description: "" }]);
   };
@@ -116,7 +114,6 @@ export default function TeacherProfilePage() {
 
     const token = localStorage.getItem("token");
     
-    // File upload එකක් ඇති නිසා FormData භාවිතා කිරීම අනිවාර්යයි
     const updateData = new FormData();
     Object.entries(formData).forEach(([key, value]) => {
       updateData.append(key, value);
@@ -138,12 +135,25 @@ export default function TeacherProfilePage() {
 
       setMessage({ type: "success", text: res.data.message });
       setFormData(prev => ({ ...prev, password: "" }));
-      setPhotoFile(null); // Clear file input state after success
+      setPhotoFile(null); 
 
+      // 1. යාවත්කාලීන වූ පසු අලුත් ඡායාරූපය Profile Page එකේ පෙන්වීම
+      const updatedTeacher = res.data.teacher;
+      if (updatedTeacher?.profilePhoto) {
+        setPhotoPreview(`http://localhost:5000/profile_photos/${updatedTeacher.profilePhoto}`);
+      }
+
+      // 2. LocalStorage යාවත්කාලීන කිරීම
       const userData = JSON.parse(localStorage.getItem("user") || "{}");
       userData.name = formData.name;
-      if(res.data.teacher?.profilePhoto) userData.photo = res.data.teacher.profilePhoto;
+      if(updatedTeacher?.profilePhoto) {
+        userData.photo = updatedTeacher.profilePhoto;
+        userData.profilePhoto = updatedTeacher.profilePhoto; // Security measure
+      }
       localStorage.setItem("user", JSON.stringify(userData));
+
+      // 3. Sidebar එකට යාවත්කාලීන වීම දැනුම් දීම
+      window.dispatchEvent(new Event("profileUpdated"));
 
       setTimeout(() => setMessage({ type: "", text: "" }), 4000);
     } catch (err: any) {

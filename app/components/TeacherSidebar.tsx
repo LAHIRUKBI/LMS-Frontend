@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import axios from "axios"; // දත්ත ලබාගැනීමට අලුතින් import කරන ලදී
 import {
   Home, Video, FileText, BookOpen, LogOut, GraduationCap, Sun, Moon, Film, FileStack
 } from "lucide-react";
@@ -13,15 +14,65 @@ export default function TeacherSidebar() {
   const router = useRouter();
   const { darkMode, toggleDarkMode } = useTheme();
   
-  // ගුරුවරයාගේ නම පෙන්වීමට State එකක්
+  // ගුරුවරයාගේ නම සහ ඡායාරූපය පෙන්වීමට State
   const [teacherName, setTeacherName] = useState("LMS Teacher");
+  const [teacherPhoto, setTeacherPhoto] = useState<string | null>(null);
 
   useEffect(() => {
-    const userData = localStorage.getItem("user");
-    if (userData) {
-      const parsedUser = JSON.parse(userData);
-      setTeacherName(parsedUser.name); // LocalStorage එකෙන් නම ලබා ගැනීම
-    }
+    // 1. LocalStorage එකෙන් ඉක්මනින් දත්ත පෙන්වීම
+    const loadUserDataLocally = () => {
+      const userData = localStorage.getItem("user");
+      if (userData) {
+        const parsedUser = JSON.parse(userData);
+        if (parsedUser.name) setTeacherName(parsedUser.name);
+        
+        const photoName = parsedUser.photo || parsedUser.profilePhoto;
+        if (photoName) {
+          setTeacherPhoto(`http://localhost:5000/profile_photos/${photoName}`);
+        }
+      }
+    };
+
+    // 2. Database එකෙන් අලුත්ම දත්ත ලබාගැනීම (Login වූ විගස ඡායාරූපය පෙන්වීමට)
+    const fetchLatestProfile = async () => {
+      const token = localStorage.getItem("token");
+      if (!token) return;
+
+      try {
+        const res = await axios.get("http://localhost:5000/api/teacher/profile", {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        
+        const data = res.data;
+        if (data.name) setTeacherName(data.name);
+        
+        // Database එකේ ෆොටෝ එකක් තිබේනම් එය Sidebar එකට ලබාදීම
+        if (data.profilePhoto) {
+          setTeacherPhoto(`http://localhost:5000/profile_photos/${data.profilePhoto}`);
+          
+          // LocalStorage එකේ ඇති අඩුපාඩුවද මින් සම්පූර්ණ කෙරේ
+          const userData = localStorage.getItem("user");
+          if (userData) {
+            const parsedUser = JSON.parse(userData);
+            parsedUser.profilePhoto = data.profilePhoto;
+            localStorage.setItem("user", JSON.stringify(parsedUser));
+          }
+        }
+      } catch (error) {
+        console.error("Sidebar profile fetch error:", error);
+      }
+    };
+
+    // මුලින්ම Local Storage එකෙන් පෙන්වා පසුව Database එකෙන් තහවුරු කරගැනීම සිදුකරයි
+    loadUserDataLocally();
+    fetchLatestProfile();
+
+    // Profile එක Save කල විගස යාවත්කාලීන වීමට
+    window.addEventListener("profileUpdated", loadUserDataLocally);
+
+    return () => {
+      window.removeEventListener("profileUpdated", loadUserDataLocally);
+    };
   }, []);
 
   const handleLogout = () => {
@@ -45,19 +96,26 @@ export default function TeacherSidebar() {
         darkMode ? "bg-[#0F172A] border-r border-slate-800" : "bg-white border-r border-slate-200"
       }`}
     >
-      {/* Header / Brand Profile Style - දැන් මෙය Click කළ හැක */}
+      {/* Header / Brand Profile Style */}
       <Link href="/teacher/profile" className="flex flex-col items-center justify-center pb-4 pt-8 px-4 cursor-pointer group">
         <div className={`relative flex h-14 w-14 items-center justify-center rounded-full mb-3 shadow-sm transition-transform group-hover:scale-105 ${
             darkMode ? "bg-slate-800 border border-slate-700" : "bg-indigo-50 border border-indigo-100"
           }`}
         >
-          <div className={`flex items-center justify-center ${darkMode ? "text-indigo-400" : "text-indigo-600"}`}>
-            <GraduationCap size={24} />
-          </div>
+          {teacherPhoto ? (
+            <img 
+              src={teacherPhoto} 
+              alt={teacherName} 
+              className="h-full w-full object-cover rounded-full" 
+            />
+          ) : (
+            <div className={`flex items-center justify-center ${darkMode ? "text-indigo-400" : "text-indigo-600"}`}>
+              <GraduationCap size={24} />
+            </div>
+          )}
           <div className="absolute bottom-0 right-0 h-3.5 w-3.5 rounded-full border-2 border-white bg-green-500 dark:border-slate-800"></div>
         </div>
         
-        {/* නම මෙහි පෙන්වයි */}
         <h2 className={`text-lg font-bold tracking-tight text-center ${darkMode ? "text-white" : "text-slate-900"} group-hover:text-indigo-500 transition-colors`}>
           {teacherName}
         </h2>
