@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import axios from "axios";
 import {
   UserPlus,
@@ -9,14 +9,12 @@ import {
   Mail,
   BookOpen,
   Key,
-  Sun,
-  Moon,
-  CheckCircle2,
   AlertCircle,
   Eye,
   EyeOff,
 } from "lucide-react";
 import { useTheme } from "@/app/context/ThemeContext";
+import SuccessPopup from "@/app/components/TeacherAddSuccessPopup"; // Popup component එක import කර ඇත
 
 export default function AddTeacherPage() {
   const [formData, setFormData] = useState({
@@ -30,7 +28,6 @@ export default function AddTeacherPage() {
   const [message, setMessage] = useState({ type: "", text: "" });
   const [showPassword, setShowPassword] = useState(false);
   const { darkMode } = useTheme();
-
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -53,7 +50,7 @@ export default function AddTeacherPage() {
       );
       setMessage({
         type: "success",
-        text: res.data.message || "සාර්ථකව ඇතුළත් කරන ලදී!",
+        text: res.data.message || "Your action completed successfully",
       });
       setFormData({
         teacherId: "",
@@ -65,7 +62,7 @@ export default function AddTeacherPage() {
     } catch (err: any) {
       setMessage({
         type: "error",
-        text: err.response?.data?.message || "දෝෂයක් මතු විය.",
+        text: err.response?.data?.message || "An error occurred.",
       });
     } finally {
       setLoading(false);
@@ -89,6 +86,13 @@ export default function AddTeacherPage() {
         darkMode ? "bg-slate-900" : "bg-slate-50"
       }`}
     >
+      {/* Popup Message - The component loads here. */}
+      {message.text && message.type === "success" && (
+        <SuccessPopup
+          message={message.text}
+          onClose={() => setMessage({ type: "", text: "" })}
+        />
+      )}
 
       <div className="mx-auto max-w-3xl px-6 py-10">
         {/* Page Header */}
@@ -109,14 +113,14 @@ export default function AddTeacherPage() {
                   darkMode ? "text-white" : "text-slate-900"
                 }`}
               >
-                නව ගුරුවරයෙකු ලියාපදිංචි කිරීම
+                Register New Teacher
               </h1>
               <p
                 className={`mt-1 text-sm ${
                   darkMode ? "text-slate-400" : "text-slate-500"
                 }`}
               >
-                ගුරුවරයෙකුගේ තොරතුරු පහත පුරවන්න
+                Fill in the teacher's information below
               </p>
             </div>
           </div>
@@ -130,24 +134,16 @@ export default function AddTeacherPage() {
               : "border-slate-200 bg-white"
           }`}
         >
-          {/* Message Banner */}
-          {message.text && (
+          {/* Error Message Banner (Success එක දැන් popup එකෙන් පෙන්වන නිසා මෙය error වලට පමණක් සීමා කර ඇත) */}
+          {message.text && message.type === "error" && (
             <div
               className={`mb-6 flex items-start gap-2.5 rounded-lg border p-4 text-sm font-medium ${
-                message.type === "success"
-                  ? darkMode
-                    ? "border-green-500/30 bg-green-500/10 text-green-300"
-                    : "border-green-200 bg-green-50 text-green-700"
-                  : darkMode
+                darkMode
                   ? "border-red-500/30 bg-red-500/10 text-red-300"
                   : "border-red-200 bg-red-50 text-red-700"
               }`}
             >
-              {message.type === "success" ? (
-                <CheckCircle2 size={18} className="mt-0.5 flex-shrink-0" />
-              ) : (
-                <AlertCircle size={18} className="mt-0.5 flex-shrink-0" />
-              )}
+              <AlertCircle size={18} className="mt-0.5 flex-shrink-0" />
               <span>{message.text}</span>
             </div>
           )}
@@ -166,7 +162,7 @@ export default function AddTeacherPage() {
                   name="teacherId"
                   value={formData.teacherId}
                   onChange={handleChange}
-                  placeholder="උදා: TCH-001"
+                  placeholder="e.g., TCH-001"
                   className={inputClass}
                   required
                 />
@@ -182,7 +178,7 @@ export default function AddTeacherPage() {
                   name="name"
                   value={formData.name}
                   onChange={handleChange}
-                  placeholder="උදා: Kamal Perera"
+                  placeholder="e.g., John Doe"
                   className={inputClass}
                   required
                 />
@@ -220,7 +216,7 @@ export default function AddTeacherPage() {
                   name="subject"
                   value={formData.subject}
                   onChange={handleChange}
-                  placeholder="උදා: Mathematics"
+                  placeholder="e.g., Mathematics"
                   className={inputClass}
                   required
                 />
@@ -315,7 +311,7 @@ export default function AddTeacherPage() {
             darkMode ? "text-slate-500" : "text-slate-400"
           }`}
         >
-          ලියාපදිංචි කිරීමෙන් පසු ගුරුවරයාට email මගින් තොරතුරු ලැබේ.
+          The teacher will receive their login details via email after registration.
         </p>
       </div>
     </div>
