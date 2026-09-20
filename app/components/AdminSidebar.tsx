@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Home, UserPlus, Users, LogOut, GraduationCap, Sun, Moon, ShieldPlus, Shield, ClipboardCheck, Bell } from "lucide-react";
+import { Home, UserPlus, Users, LogOut, GraduationCap, Sun, Moon, ShieldPlus, Shield, ClipboardCheck, Bell, Trash2, X } from "lucide-react";
 import { useTheme } from "@/app/context/ThemeContext";
 import axios from "axios";
 import { io } from "socket.io-client";
@@ -41,7 +41,6 @@ export default function AdminSidebar() {
       // 3. අලුත් Notification එකක් එන විට එය State එකට එක් කිරීම
       socket.on("receive_admin_notification", (newNotif) => {
         setAdminNotifications(prev => [newNotif, ...prev]);
-        // මෙහිදී අවශ්‍ය නම් 'New notification!' ලෙස alert/toast එකක් දැමිය හැක
       });
 
       return () => {
@@ -63,6 +62,39 @@ export default function AdminSidebar() {
       } catch (error) {
         console.error(error);
       }
+    }
+  };
+
+  // සියලුම Notifications මකා දැමීම
+  const handleClearAll = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!confirm("Are you sure you want to clear all notifications?")) return;
+
+    try {
+      const token = localStorage.getItem("token");
+      await axios.delete("http://localhost:5000/api/notifications/admin/clear-all", {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setAdminNotifications([]); // UI එකෙන් අයින් කිරීම
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  // තනි Notification එකක් මකා දැමීම
+  const handleDeleteNotification = async (e: React.MouseEvent, id: string) => {
+    e.preventDefault();
+    e.stopPropagation(); // Link එක click වීම වැළැක්වීමට
+    
+    try {
+      const token = localStorage.getItem("token");
+      await axios.delete(`http://localhost:5000/api/notifications/admin/${id}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setAdminNotifications(prev => prev.filter(n => n._id !== id)); // UI එකෙන් අයින් කිරීම
+    } catch (error) {
+      console.error(error);
     }
   };
 
@@ -171,8 +203,20 @@ export default function AdminSidebar() {
             {isNotifOpen && (
               <div className={`absolute bottom-0 left-[105%] ml-2 w-80 max-h-[350px] flex flex-col rounded-2xl border shadow-2xl z-50 transform transition-all ${darkMode ? "bg-slate-900 border-slate-800" : "bg-white border-slate-100"}`}>
                 <div className={`p-4 border-b z-10 flex justify-between items-center ${darkMode ? "border-slate-800" : "border-slate-100"}`}>
-                  <h3 className={`font-bold text-sm ${darkMode ? "text-white" : "text-slate-900"}`}>Admin Alerts</h3>
-                  {unreadCount === 0 && <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-md ${darkMode ? "bg-slate-800 text-slate-400" : "bg-slate-100 text-slate-500"}`}>All caught up!</span>}
+                  <div>
+                    <h3 className={`font-bold text-sm ${darkMode ? "text-white" : "text-slate-900"}`}>Admin Alerts</h3>
+                    {unreadCount === 0 && <span className={`text-[10px] font-semibold mt-0.5 block ${darkMode ? "text-slate-500" : "text-slate-400"}`}>All caught up!</span>}
+                  </div>
+                  
+                  {/* Clear All Button */}
+                  {adminNotifications.length > 0 && (
+                    <button 
+                      onClick={handleClearAll}
+                      className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-colors ${darkMode ? "bg-red-500/10 text-red-400 hover:bg-red-500/20" : "bg-red-50 text-red-600 hover:bg-red-100"}`}
+                    >
+                      <Trash2 size={12} /> Clear All
+                    </button>
+                  )}
                 </div>
                 
                 <div className="flex-1 overflow-y-auto p-2 scrollbar-hide">
@@ -196,7 +240,7 @@ export default function AdminSidebar() {
                         href={targetUrl}
                         key={index} 
                         onClick={() => setIsNotifOpen(false)} // Click කළාම Dropdown එක වැහෙනවා
-                        className={`p-3 rounded-xl mb-1.5 flex items-start gap-3 transition-colors cursor-pointer ${
+                        className={`group relative p-3 rounded-xl mb-1.5 flex items-start gap-3 transition-colors cursor-pointer ${
                           !notif.isRead 
                             ? (darkMode ? "bg-blue-500/10 hover:bg-blue-500/20" : "bg-blue-50 hover:bg-blue-100") 
                             : (darkMode ? "hover:bg-slate-800/50" : "hover:bg-slate-50")
@@ -209,7 +253,7 @@ export default function AdminSidebar() {
                         }`}>
                           <Bell size={12} />
                         </div>
-                        <div>
+                        <div className="pr-6"> {/* Delete button එකට ඉඩ තැබීමට pr-6 */}
                           <h4 className={`text-xs font-bold ${
                             !notif.isRead 
                               ? (darkMode ? "text-blue-400" : "text-blue-700") 
@@ -224,6 +268,15 @@ export default function AdminSidebar() {
                             {new Date(notif.createdAt).toLocaleString()}
                           </span>
                         </div>
+
+                        {/* Individual Delete Button */}
+                        <button 
+                          onClick={(e) => handleDeleteNotification(e, notif._id)}
+                          className={`absolute top-2 right-2 p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-all ${darkMode ? "hover:bg-red-500/20 text-slate-500 hover:text-red-400" : "hover:bg-red-100 text-slate-400 hover:text-red-600"}`}
+                          title="Delete"
+                        >
+                          <X size={14} />
+                        </button>
                       </Link>
                     );
                   })

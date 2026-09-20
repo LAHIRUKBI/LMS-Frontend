@@ -4,9 +4,9 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import axios from "axios"; 
-import { io } from "socket.io-client"; // <--- Socket.io import කර ඇත
+import { io } from "socket.io-client"; 
 import {
-  Home, Video, FileText, BookOpen, LogOut, GraduationCap, Sun, Moon, Film, FileStack, Bell
+  Home, Video, FileText, BookOpen, LogOut, GraduationCap, Sun, Moon, Film, FileStack, Bell, Trash2, X
 } from "lucide-react";
 import { useTheme } from "@/app/context/ThemeContext";
 
@@ -74,7 +74,6 @@ export default function TeacherSidebar() {
       if (token && userData) {
         const parsedUser = JSON.parse(userData);
 
-        // පරණ Notifications Database එකෙන් ලබාගැනීම
         try {
           const res = await axios.get("http://localhost:5000/api/notifications", {
             headers: { Authorization: `Bearer ${token}` }
@@ -84,21 +83,16 @@ export default function TeacherSidebar() {
           console.error("Error fetching notifications:", error);
         }
 
-        // Socket Connection එක සෑදීම
         const socket = io("http://localhost:5000");
         
         if (parsedUser.id) {
-           // Admin ගේ reply එක ගුරුවරයාගේ ID එකට එන නිසා room එකට join වෙනවා
            socket.emit("join_user_room", parsedUser.id);
         }
 
-        // අලුත් Notification එකක් ආවම List එකට එකතු කිරීම
         socket.on("receive_notification", (newNotif) => {
-           console.log("New Notification received:", newNotif); // Debug කිරීම සඳහා
            setNotifications(prev => [newNotif, ...prev]);
         });
 
-        // Component එක Unmount වෙද්දී Socket එක අයින් කිරීම
         return () => {
           socket.disconnect();
         };
@@ -107,7 +101,7 @@ export default function TeacherSidebar() {
 
     loadUserDataLocally();
     fetchLatestProfile();
-    const cleanupSocket = setupNotifications(); // Socket setup එක run කිරීම
+    const cleanupSocket = setupNotifications(); 
 
     window.addEventListener("profileUpdated", loadUserDataLocally);
 
@@ -126,7 +120,6 @@ export default function TeacherSidebar() {
   const handleOpenNotifications = async () => {
     setIsNotifOpen(!isNotifOpen);
     
-    // Dropdown එක Open කරද්දී ඒවා Read කරා යැයි Backend එකට යැවීම
     if (!isNotifOpen && unreadCount > 0) {
       try {
         const token = localStorage.getItem("token");
@@ -134,11 +127,43 @@ export default function TeacherSidebar() {
           headers: { Authorization: `Bearer ${token}` }
         });
         
-        // Local state එක update කිරීම
         setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
       } catch (error) {
         console.error("Error marking notifications as read:", error);
       }
+    }
+  };
+
+  // --- අලුතින් එක් කළ Logic: සියලුම Notifications මකා දැමීම (Clear All) ---
+  const handleClearAll = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!confirm("Are you sure you want to clear all notifications?")) return;
+
+    try {
+      const token = localStorage.getItem("token");
+      await axios.delete("http://localhost:5000/api/notifications/clear-all", {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setNotifications([]); // UI එකෙන් අයින් කිරීම
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  // --- අලුතින් එක් කළ Logic: තනි Notification එකක් මකා දැමීම ---
+  const handleDeleteNotification = async (e: React.MouseEvent, id: string) => {
+    e.preventDefault();
+    e.stopPropagation(); // Link click වීම වැළැක්වීමට
+    
+    try {
+      const token = localStorage.getItem("token");
+      await axios.delete(`http://localhost:5000/api/notifications/${id}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setNotifications(prev => prev.filter(n => n._id !== id)); // UI එකෙන් අයින් කිරීම
+    } catch (error) {
+      console.error(error);
     }
   };
 
@@ -225,7 +250,6 @@ export default function TeacherSidebar() {
       <div className="p-4 pb-6 relative">
         <div className={`rounded-2xl p-3 ${darkMode ? "bg-slate-800/80 border border-slate-700" : "bg-slate-50 border border-slate-200"}`}>
           
-          {/* Notifications Toggle */}
           <div className="relative w-full mb-2">
             <button 
               onClick={handleOpenNotifications}
@@ -255,8 +279,20 @@ export default function TeacherSidebar() {
             {isNotifOpen && (
               <div className={`absolute bottom-0 left-[105%] ml-2 w-80 max-h-[350px] flex flex-col rounded-2xl border shadow-2xl z-50 transform transition-all ${darkMode ? "bg-slate-900 border-slate-800" : "bg-white border-slate-100"}`}>
                 <div className={`p-4 border-b z-10 flex justify-between items-center ${darkMode ? "border-slate-800" : "border-slate-100"}`}>
-                  <h3 className={`font-bold text-sm ${darkMode ? "text-white" : "text-slate-900"}`}>Notifications</h3>
-                  {unreadCount === 0 && <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-md ${darkMode ? "bg-slate-800 text-slate-400" : "bg-slate-100 text-slate-500"}`}>All caught up!</span>}
+                  <div>
+                    <h3 className={`font-bold text-sm ${darkMode ? "text-white" : "text-slate-900"}`}>Notifications</h3>
+                    {unreadCount === 0 && <span className={`text-[10px] font-semibold mt-0.5 block ${darkMode ? "text-slate-500" : "text-slate-400"}`}>All caught up!</span>}
+                  </div>
+                  
+                  {/* Clear All Button */}
+                  {notifications.length > 0 && (
+                    <button 
+                      onClick={handleClearAll}
+                      className={`flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-colors ${darkMode ? "bg-red-500/10 text-red-400 hover:bg-red-500/20" : "bg-red-50 text-red-600 hover:bg-red-100"}`}
+                    >
+                      <Trash2 size={12} /> Clear All
+                    </button>
+                  )}
                 </div>
                 
                 <div className="flex-1 overflow-y-auto p-2 scrollbar-hide">
@@ -267,21 +303,19 @@ export default function TeacherSidebar() {
                 ) : (
                   notifications.map((notif, index) => {
                     
-                    // Notification Title එක අනුව යන්න ඕන පිටුව තීරණය කිරීම
                     let targetUrl = "/teacher/dashboard"; 
                     if (notif.title.toLowerCase().includes("ticket") || notif.title.toLowerCase().includes("reply")) {
                       targetUrl = notif.ticketId 
                         ? `/teacher/tickets?ticketId=${notif.ticketId}` 
                         : "/teacher/tickets";
                     }
-                    // අනාගතයේදී අලුත් Material එකක් Approve වුණොත් යන්න ඕන තැන මෙතනට දාන්න පුළුවන්
 
                     return (
                       <Link 
                         href={targetUrl}
                         key={index} 
-                        onClick={() => setIsNotifOpen(false)} // Click කළාම Dropdown එක වැහෙනවා
-                        className={`p-3 rounded-xl mb-1.5 flex items-start gap-3 transition-colors cursor-pointer ${
+                        onClick={() => setIsNotifOpen(false)} 
+                        className={`group relative p-3 rounded-xl mb-1.5 flex items-start gap-3 transition-colors cursor-pointer ${
                           !notif.isRead 
                             ? (darkMode ? "bg-indigo-500/10 hover:bg-indigo-500/20" : "bg-indigo-50 hover:bg-indigo-100") 
                             : (darkMode ? "hover:bg-slate-800/50" : "hover:bg-slate-50")
@@ -294,7 +328,7 @@ export default function TeacherSidebar() {
                         }`}>
                           <Bell size={12} />
                         </div>
-                        <div>
+                        <div className="pr-6">
                           <h4 className={`text-xs font-bold ${
                             !notif.isRead 
                               ? (darkMode ? "text-indigo-400" : "text-indigo-700") 
@@ -309,6 +343,15 @@ export default function TeacherSidebar() {
                             {new Date(notif.createdAt).toLocaleString()}
                           </span>
                         </div>
+
+                        {/* Individual Delete Button */}
+                        <button 
+                          onClick={(e) => handleDeleteNotification(e, notif._id)}
+                          className={`absolute top-2 right-2 p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-all ${darkMode ? "hover:bg-red-500/20 text-slate-500 hover:text-red-400" : "hover:bg-red-100 text-slate-400 hover:text-red-600"}`}
+                          title="Delete"
+                        >
+                          <X size={14} />
+                        </button>
                       </Link>
                     );
                   })
