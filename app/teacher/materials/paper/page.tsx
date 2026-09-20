@@ -1,3 +1,4 @@
+// src/app/teacher/materials/paper/page.tsx
 "use client";
 
 import { useState, useRef } from "react";
@@ -90,57 +91,62 @@ export default function UploadPaperPage() {
     }
   };
 
-  const inputClass = `w-full rounded-lg border py-2.5 px-4 outline-none focus:ring-2 pl-10 ${
+  const inputClass = `w-full rounded-lg border py-1.5 sm:py-2 px-3 text-xs sm:text-sm outline-none focus:ring-2 pl-8 sm:pl-9 transition-colors ${
     darkMode 
       ? "border-slate-700 bg-slate-800 text-white focus:ring-indigo-500" 
       : "border-slate-300 bg-white text-gray-900 focus:ring-indigo-500"
   }`;
   
   // Icon එකක් නැති inputs සඳහා Class එක
-  const inputClassNoIcon = `w-full rounded-lg border py-2.5 px-4 outline-none focus:ring-2 ${
+  const inputClassNoIcon = `w-full rounded-lg border py-1.5 sm:py-2 px-3 text-xs sm:text-sm outline-none focus:ring-2 transition-colors ${
     darkMode 
       ? "border-slate-700 bg-slate-800 text-white focus:ring-indigo-500" 
       : "border-slate-300 bg-white text-gray-900 focus:ring-indigo-500"
   }`;
 
-  const labelClass = `block text-sm font-medium mb-1.5 ${darkMode ? "text-slate-300" : "text-slate-700"}`;
+  const labelClass = `block text-[10px] sm:text-[11px] font-bold uppercase tracking-wider mb-1 ${darkMode ? "text-slate-300" : "text-slate-700"}`;
 
   return (
-    <div className={`p-8 min-h-screen transition-colors duration-300 ${darkMode ? "bg-slate-900" : "bg-slate-50"}`}>
-      <div className="max-w-3xl mx-auto">
-        <div className="mb-8">
-          <h2 className={`text-3xl font-bold tracking-tight ${darkMode ? "text-white" : "text-gray-900"}`}>
-            Upload Exam Paper
-          </h2>
-          <p className={`mt-2 ${darkMode ? "text-slate-400" : "text-slate-500"}`}>
-            Add past papers, term test papers, or model papers for your students to practice.
-          </p>
+    <div className={`p-4 sm:p-6 min-h-screen transition-colors duration-300 flex flex-col justify-center ${darkMode ? "bg-slate-900" : "bg-slate-50"}`}>
+      <div className="max-w-3xl w-full mx-auto">
+        <div className="mb-4 sm:mb-6 flex items-center gap-3">
+          <div className={`p-2.5 rounded-lg sm:rounded-xl shadow-sm ${darkMode ? "bg-indigo-500/20 text-indigo-400" : "bg-indigo-100 text-indigo-600"}`}>
+            <FileText className="w-5 h-5 sm:w-6 sm:h-6" />
+          </div>
+          <div>
+            <h2 className={`text-lg sm:text-xl font-extrabold tracking-tight ${darkMode ? "text-white" : "text-gray-900"}`}>
+              Upload Exam Paper
+            </h2>
+            <p className={`mt-0.5 text-xs sm:text-sm font-medium ${darkMode ? "text-slate-400" : "text-slate-500"}`}>
+              Add past papers, term test papers, or model papers for students.
+            </p>
+          </div>
         </div>
 
         {errorMessage && (
-          <div className="mb-6 p-4 rounded-lg bg-red-50 border border-red-200 text-red-700 text-sm font-medium">
+          <div className="mb-4 p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/50 text-red-700 dark:text-red-300 text-[11px] sm:text-xs font-medium">
             {errorMessage}
           </div>
         )}
 
-        <div className={`rounded-2xl border shadow-sm ${darkMode ? "border-slate-800 bg-[#0F172A]" : "border-slate-200 bg-white"}`}>
-          <form onSubmit={handleUpload} className="p-8 space-y-6">
+        <div className={`rounded-2xl border shadow-sm transition-colors ${darkMode ? "border-slate-800 bg-[#0F172A]" : "border-slate-200 bg-white"}`}>
+          <form onSubmit={handleUpload} className="p-4 sm:p-5 space-y-4">
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
               {/* Document Title */}
               <div>
                 <label className={labelClass}>Paper Title</label>
                 <div className="relative">
-                  <FileText size={18} className={`absolute left-3 top-1/2 -translate-y-1/2 ${darkMode ? "text-slate-500" : "text-slate-400"}`} />
+                  <FileText size={14} className={`absolute left-2.5 sm:left-3 top-1/2 -translate-y-1/2 ${darkMode ? "text-slate-500" : "text-slate-400"}`} />
                   <input type="text" name="title" value={formData.title} onChange={handleChange} required placeholder="e.g. 2024 - 1st Term Paper" className={inputClass} />
                 </div>
               </div>
 
-              {/* Subject (යාවත්කාලීන කරන ලදි) */}
+              {/* Subject */}
               <div>
                 <label className={labelClass}>Subject</label>
                 <div className="relative">
-                  <BookOpen size={18} className={`absolute left-3 top-1/2 -translate-y-1/2 ${darkMode ? "text-slate-500" : "text-slate-400"}`} />
+                  <BookOpen size={14} className={`absolute left-2.5 sm:left-3 top-1/2 -translate-y-1/2 ${darkMode ? "text-slate-500" : "text-slate-400"}`} />
                   <select 
                     value={subjectCategory}
                     onChange={(e) => {
@@ -172,8 +178,8 @@ export default function UploadPaperPage() {
                 </div>
                 {/* 'Other' තේරූ විට පමණක් දිස්වෙන Text Input එක */}
                 {subjectCategory === "other" && (
-                  <div className="mt-3 relative">
-                    <BookOpen size={18} className={`absolute left-3 top-1/2 -translate-y-1/2 ${darkMode ? "text-slate-500" : "text-slate-400"}`} />
+                  <div className="mt-2 relative">
+                    <BookOpen size={14} className={`absolute left-2.5 sm:left-3 top-1/2 -translate-y-1/2 ${darkMode ? "text-slate-500" : "text-slate-400"}`} />
                     <input 
                       type="text" 
                       name="subject" 
@@ -187,13 +193,13 @@ export default function UploadPaperPage() {
                 )}
               </div>
 
-              {/* Grade / Batch (යාවත්කාලීන කරන ලදි) */}
+              {/* Grade / Batch */}
               <div className="md:col-span-2">
                 <label className={labelClass}>Grade / Batch</label>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                   {/* Category තෝරන Select එක */}
                   <div className="relative">
-                    <GraduationCap size={18} className={`absolute left-3 top-1/2 -translate-y-1/2 ${darkMode ? "text-slate-500" : "text-slate-400"}`} />
+                    <GraduationCap size={14} className={`absolute left-2.5 sm:left-3 top-1/2 -translate-y-1/2 ${darkMode ? "text-slate-500" : "text-slate-400"}`} />
                     <select 
                       value={gradeCategory}
                       onChange={(e) => {
@@ -259,14 +265,14 @@ export default function UploadPaperPage() {
             <div>
               <label className={labelClass}>Short Description (Optional)</label>
               <div className="relative">
-                <AlignLeft size={18} className={`absolute left-3 top-4 ${darkMode ? "text-slate-500" : "text-slate-400"}`} />
+                <AlignLeft size={14} className={`absolute left-2.5 sm:left-3 top-2.5 sm:top-3 ${darkMode ? "text-slate-500" : "text-slate-400"}`} />
                 <textarea 
                   name="description" 
                   value={formData.description} 
                   onChange={handleChange} 
-                  rows={3}
+                  rows={2}
                   placeholder="Provide instructions or a brief overview for this paper..." 
-                  className={`w-full rounded-lg border py-2.5 px-4 outline-none focus:ring-2 pl-10 ${darkMode ? "border-slate-700 bg-slate-800 text-white focus:ring-indigo-500" : "border-slate-300 bg-white text-gray-900 focus:ring-indigo-500"}`}
+                  className={`w-full rounded-lg border py-1.5 sm:py-2 px-3 text-xs sm:text-sm outline-none focus:ring-2 pl-8 sm:pl-9 transition-colors ${darkMode ? "border-slate-700 bg-slate-800 text-white focus:ring-indigo-500" : "border-slate-300 bg-white text-gray-900 focus:ring-indigo-500"}`}
                 ></textarea>
               </div>
             </div>
@@ -276,34 +282,34 @@ export default function UploadPaperPage() {
               <label className={labelClass}>Upload Paper (PDF)</label>
               <div 
                 onClick={() => !selectedFile && fileInputRef.current?.click()}
-                className={`mt-1 border-2 border-dashed rounded-xl p-8 flex flex-col items-center justify-center transition-all ${
+                className={`mt-1 border-2 border-dashed rounded-xl p-4 sm:p-5 flex flex-col items-center justify-center transition-all ${
                   selectedFile 
                     ? darkMode ? "border-indigo-500 bg-indigo-500/10" : "border-indigo-400 bg-indigo-50"
-                    : darkMode ? "border-slate-600 hover:border-indigo-500 cursor-pointer" : "border-slate-300 hover:border-indigo-400 cursor-pointer"
+                    : darkMode ? "border-slate-600 hover:border-indigo-500 cursor-pointer bg-slate-800/30" : "border-slate-300 hover:border-indigo-400 cursor-pointer bg-slate-50/50"
                 }`}
               >
                 {selectedFile ? (
                   <div className="flex flex-col items-center text-center">
-                    <FileText className="w-12 h-12 text-indigo-500 mb-3" />
-                    <p className={`font-medium ${darkMode ? "text-white" : "text-gray-900"}`}>{selectedFile.name}</p>
-                    <p className={`text-xs mt-1 ${darkMode ? "text-slate-400" : "text-slate-500"}`}>
+                    <FileText className="w-8 h-8 sm:w-10 sm:h-10 text-indigo-500 mb-2" />
+                    <p className={`text-xs sm:text-sm font-bold ${darkMode ? "text-white" : "text-gray-900"}`}>{selectedFile.name}</p>
+                    <p className={`text-[10px] sm:text-xs mt-0.5 ${darkMode ? "text-slate-400" : "text-slate-500"}`}>
                       {(selectedFile.size / (1024 * 1024)).toFixed(2)} MB
                     </p>
                     <button 
                       type="button" 
                       onClick={(e) => { e.stopPropagation(); removeFile(); }}
-                      className="mt-4 flex items-center gap-1 text-sm text-red-500 hover:text-red-600 bg-red-50 dark:bg-red-500/10 px-3 py-1.5 rounded-lg transition-colors"
+                      className="mt-2.5 flex items-center gap-1 text-[11px] sm:text-xs text-red-500 hover:text-red-600 bg-red-50 dark:bg-red-500/10 px-2.5 py-1.5 rounded-md transition-colors font-bold"
                     >
-                      <X size={16} /> Remove File
+                      <X size={14} /> Remove File
                     </button>
                   </div>
                 ) : (
                   <>
-                    <UploadCloud className={`w-12 h-12 mb-3 ${darkMode ? "text-slate-400" : "text-gray-400"}`} />
-                    <p className={`font-medium ${darkMode ? "text-slate-300" : "text-gray-700"}`}>
+                    <UploadCloud className={`w-8 h-8 sm:w-10 sm:h-10 mb-2 ${darkMode ? "text-slate-400" : "text-gray-400"}`} />
+                    <p className={`text-xs sm:text-sm font-bold ${darkMode ? "text-slate-300" : "text-gray-700"}`}>
                       Click to browse or drag and drop
                     </p>
-                    <p className={`text-xs mt-1 ${darkMode ? "text-slate-500" : "text-gray-500"}`}>
+                    <p className={`text-[10px] sm:text-xs mt-0.5 ${darkMode ? "text-slate-500" : "text-gray-500"}`}>
                       Only PDF documents are supported (Max 10MB)
                     </p>
                   </>
@@ -318,20 +324,20 @@ export default function UploadPaperPage() {
               </div>
             </div>
 
-            <div className="pt-6 border-t dark:border-slate-700 flex justify-end">
+            <div className="pt-4 border-t dark:border-slate-800 flex justify-end">
               <button
                 type="submit"
                 disabled={uploading}
-                className="bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-3 rounded-lg font-semibold transition-colors disabled:bg-indigo-400 flex items-center gap-2 shadow-md"
+                className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 sm:px-6 py-2 sm:py-2.5 rounded-lg text-xs sm:text-sm font-bold transition-all disabled:bg-indigo-400 flex items-center gap-1.5 shadow-sm active:scale-[0.98]"
               >
                 {uploading ? (
                   <>
-                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                     Uploading...
                   </>
                 ) : (
                   <>
-                    <UploadCloud size={20} />
+                    <UploadCloud size={16} />
                     Upload Paper
                   </>
                 )}
