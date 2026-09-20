@@ -118,7 +118,7 @@ export default function MyVideosPage() {
         itemName={deleteItem?.title}
       />
 
-      <div className="max-w-7xl mx-auto">
+      <div className="max-w-[1400px] mx-auto">
         
         {/* Header Section (Modernized) */}
         <div className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-6">
@@ -187,133 +187,131 @@ export default function MyVideosPage() {
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 gap-5">
+          /* Grid Layout Setup */
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
             {filteredVideos.map((video) => (
               <div 
                 key={video._id} 
-                className={`group flex flex-col md:flex-row md:items-stretch justify-between gap-5 p-5 rounded-2xl border transition-all hover:shadow-lg hover:-translate-y-0.5 ${
+                className={`group flex flex-col overflow-hidden rounded-2xl border transition-all hover:shadow-xl hover:-translate-y-1 ${
                   darkMode 
-                    ? "bg-slate-900/80 border-slate-800 hover:border-slate-700 shadow-xl shadow-black/10" 
+                    ? "bg-slate-900/80 border-slate-800 hover:border-slate-700 shadow-black/10" 
                     : "bg-white border-slate-200 hover:border-slate-300 shadow-sm"
                 }`}
               >
                 
-                {/* Embedded Video & Info Section */}
-                <div className="flex flex-col sm:flex-row gap-5 flex-1 min-w-0">
+                {/* 1. Video Preview Area (Top) */}
+                <a 
+                  href={`http://localhost:5000${video.fileUrl}`} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className={`relative w-full aspect-video overflow-hidden group/thumb cursor-pointer block ${
+                    darkMode ? "bg-black border-b border-slate-800" : "bg-slate-100 border-b border-slate-200"
+                  }`}
+                  title="Click to view enlarged in new tab"
+                >
+                  <video 
+                    src={`http://localhost:5000${video.fileUrl}#t=0.1`} 
+                    className="w-full h-full object-cover transition-transform duration-500 group-hover/thumb:scale-105"
+                    preload="metadata"
+                    muted
+                    playsInline
+                  />
                   
-                  {/* Actual Video Player embedded as thumbnail */}
-                  <a 
-                    href={`http://localhost:5000${video.fileUrl}`} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className={`relative flex-shrink-0 w-full sm:w-48 md:w-56 aspect-video rounded-xl overflow-hidden group/thumb border transition-all cursor-pointer block ${
-                      darkMode ? "border-slate-700 bg-black" : "border-slate-200 bg-slate-100"
-                    }`}
-                    title="Click to view enlarged in new tab"
-                  >
-                    <video 
-                      src={`http://localhost:5000${video.fileUrl}#t=0.1`} 
-                      className="w-full h-full object-cover"
-                      preload="metadata"
-                      muted
-                      playsInline
-                    />
-                    
-                    {/* Dark Overlay with Play Icon */}
-                    <div className="absolute inset-0 bg-black/30 group-hover/thumb:bg-black/50 flex items-center justify-center transition-colors">
-                      <PlayCircle size={36} className="text-white/80 group-hover/thumb:text-white group-hover/thumb:scale-110 transition-all shadow-sm rounded-full" />
+                  {/* Dark Overlay with Play Icon */}
+                  <div className="absolute inset-0 bg-black/20 group-hover/thumb:bg-black/40 flex items-center justify-center transition-colors">
+                    <div className="w-12 h-12 flex items-center justify-center rounded-full bg-white/20 backdrop-blur-sm border border-white/30 group-hover/thumb:bg-indigo-600 group-hover/thumb:border-indigo-500 transition-all shadow-lg">
+                      <PlayCircle size={24} className="text-white ml-1" />
                     </div>
+                  </div>
 
-                    {/* Small tag on top corner */}
-                    <div className="absolute top-2 right-2 bg-black/60 backdrop-blur-sm text-white text-[10px] px-1.5 py-0.5 rounded font-bold">
+                  {/* Top Right Labels */}
+                  <div className="absolute top-2 right-2 flex flex-col gap-1.5 items-end">
+                    {/* File Format Label */}
+                    <div className="bg-black/70 backdrop-blur-md text-white text-[10px] px-2 py-0.5 rounded-md font-bold tracking-widest shadow-sm">
                       MP4
                     </div>
-                  </a>
+                    {/* Status Badge Overlaid on Video */}
+                    {video.status === 'pending' && <span className="bg-amber-500/90 text-white text-[9px] px-2 py-0.5 rounded-md font-bold uppercase tracking-wider shadow-sm">Pending</span>}
+                    {video.status === 'approved' && !video.isPublished && <span className="bg-emerald-500/90 text-white text-[9px] px-2 py-0.5 rounded-md font-bold uppercase tracking-wider shadow-sm">Approved</span>}
+                    {video.status === 'rejected' && <span className="bg-red-500/90 text-white text-[9px] px-2 py-0.5 rounded-md font-bold uppercase tracking-wider shadow-sm">Rejected</span>}
+                    {video.isPublished && <span className="bg-blue-600/90 text-white text-[9px] px-2 py-0.5 rounded-md font-bold uppercase tracking-wider shadow-sm flex items-center gap-1"><Globe size={10} /> Published</span>}
+                  </div>
+                </a>
+                
+                {/* 2. Text Information Area (Middle) */}
+                <div className="flex-1 p-4 flex flex-col">
+                  <h3 className={`font-bold text-sm line-clamp-2 mb-3 group-hover:text-indigo-500 transition-colors ${darkMode ? "text-slate-100" : "text-slate-800"}`} title={video.title}>
+                    {video.title}
+                  </h3>
                   
-                  {/* Text Information */}
-                  <div className="min-w-0 flex-1 py-1 flex flex-col justify-center">
-                    <h3 className={`font-extrabold text-lg line-clamp-2 mb-2 ${darkMode ? "text-slate-100" : "text-slate-800"}`} title={video.title}>
-                      {video.title}
-                    </h3>
-                    
-                    <div className="flex items-center gap-2 mb-3 flex-wrap">
-                      {/* Status Badges */}
-                      {video.status === 'pending' && <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md border ${darkMode ? "bg-amber-500/10 text-amber-400 border-amber-500/20" : "bg-amber-50 text-amber-700 border-amber-200"}`}>Pending</span>}
-                      {video.status === 'approved' && !video.isPublished && <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md border ${darkMode ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" : "bg-emerald-50 text-emerald-700 border-emerald-200"}`}>Approved</span>}
-                      {video.status === 'rejected' && <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md border ${darkMode ? "bg-red-500/10 text-red-400 border-red-500/20" : "bg-red-50 text-red-700 border-red-200"}`}>Rejected</span>}
-                      {video.isPublished && <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md border flex items-center gap-1 ${darkMode ? "bg-blue-500/10 text-blue-400 border-blue-500/20" : "bg-blue-50 text-blue-700 border-blue-200"}`}><Globe size={10} /> Published</span>}
+                  <div className={`mt-auto flex flex-col gap-1.5 text-xs font-semibold ${darkMode ? "text-slate-400" : "text-slate-500"}`}>
+                    <div className="flex items-center gap-1.5 truncate">
+                      <BookOpen size={14} className={darkMode ? "text-slate-500" : "text-slate-400"} /> 
+                      <span className="truncate">{video.subject} {video.grade && `• ${video.grade}`}</span>
                     </div>
-                    
-                    <div className={`flex items-center flex-wrap gap-x-3 gap-y-1 text-xs font-semibold ${darkMode ? "text-slate-400" : "text-slate-500"}`}>
-                      <span className="flex items-center gap-1.5"><BookOpen size={13} /> {video.subject}</span>
-                      {video.grade && (
-                        <>
-                          <span className="opacity-50">•</span>
-                          <span>{video.grade}</span>
-                        </>
-                      )}
-                      <span className="opacity-50">•</span>
-                      <span className="flex items-center gap-1"><Calendar size={13} /> {new Date(video.createdAt).toLocaleDateString()}</span>
+                    <div className="flex items-center gap-1.5">
+                      <Calendar size={14} className={darkMode ? "text-slate-500" : "text-slate-400"} /> 
+                      <span>{new Date(video.createdAt).toLocaleDateString()}</span>
                     </div>
+                  </div>
 
-                    {/* Reject Reason (Inline) */}
-                    {video.status === 'rejected' && video.rejectReason && (
-                      <div className="mt-3 flex items-start gap-1.5 text-xs font-medium text-red-500 bg-red-500/10 px-3 py-2 rounded-lg border border-red-500/20 w-fit">
-                        <AlertCircle size={14} className="mt-0.5 flex-shrink-0" />
-                        <span><strong className="font-bold">Reason:</strong> {video.rejectReason}</span>
-                      </div>
+                  {/* Reject Reason */}
+                  {video.status === 'rejected' && video.rejectReason && (
+                    <div className="mt-3 flex items-start gap-1.5 text-[11px] font-medium text-red-500 bg-red-500/10 px-2.5 py-1.5 rounded-lg border border-red-500/20">
+                      <AlertCircle size={14} className="mt-0.5 flex-shrink-0" />
+                      <span className="line-clamp-2"><strong className="font-bold">Reason:</strong> {video.rejectReason}</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* 3. Actions Area (Bottom) */}
+                <div className={`p-3 border-t flex items-center justify-between gap-2 ${darkMode ? "border-slate-800 bg-slate-900/50" : "border-slate-100 bg-slate-50/50"}`}>
+                  
+                  {/* Left Side Action (Publish if approved) */}
+                  <div className="flex-1">
+                    {video.status === 'approved' && !video.isPublished && (
+                      <button 
+                        onClick={() => handlePublish(video._id, video.title)}
+                        className={`flex items-center justify-center w-full gap-1.5 py-1.5 rounded-lg font-bold text-xs transition-all shadow-sm ${
+                          darkMode 
+                            ? "bg-blue-600 hover:bg-blue-500 text-white shadow-blue-900/20" 
+                            : "bg-blue-600 hover:bg-blue-700 text-white shadow-blue-600/20"
+                        }`}
+                      >
+                        <Globe size={14} /> Publish
+                      </button>
                     )}
+                  </div>
+
+                  {/* Right Side Actions (Open & Delete) */}
+                  <div className="flex items-center gap-1.5">
+                    <a 
+                      href={`http://localhost:5000${video.fileUrl}`} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className={`p-1.5 rounded-lg transition-colors ${
+                        darkMode 
+                          ? "hover:bg-slate-700 text-slate-400 hover:text-indigo-400" 
+                          : "hover:bg-slate-200 text-slate-500 hover:text-indigo-600"
+                      }`}
+                      title="Open in new tab"
+                    >
+                      <ExternalLink size={16} />
+                    </a>
+                    <button
+                      onClick={() => setDeleteItem(video)}
+                      className={`p-1.5 rounded-lg transition-colors ${
+                        darkMode 
+                          ? "hover:bg-red-500/10 text-slate-400 hover:text-red-400" 
+                          : "hover:bg-red-50 text-slate-500 hover:text-red-600"
+                      }`}
+                      title="Delete Video"
+                    >
+                      <Trash2 size={16} />
+                    </button>
                   </div>
                 </div>
 
-                {/* Actions Section */}
-                <div className="flex items-center gap-3 sm:justify-end md:flex-col md:justify-center border-t md:border-t-0 md:border-l pt-4 md:pt-0 md:pl-5 border-slate-200 dark:border-slate-800">
-                  
-                  {/* Publish Button */}
-                  {video.status === 'approved' && !video.isPublished && (
-                    <button 
-                      onClick={() => handlePublish(video._id, video.title)}
-                      className={`flex items-center justify-center w-full md:w-auto gap-1.5 px-4 py-2 rounded-xl font-bold text-xs transition-all shadow-sm ${
-                        darkMode 
-                          ? "bg-blue-600 hover:bg-blue-500 text-white shadow-blue-900/20" 
-                          : "bg-blue-600 hover:bg-blue-700 text-white shadow-blue-600/20"
-                      }`}
-                    >
-                      <Globe size={14} /> Publish
-                    </button>
-                  )}
-
-                  {/* Watch Enlarged Button (Optional helper action) */}
-                  <a 
-                    href={`http://localhost:5000${video.fileUrl}`} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className={`flex items-center justify-center w-full md:w-auto gap-1.5 px-4 py-2 rounded-xl transition-colors font-bold text-xs ${
-                      darkMode 
-                        ? "bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700" 
-                        : "bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 shadow-sm"
-                    }`}
-                    title="Watch Enlarged"
-                  >
-                    <ExternalLink size={14} /> <span>Open</span>
-                  </a>
-
-                  <div className={`hidden md:block w-full h-px mx-auto ${darkMode ? "bg-slate-800" : "bg-slate-200"}`}></div>
-
-                  {/* Delete Button */}
-                  <button
-                    onClick={() => setDeleteItem(video)}
-                    className={`flex items-center justify-center w-full md:w-auto p-2 rounded-xl transition-colors ${
-                      darkMode 
-                        ? "hover:bg-red-500/10 text-slate-500 hover:text-red-400" 
-                        : "hover:bg-red-50 text-slate-400 hover:text-red-600"
-                    }`}
-                    title="Delete Video"
-                  >
-                    <Trash2 size={18} />
-                  </button>
-
-                </div>
               </div>
             ))}
           </div>
