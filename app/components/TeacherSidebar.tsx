@@ -270,8 +270,10 @@ export default function TeacherSidebar() {
                     // Notification Title එක අනුව යන්න ඕන පිටුව තීරණය කිරීම
                     let targetUrl = "/teacher/dashboard"; 
                     if (notif.title.toLowerCase().includes("ticket") || notif.title.toLowerCase().includes("reply")) {
-                      targetUrl = "/teacher/tickets";
-                    } 
+                      targetUrl = notif.ticketId 
+                        ? `/teacher/tickets?ticketId=${notif.ticketId}` 
+                        : "/teacher/tickets";
+                    }
                     // අනාගතයේදී අලුත් Material එකක් Approve වුණොත් යන්න ඕන තැන මෙතනට දාන්න පුළුවන්
 
                     return (
