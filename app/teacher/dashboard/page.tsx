@@ -38,6 +38,7 @@ import {
   AlignLeft
 } from "lucide-react";
 import { useTheme } from "@/app/context/ThemeContext";
+import { io } from "socket.io-client";
 
 // Date formatting helper function
 const formatTimeAgo = (dateString: string) => {
@@ -72,6 +73,57 @@ export default function TeacherDashboard() {
   const [materialsModalOpen, setMaterialsModalOpen] = useState(false);
   const [selectedFilter, setSelectedFilter] = useState<"all" | "video" | "pdf" | "paper">("all");
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [isNotifOpen, setIsNotifOpen] = useState(false);
+
+  const unreadCount = notifications.filter(n => !n.isRead).length;
+
+useEffect(() => {
+  const token = localStorage.getItem("token");
+  const userData = localStorage.getItem("user");
+
+  if (token && userData) {
+    const parsedUser = JSON.parse(userData);
+
+    // 1. පරණ Notifications Database එකෙන් ලබාගැනීම
+    axios.get("http://localhost:5000/api/notifications", {
+      headers: { Authorization: `Bearer ${token}` }
+    }).then(res => setNotifications(res.data)).catch(console.error);
+
+    // 2. Socket Connection එක සෑදීම
+    const socket = io("http://localhost:5000");
+    if (parsedUser.id) socket.emit("join_user_room", parsedUser.id);
+
+    // 3. අලුත් Notification එකක් ආවම List එකේ උඩටම එකතු කිරීම
+    socket.on("receive_notification", (newNotif) => {
+      setNotifications(prev => [newNotif, ...prev]);
+      showToast(newNotif.message); // අලුත් එකක් ආවම Toast එකත් පෙන්වන්න
+    });
+
+    return () => { socket.disconnect(); };
+  }
+}, []);
+
+// Dropdown එක Open කරද්දී ඒවා Read කරා යැයි Backend එකට යැවීම
+const handleOpenNotifications = () => {
+  setIsNotifOpen(!isNotifOpen);
+  if (!isNotifOpen && unreadCount > 0) {
+    const token = localStorage.getItem("token");
+    axios.put("http://localhost:5000/api/notifications/mark-read", {}, {
+      headers: { Authorization: `Bearer ${token}` }
+    }).then(() => {
+      setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+    }).catch(console.error);
+  }
+};
+
+const showToast = (message: string) => {
+  setToastMessage(message);
+
+  setTimeout(() => {
+    setToastMessage(null);
+  }, 3000);
+};
 
   // -------------------------------------------------------------
   // Quick Upload Modal States & Logic
@@ -95,11 +147,6 @@ export default function TeacherDashboard() {
     grade: "",
     description: "",
   });
-
-  const showToast = (msg: string) => {
-    setToastMessage(msg);
-    setTimeout(() => setToastMessage(null), 3000);
-  };
 
   useEffect(() => {
     if (!localStorage.getItem("token") || !localStorage.getItem("user")) {
@@ -247,6 +294,37 @@ export default function TeacherDashboard() {
       setUploading(false);
     }
   };
+
+
+  useEffect(() => {
+    const userData = localStorage.getItem("user");
+    if (userData) {
+      const parsedUser = JSON.parse(userData);
+      setUser(parsedUser);
+
+      // Socket.io Connection එක සෑදීම
+      const socket = io("http://localhost:5000");
+
+      // ගුරුවරයාගේ ID එක යවා Room එකට Join වීම
+      // (මෙහිදී parsedUser.id හෝ _id ලෙස ඔබගේ user object එකේ ඇති field එක භාවිතා කරන්න)
+      if (parsedUser.id) {
+        socket.emit("join_user_room", parsedUser.id);
+      }
+
+      // Backend එකෙන් එන Notification එක ලබා ගැනීම
+      socket.on("receive_notification", (data) => {
+        showToast(data.message); // Toast එකක් හරහා පෙන්වීම
+        
+        // ඔබට අවශ්‍ය නම් මෙහිදී Notification Bell එකේ Unread Count එකක් Update කළ හැක
+        // setUnreadCount(prev => prev + 1);
+      });
+
+      // Component එක Unmount වෙද්දී Connection එක අයින් කිරීම
+      return () => {
+        socket.disconnect();
+      };
+    }
+  }, []);
 
   if (!user) return (
     <div className={`flex min-h-screen items-center justify-center transition-colors duration-300 ${darkMode ? "bg-slate-950" : "bg-slate-50"}`}>
