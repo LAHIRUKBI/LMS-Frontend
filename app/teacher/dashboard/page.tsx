@@ -39,24 +39,42 @@ import {
 } from "lucide-react";
 import { useTheme } from "@/app/context/ThemeContext";
 
+// Date formatting helper function
+const formatTimeAgo = (dateString: string) => {
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+
+  if (diffInSeconds < 60) return "Just now";
+  const diffInMinutes = Math.floor(diffInSeconds / 60);
+  if (diffInMinutes < 60) return `${diffInMinutes} mins ago`;
+  const diffInHours = Math.floor(diffInMinutes / 60);
+  if (diffInHours < 24) return `${diffInHours} hours ago`;
+  const diffInDays = Math.floor(diffInHours / 24);
+  if (diffInDays === 1) return "Yesterday";
+  if (diffInDays < 7) return `${diffInDays} days ago`;
+  
+  return date.toLocaleDateString();
+};
+
 export default function TeacherDashboard() {
   const router = useRouter();
   const [user, setUser] = useState<{ name: string; subject?: string } | null>(null);
   
-  // ගණනය කිරීම් සඳහා State එකක්
+  // ගණනය කිරීම් සහ දත්ත සඳහා States
   const [counts, setCounts] = useState({ videos: 0, pdfs: 0, papers: 0 });
+  const [materialsList, setMaterialsList] = useState<any[]>([]); // API එකෙන් එන දත්ත සඳහා
   const [loading, setLoading] = useState(true);
 
   const { darkMode, toggleDarkMode } = useTheme(); 
 
   // Interactive UI state
   const [materialsModalOpen, setMaterialsModalOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
   const [selectedFilter, setSelectedFilter] = useState<"all" | "video" | "pdf" | "paper">("all");
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   // -------------------------------------------------------------
-  // Quick Upload Modal States & Logic (Integrated from Upload Pages)
+  // Quick Upload Modal States & Logic
   // -------------------------------------------------------------
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
   const [newMaterialType, setNewMaterialType] = useState<"video" | "pdf" | "paper">("video");
@@ -110,6 +128,7 @@ export default function TeacherDashboard() {
       });
 
       const materials = res.data;
+      setMaterialsList(materials); // API දත්ත state එකට දාගැනීම
       
       let videoCount = 0;
       let pdfCount = 0;
@@ -129,12 +148,6 @@ export default function TeacherDashboard() {
     }
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
-    router.push("/login");
-  };
-
   const handleShareLink = () => {
     if (typeof navigator !== "undefined" && navigator.clipboard) {
       navigator.clipboard.writeText(window.location.origin);
@@ -151,7 +164,7 @@ export default function TeacherDashboard() {
 
   const handleTypeChange = (type: "video" | "pdf" | "paper") => {
     setNewMaterialType(type);
-    setSelectedFile(null); // Clear file when type changes to prevent mismatch
+    setSelectedFile(null); 
     setErrorMessage("");
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
@@ -160,7 +173,6 @@ export default function TeacherDashboard() {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
       
-      // Validation based on type
       if (newMaterialType === "video" && !file.type.startsWith("video/")) {
         setErrorMessage("Please select a valid Video file (MP4, WebM).");
         return;
@@ -218,12 +230,10 @@ export default function TeacherDashboard() {
       showToast(`"${formData.title}" uploaded successfully!`);
       setUploadModalOpen(false);
       
-      // Reset form
       setFormData({ title: "", subject: "", grade: "", description: "" });
       removeFile();
       
-      // Refresh dashboard data
-      fetchMyStats(token!);
+      fetchMyStats(token!); // Upload වූ පසු දත්ත අලුත් කිරීම
 
     } catch (err: any) {
       setErrorMessage(err.response?.data?.message || "An error occurred during the upload process.");
@@ -231,8 +241,6 @@ export default function TeacherDashboard() {
       setUploading(false);
     }
   };
-
-  // -------------------------------------------------------------
 
   if (!user) return (
     <div className={`flex min-h-screen items-center justify-center transition-colors duration-300 ${darkMode ? "bg-slate-950" : "bg-slate-50"}`}>
@@ -268,13 +276,15 @@ export default function TeacherDashboard() {
   const today = new Date().toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
   const totalMaterials = counts.videos + counts.pdfs + counts.papers;
 
-  const recentActivities = [
-    { type: "video", badge: "MP4 • 1080p", text: "A new video lesson was uploaded", title: "Electromagnetic Induction & Faraday's Law - Masterclass", subjectTag: user.subject || "Physics", time: "2 hours ago", icon: <PlayCircle size={16} className="text-indigo-500" />, size: "420 MB", views: "148 views" },
-    { type: "pdf", badge: "PDF Notes • 4.2 MB", text: "Unit 3 PDF notes added to the portal", title: "Complete Theory Summary & Formulas - Units 1 to 4", subjectTag: user.subject || "Physics", time: "5 hours ago", icon: <FileText size={16} className="text-emerald-500" />, size: "4.2 MB", views: "312 downloads" },
-    { type: "paper", badge: "Model Paper + Scheme", text: "New model paper published for students", title: "Mid-Term Evaluation 2026: Structured Essay & MCQ", subjectTag: user.subject || "Physics", time: "Yesterday", icon: <BookOpen size={16} className="text-blue-500" />, size: "1.8 MB", views: "89 submissions" },
-  ];
+  // -------------------------------------------------------------
+  // Filter API data for Recent Uploads (Real Data Mapping)
+  // -------------------------------------------------------------
+  const filteredActivities = selectedFilter === "all" 
+    ? materialsList 
+    : materialsList.filter((m) => m.type === selectedFilter);
 
-  const filteredActivities = selectedFilter === "all" ? recentActivities : recentActivities.filter((a) => a.type === selectedFilter);
+  // Take only the latest 5 items for the dashboard preview
+  const recentActivitiesPreview = filteredActivities.slice(0, 5);
 
   return (
     <div className={`min-h-screen transition-colors duration-300 font-sans ${darkMode ? "bg-slate-950 text-slate-100" : "bg-slate-50/80 text-slate-900"}`}>
@@ -291,7 +301,6 @@ export default function TeacherDashboard() {
       <nav className={`sticky top-0 z-40 border-b backdrop-blur-md transition-colors duration-300 ${darkMode ? "bg-slate-950/80 border-slate-800/80" : "bg-white/80 border-slate-200/80"}`}>
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
           
-          {/* Left Side: Brand Logo and Info */}
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-600 text-white shadow-md shadow-indigo-600/20">
               <GraduationCap size={22} />
@@ -304,7 +313,6 @@ export default function TeacherDashboard() {
             </div>
           </div>
 
-          {/* Right Side: Action Button ONLY */}
           <div className="flex items-center gap-2 sm:gap-3">
             <button onClick={() => setUploadModalOpen(true)} className="flex items-center gap-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white px-3 sm:px-3.5 py-2 text-xs font-bold shadow-md shadow-indigo-600/20 transition-all hover:scale-[1.02] active:scale-[0.98]">
               <Plus size={15} strokeWidth={2.5} />
@@ -319,7 +327,6 @@ export default function TeacherDashboard() {
       {/* Main Container */}
       <main className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
         
-        {/* Header - Compact & Elegant */}
         <div className="mb-8 flex flex-col md:flex-row md:items-end md:justify-between gap-4">
           <div>
             <div className="flex items-center gap-2 mb-1.5">
@@ -417,7 +424,7 @@ export default function TeacherDashboard() {
         {/* Content Section */}
         <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-3">
           <div className={`rounded-3xl p-6 lg:col-span-2 border transition-all ${darkMode ? "bg-slate-900/90 border-slate-800 shadow-xl shadow-black/20" : "bg-white border-slate-200/90 shadow-slate-200/40 shadow-lg"}`}>
-            {/* Same Recent Uploads List Logic */}
+            
             <div className="mb-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
               <div>
                 <div className="flex items-center gap-2">
@@ -443,34 +450,47 @@ export default function TeacherDashboard() {
               ))}
             </div>
 
+            {/* REAL DATA MAPPING FOR RECENT UPLOADS */}
             <div className="space-y-3">
-              {filteredActivities.map((activity, i) => (
-                <div key={i} className={`group flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl p-4 border transition-all hover:scale-[1.005] ${darkMode ? "bg-slate-800/40 border-slate-800 hover:bg-slate-800/80 hover:border-slate-700" : "bg-slate-50/70 border-slate-200/70 hover:bg-white hover:border-slate-300 hover:shadow-md"}`}>
-                  <div className="flex items-start sm:items-center gap-3.5">
-                    <div className={`flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-2xl text-lg shadow-sm border transition-transform group-hover:scale-105 ${darkMode ? "bg-slate-800 border-slate-700" : "bg-white border-slate-200"}`}>
-                      {activity.icon}
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className={`text-sm font-bold ${darkMode ? "text-slate-200" : "text-slate-800"}`}>{activity.text}</span>
-                        <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md ${activity.type === "video" ? darkMode ? "bg-indigo-500/10 text-indigo-400" : "bg-indigo-50 text-indigo-700" : activity.type === "pdf" ? darkMode ? "bg-emerald-500/10 text-emerald-400" : "bg-emerald-50 text-emerald-700" : darkMode ? "bg-blue-500/10 text-blue-400" : "bg-blue-50 text-blue-700"}`}>
-                          {activity.badge}
-                        </span>
+              {loading ? (
+                 <div className="flex justify-center p-6"><Loader2 className="animate-spin text-indigo-500" /></div>
+              ) : recentActivitiesPreview.length > 0 ? (
+                recentActivitiesPreview.map((material, i) => (
+                  <div key={i} className={`group flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl p-4 border transition-all hover:scale-[1.005] ${darkMode ? "bg-slate-800/40 border-slate-800 hover:bg-slate-800/80 hover:border-slate-700" : "bg-slate-50/70 border-slate-200/70 hover:bg-white hover:border-slate-300 hover:shadow-md"}`}>
+                    <div className="flex items-start sm:items-center gap-3.5">
+                      <div className={`flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-2xl text-lg shadow-sm border transition-transform group-hover:scale-105 ${darkMode ? "bg-slate-800 border-slate-700" : "bg-white border-slate-200"}`}>
+                        {material.type === "video" ? <PlayCircle size={18} className="text-indigo-500" /> : material.type === "pdf" ? <FileText size={18} className="text-emerald-500" /> : <BookOpen size={18} className="text-blue-500" />}
                       </div>
-                      <p className={`text-xs mt-0.5 line-clamp-1 font-medium ${darkMode ? "text-slate-400" : "text-slate-500"}`}>{activity.title} • {activity.size}</p>
+                      <div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className={`text-sm font-bold ${darkMode ? "text-slate-200" : "text-slate-800"}`}>
+                            {material.title}
+                          </span>
+                          <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md ${material.type === "video" ? darkMode ? "bg-indigo-500/10 text-indigo-400" : "bg-indigo-50 text-indigo-700" : material.type === "pdf" ? darkMode ? "bg-emerald-500/10 text-emerald-400" : "bg-emerald-50 text-emerald-700" : darkMode ? "bg-blue-500/10 text-blue-400" : "bg-blue-50 text-blue-700"}`}>
+                            {material.type === "paper" ? "Model Paper" : material.type === "pdf" ? "PDF Note" : "Video"}
+                          </span>
+                        </div>
+                        <p className={`text-xs mt-0.5 line-clamp-1 font-medium ${darkMode ? "text-slate-400" : "text-slate-500"}`}>
+                          {material.subject} • {material.grade}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between sm:justify-end gap-3 pl-14 sm:pl-0">
+                      <div className={`flex items-center gap-1.5 text-xs font-medium ${darkMode ? "text-slate-400" : "text-slate-500"}`}>
+                        <Clock size={13} className={darkMode ? "text-slate-500" : "text-slate-400"} />
+                        <span>{formatTimeAgo(material.createdAt || new Date())}</span>
+                      </div>
+                      <button onClick={() => showToast(`Previewing: ${material.title}`)} className={`text-xs font-bold px-2.5 py-1 rounded-lg border transition-colors opacity-90 group-hover:opacity-100 ${darkMode ? "border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-200" : "border-slate-200 bg-white hover:bg-slate-100 text-slate-700 shadow-sm"}`}>
+                        Preview
+                      </button>
                     </div>
                   </div>
-                  <div className="flex items-center justify-between sm:justify-end gap-3 pl-14 sm:pl-0">
-                    <div className={`flex items-center gap-1.5 text-xs font-medium ${darkMode ? "text-slate-400" : "text-slate-500"}`}>
-                      <Clock size={13} className={darkMode ? "text-slate-500" : "text-slate-400"} />
-                      <span>{activity.time}</span>
-                    </div>
-                    <button onClick={() => showToast(`Previewing: ${activity.title}`)} className={`text-xs font-bold px-2.5 py-1 rounded-lg border transition-colors opacity-90 group-hover:opacity-100 ${darkMode ? "border-slate-700 bg-slate-800 hover:bg-slate-700 text-slate-200" : "border-slate-200 bg-white hover:bg-slate-100 text-slate-700 shadow-sm"}`}>
-                      Preview
-                    </button>
-                  </div>
+                ))
+              ) : (
+                <div className={`text-center py-6 text-sm font-medium ${darkMode ? "text-slate-500" : "text-slate-400"}`}>
+                  No {selectedFilter !== "all" ? selectedFilter : ""} materials found.
                 </div>
-              ))}
+              )}
             </div>
           </div>
 
@@ -608,6 +628,7 @@ export default function TeacherDashboard() {
                     </div>
                   </div>
 
+                  {/* Subject and Grade with generic inputs matching other pages */}
                   <div>
                     <label className={`block text-xs font-bold uppercase tracking-wider mb-1.5 ${darkMode ? "text-slate-300" : "text-slate-700"}`}>Subject</label>
                     <div className="relative">
@@ -732,45 +753,41 @@ export default function TeacherDashboard() {
 
             {/* List */}
             <div className="flex-1 overflow-y-auto py-4 space-y-2.5 pr-2">
-              {[
-                { title: "Electromagnetic Induction Full Lecture", type: "video", date: "Today", size: "450 MB" },
-                { title: "Wave Optics & Interference Part 2", type: "video", date: "Yesterday", size: "380 MB" },
-                { title: "Atomic Physics & Bohr Model Masterclass", type: "video", date: "3 days ago", size: "520 MB" },
-                { title: "Newtonian Mechanics Revision Video", type: "video", date: "Last week", size: "410 MB" },
-                { title: "Unit 3 Complete Formula Handbook", type: "pdf", date: "5 hours ago", size: "4.2 MB" },
-                { title: "Thermodynamics Lecture Slides (PDF)", type: "pdf", date: "2 days ago", size: "6.8 MB" },
-                { title: "Rotational Dynamics Exercise Worksheets", type: "pdf", date: "3 days ago", size: "2.1 MB" },
-                { title: "Model Paper 2026: Part I MCQ & Part II Essay", type: "paper", date: "Yesterday", size: "1.4 MB" },
-                { title: "Mid-Term Examination 2025 Past Paper with Answers", type: "paper", date: "4 days ago", size: "2.9 MB" },
-              ].map((item, idx) => (
-                <div
-                  key={idx}
-                  className={`flex items-center justify-between rounded-2xl p-3 border ${
-                    darkMode ? "bg-slate-800/40 border-slate-800" : "bg-slate-50 border-slate-200"
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <span className="text-xl">
-                      {item.type === "video" ? "🎥" : item.type === "pdf" ? "📄" : "📝"}
-                    </span>
-                    <div>
-                      <span className={`block text-xs font-bold ${darkMode ? "text-slate-200" : "text-slate-800"}`}>
-                        {item.title}
-                      </span>
-                      <span className={`block text-[10px] font-medium ${darkMode ? "text-slate-400" : "text-slate-500"}`}>
-                        {item.type.toUpperCase()} • {item.size} • Uploaded {item.date}
-                      </span>
-                    </div>
-                  </div>
-
-                  <button
-                    onClick={() => showToast(`Opened: ${item.title}`)}
-                    className="flex items-center gap-1 rounded-lg px-2.5 py-1 text-[11px] font-bold text-indigo-500 hover:text-indigo-400"
+              {materialsList.length > 0 ? (
+                materialsList.map((item, idx) => (
+                  <div
+                    key={idx}
+                    className={`flex items-center justify-between rounded-2xl p-3 border ${
+                      darkMode ? "bg-slate-800/40 border-slate-800" : "bg-slate-50 border-slate-200"
+                    }`}
                   >
-                    <Eye size={12} /> View
-                  </button>
+                    <div className="flex items-center gap-3">
+                      <span className="text-xl">
+                        {item.type === "video" ? "🎥" : item.type === "pdf" ? "📄" : "📝"}
+                      </span>
+                      <div>
+                        <span className={`block text-xs font-bold ${darkMode ? "text-slate-200" : "text-slate-800"}`}>
+                          {item.title}
+                        </span>
+                        <span className={`block text-[10px] font-medium ${darkMode ? "text-slate-400" : "text-slate-500"}`}>
+                          {item.type.toUpperCase()} • {item.subject} • {formatTimeAgo(item.createdAt || new Date())}
+                        </span>
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={() => showToast(`Opened: ${item.title}`)}
+                      className="flex items-center gap-1 rounded-lg px-2.5 py-1 text-[11px] font-bold text-indigo-500 hover:text-indigo-400"
+                    >
+                      <Eye size={12} /> View
+                    </button>
+                  </div>
+                ))
+              ) : (
+                <div className={`text-center py-6 text-sm font-medium ${darkMode ? "text-slate-500" : "text-slate-400"}`}>
+                  No materials found in library.
                 </div>
-              ))}
+              )}
             </div>
 
             <div className="pt-3 border-t border-slate-200 dark:border-slate-800 flex justify-end">
