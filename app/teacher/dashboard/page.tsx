@@ -82,6 +82,10 @@ export default function TeacherDashboard() {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [errorMessage, setErrorMessage] = useState("");
 
+  // අලුතින් එක් කළ States (Subject සහ Grade Categories සඳහා)
+  const [subjectCategory, setSubjectCategory] = useState("");
+  const [gradeCategory, setGradeCategory] = useState("");
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
@@ -158,7 +162,7 @@ export default function TeacherDashboard() {
   };
 
   // --- Quick Upload Handlers ---
-  const handleFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleFormChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
@@ -231,6 +235,8 @@ export default function TeacherDashboard() {
       setUploadModalOpen(false);
       
       setFormData({ title: "", subject: "", grade: "", description: "" });
+      setSubjectCategory(""); // අලුතින් එක් කළ dropdown resets
+      setGradeCategory("");   // අලුතින් එක් කළ dropdown resets
       removeFile();
       
       fetchMyStats(token!); // Upload වූ පසු දත්ත අලුත් කිරීම
@@ -285,6 +291,14 @@ export default function TeacherDashboard() {
 
   // Take only the latest 5 items for the dashboard preview
   const recentActivitiesPreview = filteredActivities.slice(0, 5);
+
+  const inputClass = `w-full rounded-xl border pl-9 pr-3.5 py-2.5 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/40 ${
+    darkMode ? "bg-slate-950 border-slate-800 text-white" : "bg-slate-50 border-slate-200 text-slate-900"
+  }`;
+  
+  const inputClassNoIcon = `w-full rounded-xl border px-3.5 py-2.5 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/40 ${
+    darkMode ? "bg-slate-950 border-slate-800 text-white" : "bg-slate-50 border-slate-200 text-slate-900"
+  }`;
 
   return (
     <div className={`min-h-screen transition-colors duration-300 font-sans ${darkMode ? "bg-slate-950 text-slate-100" : "bg-slate-50/80 text-slate-900"}`}>
@@ -602,7 +616,7 @@ export default function TeacherDashboard() {
                       <button
                         key={cat.id}
                         type="button"
-                        onClick={() => handleTypeChange(cat.id)}
+                        onClick={() => handleTypeChange(cat.id as any)}
                         className={`flex flex-col items-center gap-1.5 rounded-2xl p-3 border text-xs font-semibold transition-all ${
                           newMaterialType === cat.id
                             ? "border-indigo-600 bg-indigo-600 text-white shadow-md shadow-indigo-600/30"
@@ -624,24 +638,119 @@ export default function TeacherDashboard() {
                     <label className={`block text-xs font-bold uppercase tracking-wider mb-1.5 ${darkMode ? "text-slate-300" : "text-slate-700"}`}>Title</label>
                     <div className="relative">
                       <FileText size={16} className={`absolute left-3 top-1/2 -translate-y-1/2 ${darkMode ? "text-slate-500" : "text-slate-400"}`} />
-                      <input type="text" name="title" required placeholder="e.g. Modern Physics Summary" value={formData.title} onChange={handleFormChange} className={`w-full rounded-xl border pl-9 pr-3.5 py-2.5 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/40 ${darkMode ? "bg-slate-950 border-slate-800 text-white" : "bg-slate-50 border-slate-200 text-slate-900"}`} />
+                      <input type="text" name="title" required placeholder="e.g. Modern Physics Summary" value={formData.title} onChange={handleFormChange} className={inputClass} />
                     </div>
                   </div>
 
-                  {/* Subject and Grade with generic inputs matching other pages */}
+                  {/* Subject and Grade with Generic Dropdowns */}
                   <div>
                     <label className={`block text-xs font-bold uppercase tracking-wider mb-1.5 ${darkMode ? "text-slate-300" : "text-slate-700"}`}>Subject</label>
                     <div className="relative">
-                      <BookOpen size={16} className={`absolute left-3 top-1/2 -translate-y-1/2 ${darkMode ? "text-slate-500" : "text-slate-400"}`} />
-                      <input type="text" name="subject" required placeholder="e.g. Physics" value={formData.subject} onChange={handleFormChange} className={`w-full rounded-xl border pl-9 pr-3.5 py-2.5 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/40 ${darkMode ? "bg-slate-950 border-slate-800 text-white" : "bg-slate-50 border-slate-200 text-slate-900"}`} />
+                      <BookOpen size={16} className={`absolute left-3 top-1/2 -translate-y-1/2 z-10 ${darkMode ? "text-slate-500" : "text-slate-400"}`} />
+                      <select 
+                        value={subjectCategory}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setSubjectCategory(val);
+                          if (val !== "other") {
+                            setFormData({ ...formData, subject: val });
+                          } else {
+                            setFormData({ ...formData, subject: "" });
+                          }
+                        }}
+                        required
+                        className={`${inputClass} appearance-none`}
+                      >
+                        <option value="" disabled>Select Subject</option>
+                        <option value="Mathematics">Mathematics</option>
+                        <option value="Science">Science</option>
+                        <option value="Physics">Physics</option>
+                        <option value="Chemistry">Chemistry</option>
+                        <option value="Biology">Biology</option>
+                        <option value="IT">IT</option>
+                        <option value="English">English</option>
+                        <option value="Sinhala">Sinhala</option>
+                        <option value="History">History</option>
+                        <option value="Geography">Geography</option>
+                        <option value="Commerce">Commerce</option>
+                        <option value="other">Other (Type Subject)</option>
+                      </select>
                     </div>
+                    {subjectCategory === "other" && (
+                      <div className="mt-3 relative">
+                        <BookOpen size={16} className={`absolute left-3 top-1/2 -translate-y-1/2 ${darkMode ? "text-slate-500" : "text-slate-400"}`} />
+                        <input 
+                          type="text" 
+                          name="subject" 
+                          value={formData.subject} 
+                          onChange={handleFormChange} 
+                          required 
+                          placeholder="Type your subject" 
+                          className={inputClass} 
+                        />
+                      </div>
+                    )}
                   </div>
 
                   <div>
                     <label className={`block text-xs font-bold uppercase tracking-wider mb-1.5 ${darkMode ? "text-slate-300" : "text-slate-700"}`}>Grade / Batch</label>
-                    <div className="relative">
-                      <GraduationCap size={16} className={`absolute left-3 top-1/2 -translate-y-1/2 ${darkMode ? "text-slate-500" : "text-slate-400"}`} />
-                      <input type="text" name="grade" required placeholder="e.g. Grade 11" value={formData.grade} onChange={handleFormChange} className={`w-full rounded-xl border pl-9 pr-3.5 py-2.5 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500/40 ${darkMode ? "bg-slate-950 border-slate-800 text-white" : "bg-slate-50 border-slate-200 text-slate-900"}`} />
+                    <div className="flex flex-col gap-3">
+                      <div className="relative">
+                        <GraduationCap size={16} className={`absolute left-3 top-1/2 -translate-y-1/2 z-10 ${darkMode ? "text-slate-500" : "text-slate-400"}`} />
+                        <select 
+                          value={gradeCategory}
+                          onChange={(e) => {
+                            setGradeCategory(e.target.value);
+                            setFormData({ ...formData, grade: "" });
+                          }}
+                          required
+                          className={`${inputClass} appearance-none`}
+                        >
+                          <option value="" disabled>Select Category</option>
+                          <option value="school">School (Grade 1 - 13)</option>
+                          <option value="university">University (Semesters)</option>
+                          <option value="other">Other</option>
+                        </select>
+                      </div>
+
+                      {gradeCategory === "school" && (
+                        <div>
+                          <select name="grade" value={formData.grade} onChange={handleFormChange} required className={inputClassNoIcon}>
+                            <option value="" disabled>Select Grade</option>
+                            {[...Array(13)].map((_, i) => (
+                              <option key={`Grade ${i+1}`} value={`Grade ${i+1}`}>Grade {i + 1}</option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
+
+                      {gradeCategory === "university" && (
+                        <div>
+                          <select name="grade" value={formData.grade} onChange={handleFormChange} required className={inputClassNoIcon}>
+                            <option value="" disabled>Select Semester</option>
+                            {[...Array(4)].map((_, yearIndex) => (
+                              <optgroup key={`Year ${yearIndex+1}`} label={`Year ${yearIndex+1}`}>
+                                <option value={`Year ${yearIndex+1} - Semester 1`}>Semester 1</option>
+                                <option value={`Year ${yearIndex+1} - Semester 2`}>Semester 2</option>
+                              </optgroup>
+                            ))}
+                          </select>
+                        </div>
+                      )}
+
+                      {gradeCategory === "other" && (
+                        <div>
+                          <input 
+                            type="text" 
+                            name="grade" 
+                            value={formData.grade} 
+                            onChange={handleFormChange} 
+                            required 
+                            placeholder="Type Grade/Batch name" 
+                            className={inputClassNoIcon} 
+                          />
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
