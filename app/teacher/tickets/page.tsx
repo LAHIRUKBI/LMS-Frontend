@@ -3,11 +3,14 @@
 
 import { useEffect, useState } from "react";
 import axios from "axios";
+import { useSearchParams } from "next/navigation";
 import { useTheme } from "@/app/context/ThemeContext";
 import { MessageSquare, Plus, X, Send, Clock, CheckCircle2, Loader2 } from "lucide-react";
 
 export default function MyTicketsPage() {
   const { darkMode } = useTheme();
+  const searchParams = useSearchParams();
+  const ticketIdParam = searchParams.get("ticketId");
   const [tickets, setTickets] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -30,6 +33,15 @@ export default function MyTicketsPage() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (ticketIdParam && tickets.length > 0) {
+      const foundTicket = tickets.find(t => t._id === ticketIdParam);
+      if (foundTicket) {
+        setSelectedTicket(foundTicket); // <--- Modal එක Open වෙනවා
+      }
+    }
+  }, [ticketIdParam, tickets]);
 
   useEffect(() => {
     fetchTickets();
