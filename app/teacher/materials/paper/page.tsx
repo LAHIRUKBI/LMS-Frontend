@@ -12,6 +12,10 @@ export default function UploadPaperPage() {
   const [showPopup, setShowPopup] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   
+  // අලුතින් එක් කළ States (Subject සහ Grade Categories සඳහා)
+  const [subjectCategory, setSubjectCategory] = useState("");
+  const [gradeCategory, setGradeCategory] = useState("");
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
@@ -76,6 +80,8 @@ export default function UploadPaperPage() {
       
       // Form එක Reset කිරීම
       setFormData({ title: "", subject: "", grade: "", description: "" });
+      setSubjectCategory(""); // අලුතින් එක් කළ dropdown resets
+      setGradeCategory("");   // අලුතින් එක් කළ dropdown resets
       removeFile();
     } catch (err: any) {
       setErrorMessage(err.response?.data?.message || "An error occurred during the upload process.");
@@ -90,6 +96,13 @@ export default function UploadPaperPage() {
       : "border-slate-300 bg-white text-gray-900 focus:ring-indigo-500"
   }`;
   
+  // Icon එකක් නැති inputs සඳහා Class එක
+  const inputClassNoIcon = `w-full rounded-lg border py-2.5 px-4 outline-none focus:ring-2 ${
+    darkMode 
+      ? "border-slate-700 bg-slate-800 text-white focus:ring-indigo-500" 
+      : "border-slate-300 bg-white text-gray-900 focus:ring-indigo-500"
+  }`;
+
   const labelClass = `block text-sm font-medium mb-1.5 ${darkMode ? "text-slate-300" : "text-slate-700"}`;
 
   return (
@@ -123,21 +136,121 @@ export default function UploadPaperPage() {
                 </div>
               </div>
 
-              {/* Subject */}
+              {/* Subject (යාවත්කාලීන කරන ලදි) */}
               <div>
                 <label className={labelClass}>Subject</label>
                 <div className="relative">
                   <BookOpen size={18} className={`absolute left-3 top-1/2 -translate-y-1/2 ${darkMode ? "text-slate-500" : "text-slate-400"}`} />
-                  <input type="text" name="subject" value={formData.subject} onChange={handleChange} required placeholder="e.g. Science" className={inputClass} />
+                  <select 
+                    value={subjectCategory}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setSubjectCategory(val);
+                      if (val !== "other") {
+                        setFormData({ ...formData, subject: val });
+                      } else {
+                        setFormData({ ...formData, subject: "" });
+                      }
+                    }}
+                    required
+                    className={inputClass}
+                  >
+                    <option value="" disabled>Select Subject</option>
+                    <option value="Mathematics">Mathematics</option>
+                    <option value="Science">Science</option>
+                    <option value="Physics">Physics</option>
+                    <option value="Chemistry">Chemistry</option>
+                    <option value="Biology">Biology</option>
+                    <option value="IT">IT</option>
+                    <option value="English">English</option>
+                    <option value="Sinhala">Sinhala</option>
+                    <option value="History">History</option>
+                    <option value="Geography">Geography</option>
+                    <option value="Commerce">Commerce</option>
+                    <option value="other">Other (Type Subject)</option>
+                  </select>
                 </div>
+                {/* 'Other' තේරූ විට පමණක් දිස්වෙන Text Input එක */}
+                {subjectCategory === "other" && (
+                  <div className="mt-3 relative">
+                    <BookOpen size={18} className={`absolute left-3 top-1/2 -translate-y-1/2 ${darkMode ? "text-slate-500" : "text-slate-400"}`} />
+                    <input 
+                      type="text" 
+                      name="subject" 
+                      value={formData.subject} 
+                      onChange={handleChange} 
+                      required 
+                      placeholder="Type your subject" 
+                      className={inputClass} 
+                    />
+                  </div>
+                )}
               </div>
 
-              {/* Grade / Class */}
-              <div>
+              {/* Grade / Batch (යාවත්කාලීන කරන ලදි) */}
+              <div className="md:col-span-2">
                 <label className={labelClass}>Grade / Batch</label>
-                <div className="relative">
-                  <GraduationCap size={18} className={`absolute left-3 top-1/2 -translate-y-1/2 ${darkMode ? "text-slate-500" : "text-slate-400"}`} />
-                  <input type="text" name="grade" value={formData.grade} onChange={handleChange} required placeholder="e.g. Grade 11" className={inputClass} />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {/* Category තෝරන Select එක */}
+                  <div className="relative">
+                    <GraduationCap size={18} className={`absolute left-3 top-1/2 -translate-y-1/2 ${darkMode ? "text-slate-500" : "text-slate-400"}`} />
+                    <select 
+                      value={gradeCategory}
+                      onChange={(e) => {
+                        setGradeCategory(e.target.value);
+                        setFormData({ ...formData, grade: "" }); // Category වෙනස් වෙද්දී පරණ grade එක reset වේ
+                      }}
+                      required
+                      className={inputClass}
+                    >
+                      <option value="" disabled>Select Category</option>
+                      <option value="school">School (Grade 1 - 13)</option>
+                      <option value="university">University (Semesters)</option>
+                      <option value="other">Other</option>
+                    </select>
+                  </div>
+
+                  {/* School තේරූ විට: ශ්‍රේණි 1 සිට 13 */}
+                  {gradeCategory === "school" && (
+                    <div>
+                      <select name="grade" value={formData.grade} onChange={handleChange} required className={inputClassNoIcon}>
+                        <option value="" disabled>Select Grade</option>
+                        {[...Array(13)].map((_, i) => (
+                          <option key={`Grade ${i+1}`} value={`Grade ${i+1}`}>Grade {i + 1}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+
+                  {/* University තේරූ විට: අවුරුදු 4ට Semesters */}
+                  {gradeCategory === "university" && (
+                    <div>
+                      <select name="grade" value={formData.grade} onChange={handleChange} required className={inputClassNoIcon}>
+                        <option value="" disabled>Select Semester</option>
+                        {[...Array(4)].map((_, yearIndex) => (
+                          <optgroup key={`Year ${yearIndex+1}`} label={`Year ${yearIndex+1}`}>
+                            <option value={`Year ${yearIndex+1} - Semester 1`}>Semester 1</option>
+                            <option value={`Year ${yearIndex+1} - Semester 2`}>Semester 2</option>
+                          </optgroup>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+
+                  {/* Other තේරූ විට: Type කිරීමේ Input එක */}
+                  {gradeCategory === "other" && (
+                    <div>
+                      <input 
+                        type="text" 
+                        name="grade" 
+                        value={formData.grade} 
+                        onChange={handleChange} 
+                        required 
+                        placeholder="Type Grade/Batch name" 
+                        className={inputClassNoIcon} 
+                      />
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
