@@ -3,7 +3,7 @@
 
 import { useEffect, useState, useMemo } from "react";
 import axios from "axios";
-import { Film, BookOpen, Loader2, PlayCircle, Trash2, AlertCircle, Globe, Search, Video, Calendar, Clock, CheckCircle2, MoreVertical } from "lucide-react"; 
+import { Film, BookOpen, Loader2, PlayCircle, Trash2, AlertCircle, Globe, Search, Video, Calendar, Clock, CheckCircle2, MoreVertical, ExternalLink } from "lucide-react"; 
 import { useTheme } from "@/app/context/ThemeContext";
 import PublishSuccessPopup from "@/app/components/PublishSuccessPopup";
 import DeleteConfirmPopup from "@/app/components/VideoDeleteConfirmPopup";
@@ -187,31 +187,56 @@ export default function MyVideosPage() {
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 gap-4">
+          <div className="grid grid-cols-1 gap-5">
             {filteredVideos.map((video) => (
               <div 
                 key={video._id} 
-                className={`group flex flex-col md:flex-row md:items-center justify-between gap-4 p-5 rounded-2xl border transition-all hover:scale-[1.005] ${
+                className={`group flex flex-col md:flex-row md:items-stretch justify-between gap-5 p-5 rounded-2xl border transition-all hover:shadow-lg hover:-translate-y-0.5 ${
                   darkMode 
-                    ? "bg-slate-900/80 border-slate-800 hover:bg-slate-800 hover:border-slate-700 shadow-xl shadow-black/10" 
-                    : "bg-white border-slate-200 hover:border-slate-300 hover:shadow-md"
+                    ? "bg-slate-900/80 border-slate-800 hover:border-slate-700 shadow-xl shadow-black/10" 
+                    : "bg-white border-slate-200 hover:border-slate-300 shadow-sm"
                 }`}
               >
                 
-                {/* Video Info Section */}
-                <div className="flex items-start sm:items-center gap-4 flex-1 min-w-0">
-                  <div className={`flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl transition-transform group-hover:scale-105 ${
-                    darkMode ? 'bg-slate-800 text-indigo-400 border border-slate-700' : 'bg-slate-50 text-indigo-600 border border-slate-100'
-                  }`}>
-                    <PlayCircle size={22} className={video.isPublished ? "fill-indigo-500/20" : ""} />
-                  </div>
+                {/* Embedded Video & Info Section */}
+                <div className="flex flex-col sm:flex-row gap-5 flex-1 min-w-0">
                   
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-                      <h3 className={`font-bold text-sm sm:text-base truncate max-w-[280px] md:max-w-md ${darkMode ? "text-slate-200" : "text-slate-800"}`} title={video.title}>
-                        {video.title}
-                      </h3>
-                      
+                  {/* Actual Video Player embedded as thumbnail */}
+                  <a 
+                    href={`http://localhost:5000${video.fileUrl}`} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className={`relative flex-shrink-0 w-full sm:w-48 md:w-56 aspect-video rounded-xl overflow-hidden group/thumb border transition-all cursor-pointer block ${
+                      darkMode ? "border-slate-700 bg-black" : "border-slate-200 bg-slate-100"
+                    }`}
+                    title="Click to view enlarged in new tab"
+                  >
+                    <video 
+                      src={`http://localhost:5000${video.fileUrl}#t=0.1`} 
+                      className="w-full h-full object-cover"
+                      preload="metadata"
+                      muted
+                      playsInline
+                    />
+                    
+                    {/* Dark Overlay with Play Icon */}
+                    <div className="absolute inset-0 bg-black/30 group-hover/thumb:bg-black/50 flex items-center justify-center transition-colors">
+                      <PlayCircle size={36} className="text-white/80 group-hover/thumb:text-white group-hover/thumb:scale-110 transition-all shadow-sm rounded-full" />
+                    </div>
+
+                    {/* Small tag on top corner */}
+                    <div className="absolute top-2 right-2 bg-black/60 backdrop-blur-sm text-white text-[10px] px-1.5 py-0.5 rounded font-bold">
+                      MP4
+                    </div>
+                  </a>
+                  
+                  {/* Text Information */}
+                  <div className="min-w-0 flex-1 py-1 flex flex-col justify-center">
+                    <h3 className={`font-extrabold text-lg line-clamp-2 mb-2 ${darkMode ? "text-slate-100" : "text-slate-800"}`} title={video.title}>
+                      {video.title}
+                    </h3>
+                    
+                    <div className="flex items-center gap-2 mb-3 flex-wrap">
                       {/* Status Badges */}
                       {video.status === 'pending' && <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md border ${darkMode ? "bg-amber-500/10 text-amber-400 border-amber-500/20" : "bg-amber-50 text-amber-700 border-amber-200"}`}>Pending</span>}
                       {video.status === 'approved' && !video.isPublished && <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md border ${darkMode ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" : "bg-emerald-50 text-emerald-700 border-emerald-200"}`}>Approved</span>}
@@ -219,7 +244,7 @@ export default function MyVideosPage() {
                       {video.isPublished && <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md border flex items-center gap-1 ${darkMode ? "bg-blue-500/10 text-blue-400 border-blue-500/20" : "bg-blue-50 text-blue-700 border-blue-200"}`}><Globe size={10} /> Published</span>}
                     </div>
                     
-                    <div className={`flex items-center flex-wrap gap-x-3 gap-y-1 text-xs font-medium ${darkMode ? "text-slate-400" : "text-slate-500"}`}>
+                    <div className={`flex items-center flex-wrap gap-x-3 gap-y-1 text-xs font-semibold ${darkMode ? "text-slate-400" : "text-slate-500"}`}>
                       <span className="flex items-center gap-1.5"><BookOpen size={13} /> {video.subject}</span>
                       {video.grade && (
                         <>
@@ -233,7 +258,7 @@ export default function MyVideosPage() {
 
                     {/* Reject Reason (Inline) */}
                     {video.status === 'rejected' && video.rejectReason && (
-                      <div className="mt-2.5 flex items-start gap-1.5 text-xs font-medium text-red-500 bg-red-500/10 px-3 py-2 rounded-lg border border-red-500/20 w-fit">
+                      <div className="mt-3 flex items-start gap-1.5 text-xs font-medium text-red-500 bg-red-500/10 px-3 py-2 rounded-lg border border-red-500/20 w-fit">
                         <AlertCircle size={14} className="mt-0.5 flex-shrink-0" />
                         <span><strong className="font-bold">Reason:</strong> {video.rejectReason}</span>
                       </div>
@@ -242,13 +267,13 @@ export default function MyVideosPage() {
                 </div>
 
                 {/* Actions Section */}
-                <div className="flex items-center gap-2.5 sm:justify-end pl-16 md:pl-0 border-t md:border-t-0 pt-3 md:pt-0 mt-3 md:mt-0 border-slate-200 dark:border-slate-800">
+                <div className="flex items-center gap-3 sm:justify-end md:flex-col md:justify-center border-t md:border-t-0 md:border-l pt-4 md:pt-0 md:pl-5 border-slate-200 dark:border-slate-800">
                   
                   {/* Publish Button */}
                   {video.status === 'approved' && !video.isPublished && (
                     <button 
                       onClick={() => handlePublish(video._id, video.title)}
-                      className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl font-bold text-xs transition-all shadow-sm ${
+                      className={`flex items-center justify-center w-full md:w-auto gap-1.5 px-4 py-2 rounded-xl font-bold text-xs transition-all shadow-sm ${
                         darkMode 
                           ? "bg-blue-600 hover:bg-blue-500 text-white shadow-blue-900/20" 
                           : "bg-blue-600 hover:bg-blue-700 text-white shadow-blue-600/20"
@@ -258,34 +283,34 @@ export default function MyVideosPage() {
                     </button>
                   )}
 
-                  {/* Watch Button */}
+                  {/* Watch Enlarged Button (Optional helper action) */}
                   <a 
                     href={`http://localhost:5000${video.fileUrl}`} 
                     target="_blank" 
                     rel="noopener noreferrer"
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl transition-colors font-bold text-xs ${
+                    className={`flex items-center justify-center w-full md:w-auto gap-1.5 px-4 py-2 rounded-xl transition-colors font-bold text-xs ${
                       darkMode 
                         ? "bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700" 
                         : "bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 shadow-sm"
                     }`}
-                    title="Watch Video"
+                    title="Watch Enlarged"
                   >
-                    <PlayCircle size={14} /> <span>Watch</span>
+                    <ExternalLink size={14} /> <span>Open</span>
                   </a>
 
-                  <div className={`h-5 w-px mx-0.5 ${darkMode ? "bg-slate-800" : "bg-slate-200"}`}></div>
+                  <div className={`hidden md:block w-full h-px mx-auto ${darkMode ? "bg-slate-800" : "bg-slate-200"}`}></div>
 
                   {/* Delete Button */}
                   <button
                     onClick={() => setDeleteItem(video)}
-                    className={`p-1.5 rounded-xl transition-colors ${
+                    className={`flex items-center justify-center w-full md:w-auto p-2 rounded-xl transition-colors ${
                       darkMode 
                         ? "hover:bg-red-500/10 text-slate-500 hover:text-red-400" 
                         : "hover:bg-red-50 text-slate-400 hover:text-red-600"
                     }`}
                     title="Delete Video"
                   >
-                    <Trash2 size={16} />
+                    <Trash2 size={18} />
                   </button>
 
                 </div>
