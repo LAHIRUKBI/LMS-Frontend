@@ -1,3 +1,4 @@
+// src/app/teacher/components/TeacherSidebar.tsx
 "use client";
 
 import { useEffect, useState } from "react";
@@ -183,36 +184,42 @@ export default function TeacherSidebar() {
         darkMode ? "bg-[#0F172A] border-r border-slate-800" : "bg-white border-r border-slate-200"
       }`}
     >
-      {/* Header / Brand Profile Style */}
-      <Link href="/teacher/profile" className="flex flex-col items-center justify-center pb-4 pt-8 px-4 cursor-pointer group">
-        <div className={`relative flex h-14 w-14 items-center justify-center rounded-full mb-3 shadow-sm transition-transform group-hover:scale-105 ${
-            darkMode ? "bg-slate-800 border border-slate-700" : "bg-indigo-50 border border-indigo-100"
-          }`}
-        >
-          {teacherPhoto ? (
-            <img 
-              src={teacherPhoto} 
-              alt={teacherName} 
-              className="h-full w-full object-cover rounded-full" 
-            />
-          ) : (
-            <div className={`flex items-center justify-center ${darkMode ? "text-indigo-400" : "text-indigo-600"}`}>
-              <GraduationCap size={24} />
-            </div>
-          )}
-          <div className="absolute bottom-0 right-0 h-3.5 w-3.5 rounded-full border-2 border-white bg-green-500 dark:border-slate-800"></div>
-        </div>
-        
-        <h2 className={`text-lg font-bold tracking-tight text-center ${darkMode ? "text-white" : "text-slate-900"} group-hover:text-indigo-500 transition-colors`}>
-          {teacherName}
-        </h2>
-        <p className={`text-xs font-medium ${darkMode ? "text-slate-400" : "text-slate-500"}`}>
-          View Profile
-        </p>
-      </Link>
+      {/* Header / Brand Profile Style (Glassmorphism Card Effect Added) */}
+      <div className="p-4 pt-6">
+        <Link href="/teacher/profile" className={`flex flex-col items-center justify-center p-4 rounded-2xl cursor-pointer group transition-all duration-300 border backdrop-blur-md shadow-sm ${
+          darkMode 
+            ? "bg-slate-900/40 border-slate-800/80 hover:bg-slate-900/70 hover:border-indigo-500/30" 
+            : "bg-slate-50/60 border-slate-200/60 hover:bg-slate-100/80 hover:border-indigo-200"
+        }`}>
+          <div className={`relative flex h-14 w-14 items-center justify-center rounded-full mb-2.5 shadow-sm transition-transform group-hover:scale-105 overflow-hidden ${
+              darkMode ? "bg-slate-800 border border-slate-700" : "bg-indigo-50 border border-indigo-100"
+            }`}
+          >
+            {teacherPhoto ? (
+              <img 
+                src={teacherPhoto} 
+                alt={teacherName} 
+                className="h-full w-full object-cover rounded-full" 
+              />
+            ) : (
+              <div className={`flex items-center justify-center ${darkMode ? "text-indigo-400" : "text-indigo-600"}`}>
+                <GraduationCap size={24} />
+              </div>
+            )}
+            <div className="absolute bottom-0 right-0 h-3.5 w-3.5 rounded-full border-2 border-white bg-green-500 dark:border-slate-800"></div>
+          </div>
+          
+          <h2 className={`text-base font-bold tracking-tight text-center truncate max-w-full ${darkMode ? "text-white" : "text-slate-900"} group-hover:text-indigo-500 transition-colors`}>
+            {teacherName}
+          </h2>
+          <p className={`text-[11px] font-semibold mt-0.5 ${darkMode ? "text-slate-400" : "text-slate-500"}`}>
+            View Profile
+          </p>
+        </Link>
+      </div>
 
       {/* Nav Items */}
-      <nav className="flex-1 space-y-1 overflow-y-auto px-4 pt-4">
+      <nav className="flex-1 space-y-1 overflow-y-auto px-4 pt-2">
         <div className={`mb-2 px-2 text-[10px] font-bold uppercase tracking-wider ${darkMode ? "text-slate-500" : "text-slate-400"}`}>
           Main Menu
         </div>
@@ -356,7 +363,7 @@ export default function TeacherSidebar() {
                     );
                   })
                 )}
-              </div>
+                </div>
               </div>
             )}
           </div>
@@ -375,6 +382,7 @@ export default function TeacherSidebar() {
             <span className={`relative inline-flex h-4 w-7 items-center rounded-full transition-colors ${darkMode ? "bg-indigo-500" : "bg-slate-300"}`}>
               <span className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${darkMode ? "translate-x-3.5" : "translate-x-0.5"}`} />
             </span>
+
           </button>
 
           <button
