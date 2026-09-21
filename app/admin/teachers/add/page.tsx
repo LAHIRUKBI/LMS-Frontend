@@ -189,7 +189,7 @@ export default function AddTeacherPage() {
             <div>
               <label htmlFor="email" className={labelClass}>
                 <Mail size={14} />
-                Email Address
+                Email Address <span className="text-xs font-normal opacity-75">(Optional)</span>
               </label>
               <input
                 id="email"
@@ -197,9 +197,9 @@ export default function AddTeacherPage() {
                 name="email"
                 value={formData.email}
                 onChange={handleChange}
-                placeholder="teacher@example.com"
+                placeholder="teacher@example.com (Leave blank if none)"
                 className={inputClass}
-                required
+                // මෙහි තිබූ required ඉවත් කර ඇත
               />
             </div>
 
