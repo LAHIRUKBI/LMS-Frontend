@@ -192,7 +192,8 @@ export default function TeacherSidebar() {
     { name: "My Videos", path: "/teacher/materials/my-videos", icon: Film },
     { name: "My PDFs & Paper", path: "/teacher/materials/my-pdfs", icon: FileStack },
     { name: "Ticket", path: "/teacher/tickets", icon: FileStack },
-    { name: "Profile", path: "/teacher/profile", icon: User },
+    { name: "Quize", path: "/teacher/materials/quize", icon: User },
+    { name: "My Quize", path: "/teacher/materials/my-quize", icon: User },
     { name: "Settings", path: "/teacher/settings", icon: Settings },
   ];
 

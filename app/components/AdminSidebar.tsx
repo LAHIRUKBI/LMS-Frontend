@@ -125,6 +125,7 @@ export default function AdminSidebar() {
     { name: "Add Admin", path: "/admin/register", icon: ShieldPlus }, 
     { name: "Admin List", path: "/admin/list", icon: Shield }, 
     { name: "Review Materials", path: "/admin/materials/review", icon: ClipboardCheck },
+    { name: "Review Quiz", path: "/admin/materials/quize_view", icon: ClipboardCheck },
     { name: "Tickets", path: "/admin/tickets", icon: ClipboardCheck },
   ];
 
