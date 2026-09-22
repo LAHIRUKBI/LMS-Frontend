@@ -164,14 +164,14 @@ export default function AdminDashboard() {
   const paperCount = materialsList.filter(m => m.type === "paper").length;
 
   return (
-    <div className={`min-h-screen transition-colors duration-300 ${darkMode ? "bg-slate-950" : "bg-slate-50"}`}>
+    <div className={`min-h-screen transition-colors duration-300 ${darkMode ? "bg-slate-900" : "bg-slate-50"}`}>
       <div className="mx-auto max-w-7xl px-6 py-8">
         
         {/* Header - Compact */}
         <div className="mb-8 flex flex-col md:flex-row md:items-end md:justify-between gap-4">
           <div>
             <h1 className={`text-2xl font-bold tracking-tight sm:text-3xl ${darkMode ? "text-white" : "text-slate-900"}`}>
-              Overview <span className="inline-block animate-wave text-xl">👋</span>
+              Overview
             </h1>
             <p className={`mt-1.5 text-sm font-medium ${darkMode ? "text-slate-400" : "text-slate-500"}`}>
               Welcome back, {user.name}. Here is what's happening today.
