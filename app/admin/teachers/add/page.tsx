@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import axios from "axios";
+import jsPDF from "jspdf";
 import {
   UserPlus,
   IdCard,
@@ -14,7 +15,7 @@ import {
   EyeOff,
 } from "lucide-react";
 import { useTheme } from "@/app/context/ThemeContext";
-import SuccessPopup from "@/app/components/TeacherAddSuccessPopup"; // Popup component එක import කර ඇත
+import SuccessPopup from "@/app/components/TeacherAddSuccessPopup";
 
 export default function AddTeacherPage() {
   const [formData, setFormData] = useState({
@@ -33,12 +34,84 @@ export default function AddTeacherPage() {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
+  // PDF එක ස්වයංක්‍රීයව ඩවුන්ලෝඩ් කිරීමේ ෆන්ෂන් එක (autoTable රහිතව සම්පූර්ණයෙන්ම සකසා ඇත)
+  const generateTeacherPDF = (data: typeof formData) => {
+    try {
+      const doc = new jsPDF();
+
+      // Header Background
+      doc.setFillColor(37, 99, 235); // Blue
+      doc.rect(0, 0, 210, 35, "F");
+
+      // Header Text
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(20);
+      doc.setFont("helvetica", "bold");
+      doc.text("LMS Learning Management System", 14, 18);
+      
+      doc.setFontSize(11);
+      doc.setFont("helvetica", "normal");
+      doc.text("New Teacher Account Credentials", 14, 27);
+
+      // Date & Time
+      doc.setTextColor(100, 100, 100);
+      doc.setFontSize(10);
+      const currentDate = new Date().toLocaleString();
+      doc.text(`Generated Date: ${currentDate}`, 14, 45);
+
+      // Box Container for Details
+      doc.setDrawColor(203, 213, 225);
+      doc.setFillColor(248, 250, 252);
+      doc.roundedRect(14, 52, 182, 75, 3, 3, "FD");
+
+      // Table / Details Content
+      let startY = 65;
+      const details = [
+        { label: "Teacher ID", value: data.teacherId },
+        { label: "Full Name", value: data.name },
+        { label: "Email Address", value: data.email || "Not Provided (No Email)" },
+        { label: "Subject", value: data.subject },
+        { label: "Temporary Password", value: data.password },
+      ];
+
+      details.forEach((item) => {
+        doc.setFont("helvetica", "bold");
+        doc.setTextColor(30, 41, 59);
+        doc.text(`${item.label}:`, 22, startY);
+
+        doc.setFont("helvetica", "normal");
+        doc.setTextColor(71, 85, 105);
+        doc.text(item.value, 75, startY);
+
+        startY += 11;
+      });
+
+      // Important Note
+      doc.setTextColor(225, 29, 72); // Red note
+      doc.setFontSize(10);
+      doc.setFont("helvetica", "italic");
+      doc.text("* Note: Please keep this document secure. The teacher can change", 14, 142);
+      doc.text("their password through their profile page after logging in.", 14, 148);
+
+      // Footer
+      doc.setTextColor(150, 150, 150);
+      doc.setFontSize(9);
+      doc.text("System Admin Department - LMS Platform", 14, 165);
+
+      // PDF එක පරිගණකයට ඩවුන්ලෝඩ් කිරීම
+      doc.save(`Teacher_${data.teacherId}_Credentials.pdf`);
+    } catch (pdfErr) {
+      console.error("PDF generation error:", pdfErr);
+    }
+  };
+
   const handleAddTeacher = async (e: React.FormEvent) => {
     e.preventDefault();
     setMessage({ type: "", text: "" });
     setLoading(true);
 
     const token = localStorage.getItem("token");
+    const currentTeacherData = { ...formData };
 
     try {
       const res = await axios.post(
@@ -48,10 +121,15 @@ export default function AddTeacherPage() {
           headers: { Authorization: `Bearer ${token}` },
         }
       );
+
       setMessage({
         type: "success",
         text: res.data.message || "Your action completed successfully",
       });
+
+      // ගුරුවරයා සාර්ථකව register වූ වගුන් PDF එක ස්වයංක්‍රීයව ඩවුන්ලෝඩ් වීම
+      generateTeacherPDF(currentTeacherData);
+
       setFormData({
         teacherId: "",
         name: "",
@@ -69,7 +147,6 @@ export default function AddTeacherPage() {
     }
   };
 
-  // Reusable input class (light + dark)
   const inputClass = `w-full rounded-lg border px-4 py-2.5 text-base font-medium outline-none transition-all duration-200 focus:ring-2 ${
     darkMode
       ? "border-slate-600 bg-slate-900 text-white placeholder-slate-500 focus:border-blue-500 focus:ring-blue-500/40"
@@ -86,7 +163,6 @@ export default function AddTeacherPage() {
         darkMode ? "bg-slate-900" : "bg-slate-50"
       }`}
     >
-      {/* Popup Message - The component loads here. */}
       {message.text && message.type === "success" && (
         <SuccessPopup
           message={message.text}
@@ -95,7 +171,6 @@ export default function AddTeacherPage() {
       )}
 
       <div className="mx-auto max-w-3xl px-6 py-10">
-        {/* Page Header */}
         <div className="mb-8">
           <div className="mb-3 flex items-center gap-3">
             <div
@@ -126,7 +201,6 @@ export default function AddTeacherPage() {
           </div>
         </div>
 
-        {/* Card */}
         <div
           className={`rounded-2xl border p-6 shadow-sm transition-colors duration-300 sm:p-8 ${
             darkMode
@@ -134,7 +208,6 @@ export default function AddTeacherPage() {
               : "border-slate-200 bg-white"
           }`}
         >
-          {/* Error Message Banner (Success එක දැන් popup එකෙන් පෙන්වන නිසා මෙය error වලට පමණක් සීමා කර ඇත) */}
           {message.text && message.type === "error" && (
             <div
               className={`mb-6 flex items-start gap-2.5 rounded-lg border p-4 text-sm font-medium ${
@@ -149,7 +222,6 @@ export default function AddTeacherPage() {
           )}
 
           <form onSubmit={handleAddTeacher} className="space-y-5">
-            {/* Row 1: Teacher ID + Full Name */}
             <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
               <div>
                 <label htmlFor="teacherId" className={labelClass}>
@@ -185,7 +257,6 @@ export default function AddTeacherPage() {
               </div>
             </div>
 
-            {/* Row 2: Email */}
             <div>
               <label htmlFor="email" className={labelClass}>
                 <Mail size={14} />
@@ -199,11 +270,9 @@ export default function AddTeacherPage() {
                 onChange={handleChange}
                 placeholder="teacher@example.com (Leave blank if none)"
                 className={inputClass}
-                // මෙහි තිබූ required ඉවත් කර ඇත
               />
             </div>
 
-            {/* Row 3: Subject + Password */}
             <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
               <div>
                 <label htmlFor="subject" className={labelClass}>
@@ -259,7 +328,6 @@ export default function AddTeacherPage() {
               </div>
             </div>
 
-            {/* Submit Button */}
             <div className="pt-2">
               <button
                 type="submit"
@@ -305,13 +373,12 @@ export default function AddTeacherPage() {
           </form>
         </div>
 
-        {/* Footer hint */}
         <p
           className={`mt-5 text-center text-xs ${
             darkMode ? "text-slate-500" : "text-slate-400"
           }`}
         >
-          The teacher will receive their login details via email after registration.
+          The teacher will receive their login details via email (if provided) and a credentials PDF will be downloaded automatically.
         </p>
       </div>
     </div>
