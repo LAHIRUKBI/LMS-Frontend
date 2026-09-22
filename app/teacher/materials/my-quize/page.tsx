@@ -211,7 +211,7 @@ export default function TeacherMyQuizzesPage() {
                   <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3">Questions & Answers Details:</h3>
                   <div className="space-y-3 max-h-72 overflow-y-auto pr-2">
                     {quiz.questions.map((q, idx) => (
-                      <div key={q.id} className={`p-4 rounded-xl border text-xs space-y-2 ${darkMode ? "bg-slate-950/50 border-slate-800" : "bg-slate-50 border-slate-200"}`}>
+                      <div  key={`${quiz._id}-question-${idx}`} className={`p-4 rounded-xl border text-xs space-y-2 ${darkMode ? "bg-slate-950/50 border-slate-800" : "bg-slate-50 border-slate-200"}`}>
                         <div className="flex justify-between items-start">
                           <p className="font-semibold text-sm">
                             {idx + 1}. {q.questionText}
