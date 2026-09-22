@@ -18,7 +18,7 @@ import {
 } from "lucide-react"; 
 import { useTheme } from "@/app/context/ThemeContext";
 import PublishSuccessPopup from "@/app/components/PublishSuccessPopup";
-import DeleteConfirmPopup from "@/app/components/MeterialsDeleteConfirmPopup"; // Make sure this path is correct
+import DeleteConfirmPopup from "@/app/components/MeterialsDeleteConfirmPopup";
 
 export default function MyPDFsPage() {
   const [pdfs, setPdfs] = useState<any[]>([]);
@@ -128,7 +128,7 @@ export default function MyPDFsPage() {
 
       <div className="max-w-7xl mx-auto">
         
-        {/* Header Section (Modernized) */}
+        {/* Header Section */}
         <div className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-6">
           <div className="flex items-center gap-4">
             <div className={`flex h-14 w-14 items-center justify-center rounded-2xl shadow-sm ${darkMode ? "bg-orange-500/10 text-orange-400 border border-orange-500/20" : "bg-white text-orange-600 border border-orange-100"}`}>
@@ -161,7 +161,7 @@ export default function MyPDFsPage() {
           </div>
         </div>
 
-        {/* Tabs Navigation (Pill style) */}
+        {/* Tabs Navigation */}
         <div className="flex overflow-x-auto gap-2 mb-6 pb-2 scrollbar-hide">
           {tabs.map((tab) => (
             <button
@@ -206,15 +206,39 @@ export default function MyPDFsPage() {
                 }`}
               >
                 
-                {/* Document Info Section */}
+                {/* Document Info Section with Cover Image */}
                 <div className="flex items-start sm:items-center gap-4 flex-1 min-w-0">
-                  <div className={`flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl transition-transform group-hover:scale-105 ${
-                    pdf.type === 'paper' 
-                      ? (darkMode ? 'bg-slate-800 text-teal-400 border border-slate-700' : 'bg-slate-50 text-teal-600 border border-slate-100') 
-                      : (darkMode ? 'bg-slate-800 text-orange-400 border border-slate-700' : 'bg-slate-50 text-orange-600 border border-slate-100')
-                  }`}>
-                    <FileText size={22} className={pdf.isPublished ? "opacity-80" : ""} />
-                  </div>
+                  
+                  {/* Cover Image or Default Icon */}
+                  {pdf.coverImage ? (
+                    <a 
+                      href={`http://localhost:5000${pdf.fileUrl}`} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      title="Click to view document"
+                      className="flex-shrink-0 cursor-pointer overflow-hidden rounded-xl border shadow-sm transition-transform group-hover:scale-105 border-slate-200 dark:border-slate-700"
+                    >
+                      <img 
+                        src={`http://localhost:5000${pdf.coverImage}`} 
+                        alt={pdf.title} 
+                        className="h-16 w-14 object-cover" 
+                      />
+                    </a>
+                  ) : (
+                    <a 
+                      href={`http://localhost:5000${pdf.fileUrl}`} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      title="Click to view document"
+                      className={`flex h-16 w-14 flex-shrink-0 items-center justify-center rounded-xl transition-transform group-hover:scale-105 cursor-pointer ${
+                        pdf.type === 'paper' 
+                          ? (darkMode ? 'bg-slate-800 text-teal-400 border border-slate-700' : 'bg-slate-50 text-teal-600 border border-slate-100') 
+                          : (darkMode ? 'bg-slate-800 text-orange-400 border border-slate-700' : 'bg-slate-50 text-orange-600 border border-slate-100')
+                      }`}
+                    >
+                      <FileText size={24} />
+                    </a>
+                  )}
                   
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2 mb-1.5 flex-wrap">
