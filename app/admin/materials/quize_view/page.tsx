@@ -165,6 +165,42 @@ export default function AdminQuizViewPage() {
                             {q.type} ({q.marks} marks)
                           </span>
                         </div>
+
+                        {/* Image Preview if available */}
+                        {q.imageUrl && (
+                          <div className="mt-1">
+                            <span className="text-xs text-gray-500 flex items-center gap-1 mb-1">
+                              <ImageIcon size={14} /> Attached Image:
+                            </span>
+                            <img 
+                              src={q.imageUrl} 
+                              alt="Question Visual" 
+                              className="max-h-32 rounded border border-gray-700 object-contain" 
+                              onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
+                            />
+                          </div>
+                        )}
+
+                        {/* MCQ Options List */}
+                        {q.type === 'mcq' && q.options && q.options.length > 0 && (
+                          <div className="space-y-1 mt-2 pl-2 border-l-2 border-blue-400">
+                            <p className="text-xs font-semibold text-gray-600 dark:text-gray-400">Options:</p>
+                            <ul className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                              {q.options.map((opt, optIdx) => (
+                                <li key={optIdx} className="text-xs bg-white dark:bg-gray-800 p-2 rounded border dark:border-gray-700 text-gray-700 dark:text-gray-300">
+                                  <span className="font-bold mr-1">({optIdx + 1})</span> {opt}
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+
+                        {/* Correct Answer */}
+                        <div className="mt-2 pt-2 border-t dark:border-gray-800">
+                          <p className="text-xs text-gray-700 dark:text-gray-300 font-mono bg-gray-200 dark:bg-gray-800 border dark:border-gray-700 px-2 py-1 rounded inline-block">
+                            🔒 Correct Answer: <span className="font-semibold text-gray-900 dark:text-white">{q.correctAnswer}</span>
+                          </p>
+                        </div>
                       </div>
                     ))}
                   </div>
