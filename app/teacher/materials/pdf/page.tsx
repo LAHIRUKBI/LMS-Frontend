@@ -7,19 +7,22 @@ import { useTheme } from "@/app/context/ThemeContext";
 import { UploadCloud, FileText, BookOpen, GraduationCap, AlignLeft, X, Image as ImageIcon } from "lucide-react";
 import UploadSuccessPopup from "@/app/components/PdfUploadSuccessPopup";
 
-export default function PDFUploadPage() {
+export default function MaterialUploadPage() {
   const { darkMode } = useTheme();
   const [uploading, setUploading] = useState(false);
   const [showPopup, setShowPopup] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   
+  // Material Type එක තෝරා ගැනීමට (Default එක 'pdf' වේ)
+  const [materialType, setMaterialType] = useState<"pdf" | "paper">("pdf");
+
   const [subjectCategory, setSubjectCategory] = useState("");
   const [gradeCategory, setGradeCategory] = useState("");
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
-  // අලුතින් එක් කළ Cover Image States
+  // Cover Image States (Max 5MB)
   const coverInputRef = useRef<HTMLInputElement>(null);
   const [selectedCover, setSelectedCover] = useState<File | null>(null);
 
@@ -46,7 +49,6 @@ export default function PDFUploadPage() {
     }
   };
 
-  // Cover Image වෙනස් කිරීම සහ 5MB සීමාව පරීක්ෂා කිරීම
   const handleCoverChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
@@ -90,7 +92,7 @@ export default function PDFUploadPage() {
     uploadData.append("subject", formData.subject);
     uploadData.append("grade", formData.grade);
     uploadData.append("description", formData.description);
-    uploadData.append("type", "pdf");
+    uploadData.append("type", materialType); // තෝරාගත් type එක ('pdf' හෝ 'paper') යවනු ලැබේ
     uploadData.append("file", selectedFile);
     
     if (selectedCover) {
@@ -109,7 +111,7 @@ export default function PDFUploadPage() {
       
       setFormData({ title: "", subject: "", grade: "", description: "" });
       setSubjectCategory(""); 
-      setGradeCategory("");   
+      setGradeCategory(""); 
       removeFile();
       removeCover();
     } catch (err: any) {
@@ -142,10 +144,10 @@ export default function PDFUploadPage() {
           </div>
           <div>
             <h2 className={`text-lg sm:text-xl font-extrabold tracking-tight ${darkMode ? "text-white" : "text-gray-900"}`}>
-              Upload Study Material (PDF)
+              Upload Study Material or Exam Paper
             </h2>
             <p className={`mt-0.5 text-xs sm:text-sm font-medium ${darkMode ? "text-slate-400" : "text-slate-500"}`}>
-              Add new PDF documents, notes, or tutorials for your students.
+              Add new PDF documents, notes, tutorials, or exam papers for your students.
             </p>
           </div>
         </div>
@@ -159,13 +161,42 @@ export default function PDFUploadPage() {
         <div className={`rounded-2xl border shadow-sm transition-colors ${darkMode ? "border-slate-800 bg-[#0F172A]" : "border-slate-200 bg-white"}`}>
           <form onSubmit={handleUpload} className="p-4 sm:p-5 space-y-4">
             
+            {/* Material Type Selection (Radio Buttons) */}
+            <div>
+              <label className={labelClass}>Select Document Type</label>
+              <div className="flex items-center gap-6 mt-1">
+                <label className={`flex items-center gap-2 cursor-pointer text-xs sm:text-sm font-bold ${darkMode ? "text-slate-200" : "text-slate-800"}`}>
+                  <input 
+                    type="radio" 
+                    name="materialType" 
+                    value="pdf" 
+                    checked={materialType === "pdf"} 
+                    onChange={() => setMaterialType("pdf")}
+                    className="w-4 h-4 text-indigo-600 focus:ring-indigo-500"
+                  />
+                  Study Note / Tutorial (PDF)
+                </label>
+                <label className={`flex items-center gap-2 cursor-pointer text-xs sm:text-sm font-bold ${darkMode ? "text-slate-200" : "text-slate-800"}`}>
+                  <input 
+                    type="radio" 
+                    name="materialType" 
+                    value="paper" 
+                    checked={materialType === "paper"} 
+                    onChange={() => setMaterialType("paper")}
+                    className="w-4 h-4 text-indigo-600 focus:ring-indigo-500"
+                  />
+                  Exam Paper (PDF)
+                </label>
+              </div>
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
-              {/* Document Title */}
+              {/* Document / Paper Title */}
               <div>
-                <label className={labelClass}>Document Title</label>
+                <label className={labelClass}>{materialType === 'paper' ? 'Paper Title' : 'Document Title'}</label>
                 <div className="relative">
                   <FileText size={14} className={`absolute left-2.5 sm:left-3 top-1/2 -translate-y-1/2 ${darkMode ? "text-slate-500" : "text-slate-400"}`} />
-                  <input type="text" name="title" value={formData.title} onChange={handleChange} required placeholder="e.g. Chapter 1 - Cloud Computing" className={inputClass} />
+                  <input type="text" name="title" value={formData.title} onChange={handleChange} required placeholder={materialType === 'paper' ? "e.g. 2024 - 1st Term Paper" : "e.g. Chapter 1 - Cloud Computing"} className={inputClass} />
                 </div>
               </div>
 
@@ -408,7 +439,7 @@ export default function PDFUploadPage() {
                 ) : (
                   <>
                     <UploadCloud size={16} />
-                    Upload PDF
+                    Upload Document
                   </>
                 )}
               </button>
@@ -420,7 +451,7 @@ export default function PDFUploadPage() {
       <UploadSuccessPopup 
         isOpen={showPopup} 
         onClose={() => setShowPopup(false)} 
-        message="Your PDF document and cover image have been successfully uploaded to the system and are now pending admin approval."
+        message="Your document has been successfully added to the system and is now pending admin approval."
       />
     </div>
   );

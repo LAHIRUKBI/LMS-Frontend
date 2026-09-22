@@ -171,10 +171,9 @@ export default function TeacherSidebar() {
   const navItems = [
     { name: "Dashboard", path: "/teacher/dashboard", icon: <Home size={18} /> },
     { name: "Upload Video", path: "/teacher/materials/video", icon: <Video size={18} /> },
-    { name: "Upload PDF", path: "/teacher/materials/pdf", icon: <FileText size={18} /> },
-    { name: "Upload Paper", path: "/teacher/materials/paper", icon: <BookOpen size={18} /> },
+    { name: "Upload PDF & Paper", path: "/teacher/materials/pdf", icon: <FileText size={18} /> },
     { name: "My Videos", path: "/teacher/materials/my-videos", icon: <Film size={18} /> },
-    { name: "My PDFs & Papers", path: "/teacher/materials/my-pdfs", icon: <FileStack size={18} /> },
+    { name: "My PDFs & Paper", path: "/teacher/materials/my-pdfs", icon: <FileStack size={18} /> },
     { name: "Ticket", path: "/teacher/tickets", icon: <FileStack size={18} /> },
   ];
 
