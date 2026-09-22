@@ -4,7 +4,7 @@
 import { useState, useRef } from "react";
 import axios from "axios";
 import { useTheme } from "@/app/context/ThemeContext";
-import { UploadCloud, FileText, BookOpen, GraduationCap, AlignLeft, X } from "lucide-react";
+import { UploadCloud, FileText, BookOpen, GraduationCap, AlignLeft, X, Image as ImageIcon } from "lucide-react";
 import UploadSuccessPopup from "@/app/components/PdfUploadSuccessPopup";
 
 export default function PDFUploadPage() {
@@ -13,18 +13,21 @@ export default function PDFUploadPage() {
   const [showPopup, setShowPopup] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   
-  // අලුතින් එක් කළ States (Subject සහ Grade Categories සඳහා)
   const [subjectCategory, setSubjectCategory] = useState("");
   const [gradeCategory, setGradeCategory] = useState("");
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
+  // අලුතින් එක් කළ Cover Image States
+  const coverInputRef = useRef<HTMLInputElement>(null);
+  const [selectedCover, setSelectedCover] = useState<File | null>(null);
+
   const [formData, setFormData] = useState({
     title: "",
     subject: "",
-    grade: "", // New Field
-    description: "", // New Field
+    grade: "",
+    description: "",
   });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -43,9 +46,31 @@ export default function PDFUploadPage() {
     }
   };
 
+  // Cover Image වෙනස් කිරීම සහ 5MB සීමාව පරීක්ෂා කිරීම
+  const handleCoverChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      if (!file.type.startsWith("image/")) {
+        setErrorMessage("Please select a valid image file for the cover.");
+        return;
+      }
+      if (file.size > 5 * 1024 * 1024) {
+        setErrorMessage("Cover image must be smaller than 5MB.");
+        return;
+      }
+      setSelectedCover(file);
+      setErrorMessage("");
+    }
+  };
+
   const removeFile = () => {
     setSelectedFile(null);
     if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const removeCover = () => {
+    setSelectedCover(null);
+    if (coverInputRef.current) coverInputRef.current.value = "";
   };
 
   const handleUpload = async (e: React.FormEvent) => {
@@ -67,6 +92,10 @@ export default function PDFUploadPage() {
     uploadData.append("description", formData.description);
     uploadData.append("type", "pdf");
     uploadData.append("file", selectedFile);
+    
+    if (selectedCover) {
+      uploadData.append("coverImage", selectedCover);
+    }
 
     try {
       await axios.post("http://localhost:5000/api/materials/upload", uploadData, {
@@ -76,14 +105,13 @@ export default function PDFUploadPage() {
         },
       });
 
-      // Show success animated popup
       setShowPopup(true);
       
-      // Reset form
       setFormData({ title: "", subject: "", grade: "", description: "" });
-      setSubjectCategory(""); // අලුතින් එක් කළ dropdown resets
-      setGradeCategory("");   // අලුතින් එක් කළ dropdown resets
+      setSubjectCategory(""); 
+      setGradeCategory("");   
       removeFile();
+      removeCover();
     } catch (err: any) {
       setErrorMessage(err.response?.data?.message || "An error occurred during the upload process.");
     } finally {
@@ -97,7 +125,6 @@ export default function PDFUploadPage() {
       : "border-slate-300 bg-white text-gray-900 focus:ring-indigo-500"
   }`;
 
-  // Icon එකක් නැති inputs සඳහා Class එක
   const inputClassNoIcon = `w-full rounded-lg border py-1.5 sm:py-2 px-3 text-xs sm:text-sm outline-none focus:ring-2 transition-colors ${
     darkMode 
       ? "border-slate-700 bg-slate-800 text-white focus:ring-indigo-500" 
@@ -176,7 +203,6 @@ export default function PDFUploadPage() {
                     <option value="other">Other (Type Subject)</option>
                   </select>
                 </div>
-                {/* 'Other' තේරූ විට පමණක් දිස්වෙන Text Input එක */}
                 {subjectCategory === "other" && (
                   <div className="mt-2 relative">
                     <BookOpen size={14} className={`absolute left-2.5 sm:left-3 top-1/2 -translate-y-1/2 ${darkMode ? "text-slate-500" : "text-slate-400"}`} />
@@ -198,14 +224,13 @@ export default function PDFUploadPage() {
                 <label className={labelClass}>Grade / Batch</label>
                 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                  {/* Category තෝරන Select එක */}
                   <div className="relative">
                     <GraduationCap size={14} className={`absolute left-2.5 sm:left-3 top-1/2 -translate-y-1/2 ${darkMode ? "text-slate-500" : "text-slate-400"}`} />
                     <select 
                       value={gradeCategory}
                       onChange={(e) => {
                         setGradeCategory(e.target.value);
-                        setFormData({ ...formData, grade: "" }); // Category වෙනස් වෙද්දී පරණ grade එක reset වේ
+                        setFormData({ ...formData, grade: "" });
                       }}
                       required
                       className={inputClass}
@@ -217,7 +242,6 @@ export default function PDFUploadPage() {
                     </select>
                   </div>
 
-                  {/* School තේරූ විට: ශ්‍රේණි 1 සිට 13 */}
                   {gradeCategory === "school" && (
                     <div>
                       <select name="grade" value={formData.grade} onChange={handleChange} required className={inputClassNoIcon}>
@@ -229,7 +253,6 @@ export default function PDFUploadPage() {
                     </div>
                   )}
 
-                  {/* University තේරූ විට: අවුරුදු 4ට Semesters */}
                   {gradeCategory === "university" && (
                     <div>
                       <select name="grade" value={formData.grade} onChange={handleChange} required className={inputClassNoIcon}>
@@ -244,7 +267,6 @@ export default function PDFUploadPage() {
                     </div>
                   )}
 
-                  {/* Other තේරූ විට: Type කිරීමේ Input එක */}
                   {gradeCategory === "other" && (
                     <div>
                       <input 
@@ -275,6 +297,53 @@ export default function PDFUploadPage() {
                   placeholder="Provide a brief overview of this document..." 
                   className={`w-full rounded-lg border py-1.5 sm:py-2 px-3 text-xs sm:text-sm outline-none focus:ring-2 pl-8 sm:pl-9 transition-colors ${darkMode ? "border-slate-700 bg-slate-800 text-white focus:ring-indigo-500" : "border-slate-300 bg-white text-gray-900 focus:ring-indigo-500"}`}
                 ></textarea>
+              </div>
+            </div>
+
+            {/* Cover Image Upload Area (Max 5MB) */}
+            <div>
+              <label className={labelClass}>Cover Image (Optional - Max 5MB)</label>
+              <div 
+                onClick={() => !selectedCover && coverInputRef.current?.click()}
+                className={`mt-1 border-2 border-dashed rounded-xl p-3 sm:p-4 flex flex-col items-center justify-center transition-all ${
+                  selectedCover 
+                    ? darkMode ? "border-indigo-500 bg-indigo-500/10" : "border-indigo-400 bg-indigo-50"
+                    : darkMode ? "border-slate-600 hover:border-indigo-500 cursor-pointer bg-slate-800/30" : "border-slate-300 hover:border-indigo-400 cursor-pointer bg-slate-50/50"
+                }`}
+              >
+                {selectedCover ? (
+                  <div className="flex flex-col items-center text-center">
+                    <ImageIcon className="w-7 h-7 sm:w-8 sm:h-8 text-indigo-500 mb-1" />
+                    <p className={`text-xs sm:text-sm font-bold ${darkMode ? "text-white" : "text-gray-900"}`}>{selectedCover.name}</p>
+                    <p className={`text-[10px] sm:text-xs mt-0.5 ${darkMode ? "text-slate-400" : "text-slate-500"}`}>
+                      {(selectedCover.size / (1024 * 1024)).toFixed(2)} MB
+                    </p>
+                    <button 
+                      type="button" 
+                      onClick={(e) => { e.stopPropagation(); removeCover(); }}
+                      className="mt-2 flex items-center gap-1 text-[11px] text-red-500 hover:text-red-600 bg-red-50 dark:bg-red-500/10 px-2 py-1 rounded-md font-bold transition-colors"
+                    >
+                      <X size={12} /> Remove Cover
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <ImageIcon className={`w-7 h-7 sm:w-8 sm:h-8 mb-1.5 ${darkMode ? "text-slate-400" : "text-gray-400"}`} />
+                    <p className={`text-xs font-bold ${darkMode ? "text-slate-300" : "text-gray-700"}`}>
+                      Click to upload cover image (JPG, PNG)
+                    </p>
+                    <p className={`text-[10px] mt-0.5 ${darkMode ? "text-slate-500" : "text-gray-500"}`}>
+                      Must be smaller than 5MB
+                    </p>
+                  </>
+                )}
+                <input 
+                  type="file" 
+                  ref={coverInputRef} 
+                  onChange={handleCoverChange} 
+                  accept="image/*" 
+                  className="hidden" 
+                />
               </div>
             </div>
 
@@ -348,11 +417,10 @@ export default function PDFUploadPage() {
         </div>
       </div>
 
-      {/* Success Popup component */}
       <UploadSuccessPopup 
         isOpen={showPopup} 
         onClose={() => setShowPopup(false)} 
-        message="Your PDF document has been successfully added to the system and is now pending admin approval."
+        message="Your PDF document and cover image have been successfully uploaded to the system and are now pending admin approval."
       />
     </div>
   );
