@@ -25,14 +25,19 @@ import {
   Save,
   Trash2,
   User,
+  Share2,
 } from "lucide-react";
-import { FacebookIcon, InstagramIcon } from "@/app/components/BrandIcons";
 
 interface Qualification {
   institution: string;
   degree: string;
   period: string;
   description: string;
+}
+
+interface SocialLink {
+  platform: string;
+  url: string;
 }
 
 /* ------------------------------------------------------------------ */
@@ -172,6 +177,7 @@ export default function TeacherProfilePage() {
   const [photoPreview, setPhotoPreview] = useState<string>("");
 
   const [qualifications, setQualifications] = useState<Qualification[]>([]);
+  const [socialLinks, setSocialLinks] = useState<SocialLink[]>([]);
 
   const [formData, setFormData] = useState({
     teacherId: "",
@@ -181,8 +187,6 @@ export default function TeacherProfilePage() {
     phone: "",
     address: "",
     website: "",
-    facebook: "",
-    instagram: "",
     password: ""
   });
 
@@ -203,13 +207,15 @@ export default function TeacherProfilePage() {
           phone: data.phone || "",
           address: data.address || "",
           website: data.website || "",
-          facebook: data.facebook || "",
-          instagram: data.instagram || "",
           password: ""
         });
 
         if (data.qualifications) {
           setQualifications(data.qualifications);
+        }
+
+        if (data.socialLinks) {
+          setSocialLinks(data.socialLinks);
         }
 
         if (data.profilePhoto) {
@@ -252,6 +258,23 @@ export default function TeacherProfilePage() {
     setQualifications(updated);
   };
 
+  // Social Links Functions
+  const addSocialLink = () => {
+    setSocialLinks([...socialLinks, { platform: "", url: "" }]);
+  };
+
+  const removeSocialLink = (index: number) => {
+    const updated = [...socialLinks];
+    updated.splice(index, 1);
+    setSocialLinks(updated);
+  };
+
+  const handleSocialChange = (index: number, field: keyof SocialLink, value: string) => {
+    const updated = [...socialLinks];
+    updated[index][field] = value;
+    setSocialLinks(updated);
+  };
+
   const handleUpdate = async (e: FormEvent) => {
     e.preventDefault();
     setSaving(true);
@@ -265,6 +288,7 @@ export default function TeacherProfilePage() {
     });
     
     updateData.append('qualifications', JSON.stringify(qualifications));
+    updateData.append('socialLinks', JSON.stringify(socialLinks));
     
     if (photoFile) {
       updateData.append('profilePhoto', photoFile);
@@ -308,18 +332,14 @@ export default function TeacherProfilePage() {
     }
   };
 
-  /* Derived presentation values (no logic changes) */
-  const socialCount = [formData.website, formData.facebook, formData.instagram].filter(
-    (v) => v.trim() !== ""
-  ).length;
   const profileStrength = Math.round(
     (
       [formData.name, formData.email, formData.subject, formData.phone, formData.address].filter(
         (v) => v.trim() !== ""
       ).length +
-      socialCount +
+      (socialLinks.length > 0 ? 1 : 0) +
       (qualifications.length > 0 ? 1 : 0)
-    ) / 9 * 100
+    ) / 7 * 100
   );
 
   const dynamicQualInputClass = darkMode
@@ -340,8 +360,7 @@ export default function TeacherProfilePage() {
   }
 
   return (
-    <div className={`min-h-full transition-colors duration-300 ${darkMode ? "bg-slate-900 text-slate-100" : "bg-[#f4f6f8] text-slate-900"}`}>
-      {/* Success / error toast */}
+    <div className={`min-h-full transition-colors duration-300 ${darkMode ? "bg-slate-950 text-slate-100" : "bg-[#f4f6f8] text-slate-900"}`}>
       {message.text && (
         <div
           className="fixed right-4 top-4 z-50 w-[min(92vw,380px)] animate-toast-in sm:right-6 sm:top-6"
@@ -371,7 +390,6 @@ export default function TeacherProfilePage() {
       )}
 
       <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8 lg:py-10">
-        {/* Page header */}
         <header className="mb-7 animate-rise">
           <h2 className={`font-display text-2xl font-bold tracking-tight sm:text-[28px] ${darkMode ? "text-white" : "text-slate-900"}`}>
             My Profile
@@ -469,7 +487,7 @@ export default function TeacherProfilePage() {
                 darkMode ? "divide-slate-800 border-slate-800 bg-slate-950/40" : "divide-slate-200/80 border-slate-200/80 bg-slate-50/80"
               }`}>
                 <Stat label="Qualifications" value={qualifications.length} darkMode={darkMode} />
-                <Stat label="Social links" value={`${socialCount}/3`} darkMode={darkMode} />
+                <Stat label="Social links" value={socialLinks.length} darkMode={darkMode} />
                 <div className="px-4 py-3.5 text-center sm:px-5">
                   <p className={`font-display text-lg font-bold leading-none ${darkMode ? "text-slate-100" : "text-slate-900"}`}>
                     {profileStrength}%
@@ -730,15 +748,29 @@ export default function TeacherProfilePage() {
             )}
           </SectionCard>
 
-          {/* Additional Information & Socials */}
+          {/* Contact & Dynamic Social Media Section */}
           <SectionCard
             icon={Globe}
             title="Contact & Social Media"
-            description="How students and parents can reach you outside the LMS."
+            description="How students and parents can reach you outside the LMS (LinkedIn, GitHub, etc.)."
             delay={240}
             darkMode={darkMode}
+            action={
+              <button
+                type="button"
+                onClick={addSocialLink}
+                className={`inline-flex h-9 items-center gap-1.5 rounded-lg border px-3 text-[13px] font-semibold shadow-sm transition ${
+                  darkMode 
+                    ? "border-slate-700 bg-slate-800 text-slate-200 hover:border-teal-400 hover:bg-teal-400/10 hover:text-teal-300" 
+                    : "border-slate-300 bg-white text-slate-700 hover:border-teal-500 hover:bg-teal-50/60 hover:text-teal-700"
+                }`}
+              >
+                <Plus size={15} />
+                Add Social Link
+              </button>
+            }
           >
-            <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-2 mb-6">
               <Field
                 id="phone"
                 label="Phone Number"
@@ -770,29 +802,54 @@ export default function TeacherProfilePage() {
                 placeholder="https://..."
                 darkMode={darkMode}
               />
-              <Field
-                id="facebook"
-                label="Facebook Link"
-                icon={FacebookIcon as unknown as LucideIcon}
-                type="url"
-                name="facebook"
-                value={formData.facebook}
-                onChange={handleChange}
-                placeholder="https://facebook.com/..."
-                darkMode={darkMode}
-              />
-              <Field
-                id="instagram"
-                label="Instagram Link"
-                icon={InstagramIcon as unknown as LucideIcon}
-                type="url"
-                name="instagram"
-                value={formData.instagram}
-                onChange={handleChange}
-                placeholder="https://instagram.com/..."
-                darkMode={darkMode}
-              />
             </div>
+
+            {/* Dynamic Social Links List */}
+            {socialLinks.length > 0 && (
+              <div className="mt-6 border-t pt-6 dark:border-slate-800">
+                <h4 className={`text-sm font-semibold mb-4 ${darkMode ? "text-slate-200" : "text-slate-800"}`}>
+                  Custom Social Media Links (LinkedIn, Twitter, GitHub, etc.)
+                </h4>
+                <div className="space-y-4">
+                  {socialLinks.map((social, index) => (
+                    <div key={index} className={`flex items-center gap-3 p-3 rounded-xl border ${darkMode ? "border-slate-700/70 bg-slate-950/30" : "border-slate-200 bg-slate-50/60"}`}>
+                      <div className="w-1/3">
+                        <label className={`block text-xs font-medium mb-1 ${darkMode ? "text-slate-400" : "text-slate-600"}`}>Platform Name</label>
+                        <input
+                          type="text"
+                          value={social.platform}
+                          onChange={(e) => handleSocialChange(index, "platform", e.target.value)}
+                          placeholder="e.g. LinkedIn, GitHub"
+                          className={dynamicQualInputClass}
+                          required
+                        />
+                      </div>
+                      <div className="flex-1">
+                        <label className={`block text-xs font-medium mb-1 ${darkMode ? "text-slate-400" : "text-slate-600"}`}>Profile URL</label>
+                        <input
+                          type="url"
+                          value={social.url}
+                          onChange={(e) => handleSocialChange(index, "url", e.target.value)}
+                          placeholder="https://linkedin.com/in/..."
+                          className={dynamicQualInputClass}
+                          required
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => removeSocialLink(index)}
+                        className={`mt-6 rounded-lg p-2 transition ${
+                          darkMode ? "text-slate-400 hover:bg-rose-500/10 hover:text-rose-400" : "text-slate-400 hover:bg-rose-50 hover:text-rose-600"
+                        }`}
+                        title="Remove"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </SectionCard>
 
           {/* Sticky save bar */}
