@@ -64,10 +64,14 @@ export default function AdminClassViewPage() {
     try {
       setActionLoading(requestId);
       const token = localStorage.getItem("token");
+      if (!token) {
+        router.push("/login");
+        return;
+      }
+      
       await axios.put("http://localhost:5000/api/classes/requests/status", { requestId, status }, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      // නැවත දත්ත ලබාගෙන යාවත්කාලීන කිරීම
       await fetchData(token);
     } catch (err) {
       console.error("Error updating status:", err);
