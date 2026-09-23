@@ -195,6 +195,7 @@ export default function TeacherSidebar() {
     { name: "Ticket", path: "/teacher/tickets", icon: FileStack },
     { name: "Quize", path: "/teacher/materials/quize", icon: ClipboardList  },
     { name: "My Quize", path: "/teacher/materials/my-quize", icon: ClipboardList  },
+    { name: "create class", path: "/teacher/class/create_class", icon: ClipboardList  },
     { name: "Settings", path: "/teacher/settings", icon: Settings },
   ];
 

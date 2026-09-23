@@ -128,6 +128,7 @@ export default function AdminSidebar() {
     { name: "Review Quiz", path: "/admin/materials/quize_view", icon: ClipboardCheck },
     { name: "Tickets", path: "/admin/tickets", icon: ClipboardCheck },
     { name: "Students", path: "/admin/student/student_view", icon: ClipboardCheck },
+    { name: "Class view", path: "/admin/materials/class_view", icon: ClipboardCheck },
   ];
 
   const notifDropdownRef = useRef<HTMLDivElement>(null);
