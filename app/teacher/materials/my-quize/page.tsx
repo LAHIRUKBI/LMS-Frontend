@@ -211,7 +211,7 @@ export default function TeacherMyQuizzesPage() {
                   <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3">Questions & Answers Details:</h3>
                   <div className="space-y-3 max-h-72 overflow-y-auto pr-2">
                     {quiz.questions.map((q, idx) => (
-                      <div  key={`${quiz._id}-question-${idx}`} className={`p-4 rounded-xl border text-xs space-y-2 ${darkMode ? "bg-slate-950/50 border-slate-800" : "bg-slate-50 border-slate-200"}`}>
+                      <div key={`${quiz._id}-question-${idx}`} className={`p-4 rounded-xl border text-xs space-y-2 ${darkMode ? "bg-slate-950/50 border-slate-800" : "bg-slate-50 border-slate-200"}`}>
                         <div className="flex justify-between items-start">
                           <p className="font-semibold text-sm">
                             {idx + 1}. {q.questionText}
@@ -221,14 +221,14 @@ export default function TeacherMyQuizzesPage() {
                           </span>
                         </div>
 
-                        {/* Image Preview if available */}
+                        {/* Image Preview if available (සර්වර් එකේ ඇති Quize_images ෆෝල්ඩරයෙන් රූපය පෙන්වීම) */}
                         {q.imageUrl && (
                           <div className="mt-1">
                             <span className="text-[10px] text-slate-400 flex items-center gap-1 mb-1">
                               <ImageIcon size={12} /> Attached Image:
                             </span>
                             <img 
-                              src={q.imageUrl} 
+                              src={`http://localhost:5000${q.imageUrl}`} 
                               alt="Question Visual" 
                               className="max-h-32 rounded border border-slate-700 object-contain" 
                               onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
