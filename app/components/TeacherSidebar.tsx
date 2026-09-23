@@ -23,6 +23,7 @@ import {
   Settings,
   User,
   LogOut,
+  ClipboardList ,
 } from "lucide-react";
 import { useTheme } from "@/app/context/ThemeContext";
 
@@ -192,8 +193,8 @@ export default function TeacherSidebar() {
     { name: "My Videos", path: "/teacher/materials/my-videos", icon: Film },
     { name: "My PDFs & Paper", path: "/teacher/materials/my-pdfs", icon: FileStack },
     { name: "Ticket", path: "/teacher/tickets", icon: FileStack },
-    { name: "Quize", path: "/teacher/materials/quize", icon: User },
-    { name: "My Quize", path: "/teacher/materials/my-quize", icon: User },
+    { name: "Quize", path: "/teacher/materials/quize", icon: ClipboardList  },
+    { name: "My Quize", path: "/teacher/materials/my-quize", icon: ClipboardList  },
     { name: "Settings", path: "/teacher/settings", icon: Settings },
   ];
 
