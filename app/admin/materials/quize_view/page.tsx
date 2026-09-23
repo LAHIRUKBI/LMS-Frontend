@@ -166,16 +166,16 @@ export default function AdminQuizViewPage() {
                           </span>
                         </div>
 
-                        {/* Image Preview if available */}
+                        {/* Image Preview if available (ගුරුවරයා උඩුගත කළ රූපය සර්වර් එකෙන් පෙන්වීම) */}
                         {q.imageUrl && (
-                          <div className="mt-1">
+                          <div className="mt-2">
                             <span className="text-xs text-gray-500 flex items-center gap-1 mb-1">
                               <ImageIcon size={14} /> Attached Image:
                             </span>
                             <img 
-                              src={q.imageUrl} 
+                              src={`http://localhost:5000${q.imageUrl}`} 
                               alt="Question Visual" 
-                              className="max-h-32 rounded border border-gray-700 object-contain" 
+                              className="max-h-40 rounded border border-gray-700 object-contain" 
                               onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
                             />
                           </div>

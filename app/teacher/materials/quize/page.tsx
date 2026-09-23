@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState } from "react";
-import { Plus, Trash2, Send, Image as ImageIcon, CheckCircle } from "lucide-react";
+import React, { useState, useRef } from "react";
+import { Plus, Trash2, Send, Image as ImageIcon, CheckCircle, Upload, X } from "lucide-react";
 import axios from "axios";
 import QuizUploadSuccessPopup from "@/app/components/QuizUploadSuccessPopup";
 
@@ -11,6 +11,7 @@ interface Question {
   id: string;
   type: QuestionType;
   questionText: string;
+  imageFile?: File | null; // සැබෑ image file එක තබා ගැනීමට
   imageUrl?: string;
   options: string[];
   correctAnswer: string;
@@ -25,12 +26,14 @@ export default function TeacherQuizCreator() {
 
   const [currentType, setCurrentType] = useState<QuestionType>("mcq");
   const [currentText, setCurrentText] = useState("");
-  const [currentImage, setCurrentImage] = useState("");
+  
+  const [currentImageFile, setCurrentImageFile] = useState<File | null>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+
   const [currentOptions, setCurrentOptions] = useState<string[]>(["", ""]);
   const [currentCorrect, setCurrentCorrect] = useState("");
   const [currentMarks, setCurrentMarks] = useState(5);
 
-  // Success Popup State
   const [showSuccessPopup, setShowSuccessPopup] = useState(false);
 
   const handleAddOption = () => {
@@ -57,7 +60,8 @@ export default function TeacherQuizCreator() {
       id: Date.now().toString(),
       type: currentType,
       questionText: currentText,
-      imageUrl: currentImage,
+      imageFile: currentImageFile, // සැබෑ file එක ප්‍රශ්නය සමඟ තාවකාලිකව තබා ගැනීම
+      imageUrl: currentImageFile ? currentImageFile.name : undefined,
       options: currentType === "mcq" ? currentOptions : [],
       correctAnswer: currentCorrect,
       marks: currentMarks,
@@ -65,9 +69,9 @@ export default function TeacherQuizCreator() {
 
     setQuestions([...questions, newQuestion]);
     
-    // Reset form fields
     setCurrentText("");
-    setCurrentImage("");
+    setCurrentImageFile(null);
+    if (imageInputRef.current) imageInputRef.current.value = "";
     setCurrentOptions(["", ""]);
     setCurrentCorrect("");
     setCurrentMarks(5);
@@ -83,18 +87,27 @@ export default function TeacherQuizCreator() {
       return;
     }
 
-    const quizData = {
-      title,
-      description,
-      duration: Number(duration),
-      questions,
-    };
+    const formData = new FormData();
+    formData.append("title", title);
+    formData.append("description", description);
+    formData.append("duration", duration);
+
+    // imageFile ඔබ්ජෙක්ට් එක ඉවත් කර ඉතිරි ප්‍රශ්න JSON ලෙස යැවීම
+    const questionsForServer = questions.map(({ imageFile, ...rest }) => rest);
+    formData.append("questions", JSON.stringify(questionsForServer));
+
+    // එක් එක් ප්‍රශ්නයට අදාළ image files වෙන වෙනම FormData වෙත එකතු කිරීම (උදා: questionImage_0)
+    questions.forEach((q, index) => {
+      if (q.imageFile) {
+        formData.append(`questionImage_${index}`, q.imageFile);
+      }
+    });
 
     try {
       const token = localStorage.getItem("token");
-      const response = await axios.post("http://localhost:5000/api/quiz/quizzes", quizData, {
+      const response = await axios.post("http://localhost:5000/api/quiz/quizzes", formData, {
         headers: { 
-          "Content-Type": "application/json",
+          "Content-Type": "multipart/form-data",
           Authorization: `Bearer ${token}`
         },
       });
@@ -118,13 +131,11 @@ export default function TeacherQuizCreator() {
         <p className="text-xs text-gray-500">Add questions as a teacher and submit them for admin approval.</p>
       </div>
 
-      {/* Main Layout Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
         
-        {/* Left Column: Form Inputs (Width: 7 Cols) */}
+        {/* Left Column: Form Inputs */}
         <div className="lg:col-span-7 space-y-3">
           
-          {/* Quiz Details */}
           <div className="space-y-2 bg-gray-50 dark:bg-gray-800 p-3 rounded-lg border border-gray-200 dark:border-gray-700">
             <h2 className="font-semibold text-sm text-gray-700 dark:text-gray-200">1. Basic Details</h2>
             
@@ -146,16 +157,16 @@ export default function TeacherQuizCreator() {
                   onChange={(e) => setDuration(e.target.value)}
                   className="w-full mt-0.5 p-1.5 text-xs border rounded-md bg-white dark:bg-gray-800 dark:border-gray-700 text-gray-900 dark:text-white"
                 >
-                  <option value="30" className="bg-white dark:bg-gray-800 text-gray-900 dark:text-white">30 Mins (0.5 Hour)</option>
-                  <option value="60" className="bg-white dark:bg-gray-800 text-gray-900 dark:text-white">1 Hour</option>
-                  <option value="90" className="bg-white dark:bg-gray-800 text-gray-900 dark:text-white">1.5 Hours</option>
-                  <option value="120" className="bg-white dark:bg-gray-800 text-gray-900 dark:text-white">2 Hours</option>
-                  <option value="150" className="bg-white dark:bg-gray-800 text-gray-900 dark:text-white">2.5 Hours</option>
-                  <option value="180" className="bg-white dark:bg-gray-800 text-gray-900 dark:text-white">3 Hours</option>
-                  <option value="210" className="bg-white dark:bg-gray-800 text-gray-900 dark:text-white">3.5 Hours</option>
-                  <option value="240" className="bg-white dark:bg-gray-800 text-gray-900 dark:text-white">4 Hours</option>
-                  <option value="270" className="bg-white dark:bg-gray-800 text-gray-900 dark:text-white">4.5 Hours</option>
-                  <option value="300" className="bg-white dark:bg-gray-800 text-gray-900 dark:text-white">5 Hours</option>
+                  <option value="30">30 Mins (0.5 Hour)</option>
+                  <option value="60">1 Hour</option>
+                  <option value="90">1.5 Hours</option>
+                  <option value="120">2 Hours</option>
+                  <option value="150">2.5 Hours</option>
+                  <option value="180">3 Hours</option>
+                  <option value="210">3.5 Hours</option>
+                  <option value="240">4 Hours</option>
+                  <option value="270">4.5 Hours</option>
+                  <option value="300">5 Hours</option>
                 </select>
               </div>
             </div>
@@ -172,7 +183,6 @@ export default function TeacherQuizCreator() {
             </div>
           </div>
 
-          {/* Add Questions Section */}
           <div className="space-y-2.5 bg-gray-50 dark:bg-gray-800 p-3 rounded-lg border border-dashed border-gray-300 dark:border-gray-700">
             <h2 className="font-semibold text-sm text-gray-700 dark:text-gray-200">2. Add Questions</h2>
             
@@ -184,9 +194,9 @@ export default function TeacherQuizCreator() {
                   onChange={(e) => setCurrentType(e.target.value as QuestionType)}
                   className="w-full mt-0.5 p-1.5 text-xs border rounded-md bg-white dark:bg-gray-800 dark:border-gray-700 text-gray-900 dark:text-white"
                 >
-                  <option value="mcq" className="bg-white dark:bg-gray-800 text-gray-900 dark:text-white">Multiple Choice (MCQ)</option>
-                  <option value="short" className="bg-white dark:bg-gray-800 text-gray-900 dark:text-white">Short Answer</option>
-                  <option value="essay" className="bg-white dark:bg-gray-800 text-gray-900 dark:text-white">Essay</option>
+                  <option value="mcq">Multiple Choice (MCQ)</option>
+                  <option value="short">Short Answer</option>
+                  <option value="essay">Essay</option>
                 </select>
               </div>
               <div>
@@ -212,16 +222,35 @@ export default function TeacherQuizCreator() {
             </div>
 
             <div>
-              <label className="block text-[11px] font-medium text-gray-600 dark:text-gray-300 flex items-center gap-1">
-                <ImageIcon size={12} /> Image URL (Optional)
+              <label className="block text-[11px] font-medium text-gray-600 dark:text-gray-300 flex items-center gap-1 mb-1">
+                <ImageIcon size={12} /> Upload Question Image (Optional)
               </label>
-              <input
-                type="text"
-                value={currentImage}
-                onChange={(e) => setCurrentImage(e.target.value)}
-                placeholder="https://example.com/image.png"
-                className="w-full mt-0.5 p-1.5 text-xs border rounded-md bg-white dark:bg-gray-800 dark:border-gray-700 text-gray-900 dark:text-white"
-              />
+              <div className="flex items-center gap-2">
+                <input
+                  type="file"
+                  ref={imageInputRef}
+                  accept="image/*"
+                  onChange={(e) => {
+                    if (e.target.files && e.target.files[0]) {
+                      setCurrentImageFile(e.target.files[0]);
+                    }
+                  }}
+                  className="w-full text-xs text-gray-500 file:mr-2 file:py-1 file:px-2 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 dark:file:bg-gray-700 dark:file:text-white"
+                />
+                {currentImageFile && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCurrentImageFile(null);
+                      if (imageInputRef.current) imageInputRef.current.value = "";
+                    }}
+                    className="text-red-500 p-1 hover:bg-red-50 rounded"
+                    title="Remove Image"
+                  >
+                    <X size={16} />
+                  </button>
+                )}
+              </div>
             </div>
 
             {currentType === "mcq" && (
@@ -277,7 +306,7 @@ export default function TeacherQuizCreator() {
 
         </div>
 
-        {/* Right Column: Added Questions List Preview & Submit Button (Width: 5 Cols) */}
+        {/* Right Column: Added Questions List Preview & Submit Button */}
         <div className="lg:col-span-5 space-y-2 bg-gray-50 dark:bg-gray-800 p-3 rounded-lg border border-gray-200 dark:border-gray-700 flex flex-col justify-between h-full">
           <div>
             <div className="flex justify-between items-center mb-2">
@@ -301,7 +330,7 @@ export default function TeacherQuizCreator() {
                         {index + 1}. {q.questionText}
                       </p>
                       {q.imageUrl && (
-                        <span className="text-[9px] text-gray-400 block">📷 Contains image</span>
+                        <span className="text-[9px] text-green-500 block">📷 Image: {q.imageUrl}</span>
                       )}
                       <p className="text-[10px] text-green-600 dark:text-green-400 font-semibold">Answer: {q.correctAnswer}</p>
                     </div>
@@ -317,7 +346,6 @@ export default function TeacherQuizCreator() {
             </div>
           </div>
 
-          {/* Submit Button at the bottom of the right column */}
           <div className="pt-3 border-t border-gray-200 dark:border-gray-700 mt-2">
             <button
               onClick={handleSubmitToAdmin}
@@ -330,7 +358,6 @@ export default function TeacherQuizCreator() {
 
       </div>
 
-      {/* Success Popup Component */}
       <QuizUploadSuccessPopup 
         isOpen={showSuccessPopup}
         onClose={() => setShowSuccessPopup(false)}
