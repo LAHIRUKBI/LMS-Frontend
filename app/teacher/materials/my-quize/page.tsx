@@ -3,7 +3,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { CheckCircle, Clock, Globe, FileText, Trash2, AlertCircle, Image as ImageIcon, X } from "lucide-react";
+import { CheckCircle, Clock, Globe, FileText, Trash2, AlertCircle, Image as ImageIcon, X, Check } from "lucide-react";
 import { useTheme } from "@/app/context/ThemeContext";
 import axios from "axios";
 
@@ -25,6 +25,7 @@ interface QuizItem {
   status: "pending" | "approved" | "rejected";
   rejectReason?: string;
   isPublished: boolean;
+  classIds?: any[]; // පන්ති ලැයිස්තුව සඳහා
   questions: Question[];
   createdAt: string;
 }
@@ -34,9 +35,15 @@ export default function TeacherMyQuizzesPage() {
   const [quizzes, setQuizzes] = useState<QuizItem[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Delete Popup Modal සඳහා State
+  // Delete Popup Modal States
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [quizToDelete, setQuizToDelete] = useState<string | null>(null);
+
+  // Class Selection Modal States (Publish කිරීම සඳහා)
+  const [publishModalOpen, setPublishModalOpen] = useState(false);
+  const [selectedQuizForPublish, setSelectedQuizForPublish] = useState<QuizItem | null>(null);
+  const [teacherClasses, setTeacherClasses] = useState<any[]>([]);
+  const [selectedClassIds, setSelectedClassIds] = useState<string[]>([]);
 
   const fetchMyQuizzes = async () => {
     try {
@@ -52,18 +59,42 @@ export default function TeacherMyQuizzesPage() {
     }
   };
 
-  useEffect(() => {
-    fetchMyQuizzes();
-  }, []);
-
-  const handlePublishQuiz = async (id: string) => {
+  const fetchTeacherClasses = async () => {
     try {
       const token = localStorage.getItem("token");
-      const res = await axios.put(`http://localhost:5000/api/quiz/${id}/publish`, {}, {
+      const res = await axios.get("http://localhost:5000/api/classes/my-classes", {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setTeacherClasses(res.data);
+    } catch (err) {
+      console.error("Error fetching teacher classes:", err);
+    }
+  };
+
+  useEffect(() => {
+    fetchMyQuizzes();
+    fetchTeacherClasses();
+  }, []);
+
+  const openPublishModal = (quiz: QuizItem) => {
+    setSelectedQuizForPublish(quiz);
+    setSelectedClassIds(quiz.classIds ? quiz.classIds.map((c: any) => c._id || c) : []);
+    setPublishModalOpen(true);
+  };
+
+  const handleConfirmPublish = async () => {
+    if (!selectedQuizForPublish) return;
+    try {
+      const token = localStorage.getItem("token");
+      const res = await axios.put(`http://localhost:5000/api/quiz/${selectedQuizForPublish._id}/publish`, {
+        classIds: selectedClassIds
+      }, {
         headers: { Authorization: `Bearer ${token}` }
       });
 
       if (res.status === 200) {
+        setPublishModalOpen(false);
+        setSelectedQuizForPublish(null);
         fetchMyQuizzes();
       }
     } catch (err: any) {
@@ -71,13 +102,36 @@ export default function TeacherMyQuizzesPage() {
     }
   };
 
-  // Delete Popup එක විවෘත කිරීම
+  const handleUnpublish = async (id: string) => {
+    try {
+      const token = localStorage.getItem("token");
+      const res = await axios.put(`http://localhost:5000/api/quiz/${id}/publish`, {
+        classIds: []
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      if (res.status === 200) {
+        fetchMyQuizzes();
+      }
+    } catch (err: any) {
+      console.error("Failed to unpublish quiz.");
+    }
+  };
+
+  const toggleClassSelection = (classId: string) => {
+    if (selectedClassIds.includes(classId)) {
+      setSelectedClassIds(selectedClassIds.filter(id => id !== classId));
+    } else {
+      setSelectedClassIds([...selectedClassIds, classId]);
+    }
+  };
+
   const openDeleteModal = (id: string) => {
     setQuizToDelete(id);
     setDeleteModalOpen(true);
   };
 
-  // Delete කිරීම තහවුරු කිරීම (Browser alert වෙනුවට Modal හරහා ක්‍රියාත්මක වේ)
   const confirmDeleteQuiz = async () => {
     if (!quizToDelete) return;
     try {
@@ -95,9 +149,69 @@ export default function TeacherMyQuizzesPage() {
 
   return (
     <div className={`p-4 sm:p-6 lg:p-8 min-h-screen transition-colors duration-300 ${darkMode ? "bg-slate-950 text-white" : "bg-slate-50 text-slate-900"}`}>
+      
+      {/* Class Selection Modal for Publishing */}
+      {publishModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+          <div className={`w-full max-w-lg p-6 rounded-3xl shadow-2xl border ${darkMode ? "bg-slate-900 border-slate-800 text-white" : "bg-white border-slate-200 text-slate-900"}`}>
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-extrabold">Select Classes to Publish Quiz</h3>
+              <button onClick={() => setPublishModalOpen(false)} className="p-1 rounded-lg text-slate-400 hover:bg-slate-500/10">
+                <X size={20} />
+              </button>
+            </div>
+            <p className="text-xs text-slate-400 mb-4">Choose one or more classes where this quiz should be published.</p>
+
+            {teacherClasses.length === 0 ? (
+              <p className="text-sm text-center py-6 text-slate-500">No classes found. Please create a class first.</p>
+            ) : (
+              <div className="space-y-2 max-h-60 overflow-y-auto pr-1 mb-6">
+                {teacherClasses.map((cls) => {
+                  const isSelected = selectedClassIds.includes(cls._id);
+                  return (
+                    <div 
+                      key={cls._id}
+                      onClick={() => toggleClassSelection(cls._id)}
+                      className={`p-3.5 rounded-2xl border cursor-pointer flex items-center justify-between transition-all ${
+                        isSelected 
+                          ? (darkMode ? "bg-indigo-500/10 border-indigo-500/50 text-white" : "bg-indigo-50 border-indigo-300 text-slate-900")
+                          : (darkMode ? "bg-slate-800/50 border-slate-800 text-slate-300" : "bg-slate-50 border-slate-200 text-slate-700")
+                      }`}
+                    >
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-sm">{cls.grade}</span>
+                          <span className="text-xs opacity-70">({cls.medium} - {cls.mode})</span>
+                        </div>
+                        <p className="text-xs opacity-60 mt-0.5">{cls.day} | {cls.startTime} - {cls.endTime}</p>
+                      </div>
+                      <div className={`w-5 h-5 rounded-lg flex items-center justify-center border ${isSelected ? "bg-indigo-600 border-indigo-600 text-white" : "border-slate-400"}`}>
+                        {isSelected && <Check size={14} />}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            <div className="flex justify-end gap-3">
+              <button onClick={() => setPublishModalOpen(false)} className={`px-5 py-2.5 rounded-xl text-xs font-bold ${darkMode ? "bg-slate-800 text-slate-300" : "bg-slate-100 text-slate-700"}`}>
+                Cancel
+              </button>
+              <button 
+                onClick={handleConfirmPublish}
+                disabled={selectedClassIds.length === 0}
+                className="px-6 py-2.5 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-white disabled:opacity-50 shadow-md"
+              >
+                Publish Now
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="max-w-5xl mx-auto space-y-6">
         
-        {/* Header */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
             <h1 className="text-2xl font-extrabold tracking-tight">My Quizzes</h1>
@@ -107,7 +221,7 @@ export default function TeacherMyQuizzesPage() {
           </div>
         </div>
 
-        {/* Delete Confirmation Modal (පිටුව මැද පෙන්වන Pop-up එක - localhost says ඉවත් කර ඇත) */}
+        {/* Delete Confirmation Modal */}
         {deleteModalOpen && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fadeIn">
             <div className={`w-full max-w-md p-6 rounded-2xl shadow-2xl border transition-all ${darkMode ? "bg-slate-900 border-slate-800 text-white" : "bg-white border-slate-200 text-slate-900"}`}>
@@ -115,27 +229,18 @@ export default function TeacherMyQuizzesPage() {
                 <div className="flex items-center gap-2 text-rose-500 font-bold text-lg">
                   <AlertCircle size={22} /> Confirm Deletion
                 </div>
-                <button 
-                  onClick={() => setDeleteModalOpen(false)}
-                  className="p-1 rounded-lg text-slate-400 hover:bg-slate-500/10 transition-colors"
-                >
+                <button onClick={() => setDeleteModalOpen(false)} className="p-1 rounded-lg text-slate-400 hover:bg-slate-500/10">
                   <X size={18} />
                 </button>
               </div>
               <p className={`text-sm mb-6 ${darkMode ? "text-slate-300" : "text-slate-600"}`}>
-                Are you sure you want to delete this quiz? This action cannot be undone and it will be permanently removed from the system.
+                Are you sure you want to delete this quiz? This action cannot be undone.
               </p>
               <div className="flex justify-end gap-3">
-                <button
-                  onClick={() => setDeleteModalOpen(false)}
-                  className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${darkMode ? "bg-slate-800 text-slate-300 hover:bg-slate-700" : "bg-slate-100 text-slate-700 hover:bg-slate-200"}`}
-                >
+                <button onClick={() => setDeleteModalOpen(false)} className={`px-4 py-2 rounded-xl text-xs font-bold ${darkMode ? "bg-slate-800 text-slate-300" : "bg-slate-100 text-slate-700"}`}>
                   Cancel
                 </button>
-                <button
-                  onClick={confirmDeleteQuiz}
-                  className="px-4 py-2 rounded-xl text-xs font-bold bg-rose-600 hover:bg-rose-500 text-white shadow-sm transition-all"
-                >
+                <button onClick={confirmDeleteQuiz} className="px-4 py-2 rounded-xl text-xs font-bold bg-rose-600 hover:bg-rose-500 text-white">
                   Yes, Delete
                 </button>
               </div>
@@ -206,7 +311,19 @@ export default function TeacherMyQuizzesPage() {
                   </div>
                 )}
 
-                {/* Questions and Answers Preview List */}
+                {/* Published Classes List Display */}
+                {quiz.isPublished && quiz.classIds && quiz.classIds.length > 0 && (
+                  <div className={`pt-3 border-t flex flex-wrap items-center gap-2 ${darkMode ? "border-slate-800" : "border-slate-100"}`}>
+                    <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mr-2">Published to Classes:</span>
+                    {quiz.classIds.map((cls: any) => (
+                      <span key={cls._id || cls} className={`text-[11px] px-2.5 py-1 rounded-lg font-bold border ${darkMode ? "bg-slate-800 border-slate-700 text-indigo-400" : "bg-indigo-50 border-indigo-200 text-indigo-700"}`}>
+                        {cls.grade ? `${cls.grade} - ${cls.medium} (${cls.mode})` : "Class"}
+                      </span>
+                    ))}
+                  </div>
+                )}
+
+                {/* Questions Preview List */}
                 <div className={`border-t pt-4 ${darkMode ? "border-slate-800" : "border-slate-100"}`}>
                   <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3">Questions & Answers Details:</h3>
                   <div className="space-y-3 max-h-72 overflow-y-auto pr-2">
@@ -221,7 +338,6 @@ export default function TeacherMyQuizzesPage() {
                           </span>
                         </div>
 
-                        {/* Image Preview if available (සර්වර් එකේ ඇති Quize_images ෆෝල්ඩරයෙන් රූපය පෙන්වීම) */}
                         {q.imageUrl && (
                           <div className="mt-1">
                             <span className="text-[10px] text-slate-400 flex items-center gap-1 mb-1">
@@ -236,7 +352,6 @@ export default function TeacherMyQuizzesPage() {
                           </div>
                         )}
 
-                        {/* MCQ Options */}
                         {q.type === 'mcq' && q.options && q.options.length > 0 && (
                           <div className="space-y-1 mt-2 pl-2 border-l-2 border-indigo-500/40">
                             <p className="text-[11px] font-semibold text-slate-400">Options:</p>
@@ -250,7 +365,6 @@ export default function TeacherMyQuizzesPage() {
                           </div>
                         )}
 
-                        {/* Correct Answer */}
                         <div className="mt-2 pt-2 border-t border-slate-500/20">
                           <span className="font-mono bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 px-2 py-1 rounded inline-block text-[11px]">
                             ✅ Correct Answer: <strong className="text-emerald-400">{q.correctAnswer}</strong>
@@ -270,20 +384,25 @@ export default function TeacherMyQuizzesPage() {
                     <Trash2 size={14} /> Delete
                   </button>
 
-                  <div>
-                    {quiz.status === "approved" && !quiz.isPublished && (
-                      <button
-                        onClick={() => handlePublishQuiz(quiz._id)}
-                        className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-white transition-all shadow-sm"
-                      >
-                        <Globe size={14} /> Publish to Students
-                      </button>
-                    )}
-
-                    {quiz.isPublished && (
-                      <span className="text-xs font-medium text-emerald-500 flex items-center gap-1">
-                        <CheckCircle size={14} /> Live for Students
-                      </span>
+                  <div className="flex items-center gap-2">
+                    {quiz.status === "approved" && (
+                      <>
+                        {!quiz.isPublished ? (
+                          <button
+                            onClick={() => openPublishModal(quiz)}
+                            className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-white transition-all shadow-sm"
+                          >
+                            <Globe size={14} /> Publish to Classes
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => handleUnpublish(quiz._id)}
+                            className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold bg-rose-600 hover:bg-rose-700 text-white transition-all shadow-sm"
+                          >
+                            Unpublish
+                          </button>
+                        )}
+                      </>
                     )}
 
                     {quiz.status === "pending" && (
