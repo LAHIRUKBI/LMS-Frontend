@@ -86,9 +86,14 @@ export default function AdminClassViewPage() {
     return `http://localhost:5000/profile_photos/${photoUrl}`;
   };
 
+  // සිසුන්ගේ ප්‍රොෆයිල් පින්තූරය නිවැරදිව ලබා ගැනීමට path එක සකස් කිරීම
   const getStudentProfileImageUrl = (photoUrl: string) => {
     if (!photoUrl) return null;
     if (photoUrl.startsWith("http")) return photoUrl;
+    // backend එකේ Student_profile_photos static ලෙස mount කර ඇති නිසා එයට අදාළව පථය ලබා දීම
+    if (photoUrl.startsWith("/")) {
+      return `http://localhost:5000${photoUrl}`;
+    }
     return `http://localhost:5000/Student_profile_photos/${photoUrl}`;
   };
 
@@ -142,7 +147,7 @@ export default function AdminClassViewPage() {
                   className="bg-white dark:bg-slate-900 rounded-[32px] border border-slate-200/80 dark:border-slate-800 p-6 sm:p-8 shadow-xl shadow-slate-200/40 dark:shadow-none transition-all duration-300 flex flex-col lg:flex-row gap-8 items-stretch"
                 >
                   
-                  {/* වම් පස: ගුරුවරයාගේ තොරතුරු (Profile Photo, Name, Subject) */}
+                  {/* වම් පස: ගුරුවරයාගේ තොරතුරු */}
                   <div className="lg:w-80 shrink-0 flex flex-col items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-slate-800 dark:to-slate-800/50 rounded-3xl p-6 border border-blue-100/50 dark:border-slate-700/50 text-center">
                     <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full overflow-hidden border-4 border-white dark:border-slate-700 bg-white dark:bg-slate-900 flex items-center justify-center shadow-md mb-4">
                       {teacher?.profilePhoto ? (
@@ -170,13 +175,12 @@ export default function AdminClassViewPage() {
                     </div>
                   </div>
 
-                  {/* දකුණු පස: අදාළ ගුරුවරයාගේ පන්ති ලැයිස්තුව සහ සිසුන්ගේ ඉල්ලීම් */}
+                  {/* දකුණු පස: පන්ති සහ සිසුන්ගේ ඉල්ලීම් */}
                   <div className="flex-1 flex flex-col justify-center">
                     <h4 className="text-xs font-extrabold text-slate-400 uppercase tracking-wider mb-4">Conducted Classes & Student Requests</h4>
                     
                     <div className="grid grid-cols-1 gap-6">
                       {classesList.map((cls: any) => {
-                        // මෙම පන්තිය සඳහා පැමිණ ඇති ඉල්ලීම් පෙරහන් කර ගැනීම
                         const clsRequests = classRequests.filter((req: any) => req.classId?._id === cls._id);
 
                         return (
@@ -222,6 +226,7 @@ export default function AdminClassViewPage() {
                                     return (
                                       <div key={req._id} className="bg-white dark:bg-slate-900 p-3 rounded-xl border border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                                         <div className="flex items-center gap-3">
+                                          {/* නිවැරදිව පින්තූරය පෙන්වීම සඳහා getStudentProfileImageUrl භාවිතා කර ඇත */}
                                           <div className="w-9 h-9 rounded-full overflow-hidden bg-slate-100 dark:bg-slate-800 shrink-0 flex items-center justify-center border">
                                             {student.profileImage ? (
                                               <img src={getStudentProfileImageUrl(student.profileImage) || ""} alt="" className="w-full h-full object-cover" />
@@ -230,8 +235,8 @@ export default function AdminClassViewPage() {
                                             )}
                                           </div>
                                           <div>
+                                            {/* නම පමණක් පෙන්වන අතර අනෙකුත් විස්තර (Email, School ආදී සියල්ල) ඉවත් කර ඇත */}
                                             <p className="text-xs font-bold text-slate-800 dark:text-white">{student.name}</p>
-                                            <p className="text-[10px] text-slate-500">{student.email} {student.school ? `• ${student.school}` : ''}</p>
                                           </div>
                                         </div>
 
