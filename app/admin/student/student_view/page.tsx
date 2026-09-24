@@ -2,9 +2,9 @@
 
 import { useEffect, useState } from "react";
 import axios from "axios";
-import { Search, User, Mail, Phone, GraduationCap, Building, Calendar, Loader2, MoreVertical } from "lucide-react";
+import { Search, User, Mail, Phone, GraduationCap, Building, Calendar, Loader2, MoreVertical, Globe, Clock, BookOpen, Users } from "lucide-react";
 
-// මෙහි authProvider එකතු කර ඇත
+// නව ක්ෂේත්‍ර සමඟ Student Interface එක යාවත්කාලීන කිරීම
 interface Student {
   _id: string;
   name: string;
@@ -15,7 +15,12 @@ interface Student {
   school: string;
   profileImage: string;
   createdAt: string;
-  authProvider?: string; // අලුතින් එක් කළ කොටස
+  authProvider?: string;
+  country?: string;
+  timeZone?: string;
+  medium?: string;
+  parentName?: string;
+  parentPhone?: string;
 }
 
 export default function AdminStudentView() {
@@ -106,8 +111,9 @@ export default function AdminStudentView() {
               <thead>
                 <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800 transition-colors">
                   <th className="px-6 py-4 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Student</th>
-                  <th className="px-6 py-4 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Contact</th>
-                  <th className="px-6 py-4 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Academic Info</th>
+                  <th className="px-6 py-4 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Contact & Parent</th>
+                  <th className="px-6 py-4 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Academic & Medium</th>
+                  <th className="px-6 py-4 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Location & Timezone</th>
                   <th className="px-6 py-4 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Joined Date</th>
                   <th className="px-6 py-4 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-right">Actions</th>
                 </tr>
@@ -136,7 +142,7 @@ export default function AdminStudentView() {
                         </div>
                       </td>
 
-                      {/* Contact Info */}
+                      {/* Contact Info & Parent Details */}
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="space-y-1">
                           <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
@@ -145,12 +151,18 @@ export default function AdminStudentView() {
                           </div>
                           <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
                             <Phone size={14} className="text-slate-400" />
-                            {student.phone || <span className="text-slate-400 text-xs italic">Not provided</span>}
+                            {student.phone || <span className="text-slate-400 text-xs italic">No phone</span>}
                           </div>
+                          {student.parentName && (
+                            <div className="flex items-center gap-2 text-xs text-purple-600 dark:text-purple-400 font-medium">
+                              <Users size={13} />
+                              Parent: {student.parentName} ({student.parentPhone || 'N/A'})
+                            </div>
+                          )}
                         </div>
                       </td>
 
-                      {/* Academic Info */}
+                      {/* Academic Info & Medium */}
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="space-y-1">
                           <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
@@ -161,6 +173,27 @@ export default function AdminStudentView() {
                             <Building size={14} className="text-indigo-400" />
                             {student.school || <span className="text-slate-400 text-xs italic">N/A</span>}
                           </div>
+                          {student.medium && (
+                            <span className="inline-block text-[10px] px-2 py-0.5 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-500/20 rounded-full font-medium">
+                              Medium: {student.medium}
+                            </span>
+                          )}
+                        </div>
+                      </td>
+
+                      {/* Country & TimeZone */}
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
+                            <Globe size={14} className="text-teal-500" />
+                            {student.country || <span className="text-slate-400 text-xs italic">Not specified</span>}
+                          </div>
+                          {student.timeZone && (
+                            <div className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+                              <Clock size={13} className="text-amber-500" />
+                              {student.timeZone}
+                            </div>
+                          )}
                         </div>
                       </td>
 
@@ -183,7 +216,7 @@ export default function AdminStudentView() {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={5} className="px-6 py-12 text-center text-slate-500 dark:text-slate-400">
+                    <td colSpan={6} className="px-6 py-12 text-center text-slate-500 dark:text-slate-400">
                       <div className="flex flex-col items-center gap-2">
                         <User size={32} className="text-slate-300 dark:text-slate-600" />
                         <p>කිසිදු සිසුවෙකු හමු නොවීය.</p>

@@ -19,7 +19,12 @@ import {
   Trash2, 
   X,
   ChevronsLeft,
-  ChevronsRight 
+  ChevronsRight,
+  FileCheck,
+  ClipboardList,
+  UserRound,
+  School,
+  Ticket, 
 } from "lucide-react";
 import { useTheme } from "@/app/context/ThemeContext";
 import axios from "axios";
@@ -124,11 +129,11 @@ export default function AdminSidebar() {
     { name: "Teacher List", path: "/admin/teachers/list", icon: Users },
     { name: "Add Admin", path: "/admin/register", icon: ShieldPlus }, 
     { name: "Admin List", path: "/admin/list", icon: Shield }, 
-    { name: "Review Materials", path: "/admin/materials/review", icon: ClipboardCheck },
-    { name: "Review Quiz", path: "/admin/materials/quize_view", icon: ClipboardCheck },
-    { name: "Tickets", path: "/admin/tickets", icon: ClipboardCheck },
-    { name: "Students", path: "/admin/student/student_view", icon: ClipboardCheck },
-    { name: "Class view", path: "/admin/materials/class_view", icon: ClipboardCheck },
+    { name: "Review Materials", path: "/admin/materials/review", icon: FileCheck },
+    { name: "Review Quiz", path: "/admin/materials/quize_view", icon: ClipboardList },
+    { name: "Tickets", path: "/admin/tickets", icon: Ticket },
+    { name: "Students", path: "/admin/student/student_view", icon: GraduationCap },
+    { name: "Class view", path: "/admin/materials/class_view", icon: School },
   ];
 
   const notifDropdownRef = useRef<HTMLDivElement>(null);
