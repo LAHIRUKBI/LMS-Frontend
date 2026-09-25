@@ -191,6 +191,8 @@ export default function AdminSidebar() {
     { name: "Tickets", path: "/admin/tickets", icon: Ticket },
     { name: "Students", path: "/admin/student/student_view", icon: GraduationCap },
     { name: "Class view", path: "/admin/materials/class_view", icon: School },
+    { name: "Create Add", path: "/admin/Add/create_add", icon: School },
+    { name: "View Add", path: "/admin/Add/view_add", icon: School },
   ];
 
   const notifDropdownRef = useRef<HTMLDivElement>(null);
@@ -300,8 +302,15 @@ export default function AdminSidebar() {
         }`}
       >
         {/* Displaying the icon and name */}
-        <Icon size={18} className="..." />
-        <span className="...">{item.name}</span>
+        <Icon size={18} className="shrink-0" />
+        <span 
+          className={`transition-all duration-300 whitespace-nowrap overflow-hidden ${
+            isCollapsed ? "w-0 opacity-0 hidden" : "w-auto opacity-100"
+          }`}
+        >
+          {item.name}
+        </span>
+        
         {/* Newly added element: Badge for the 'Review Materials' tab (when expanded) */}
         {item.name === "Review Materials" && newMaterialCount > 0 && !isCollapsed && (
           <span className="ml-auto flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white shadow-sm">
@@ -315,7 +324,6 @@ export default function AdminSidebar() {
   </span>
 )}
 
-        {/* Red badge for the 'Students' tab (when the sidebar is expanded) */}
         {/* Newly added element: The dot for the 'Review Materials' tab (when collapsed) */}
         {item.name === "Review Materials" && newMaterialCount > 0 && isCollapsed && (
           <span className="absolute top-2 right-2 h-2.5 w-2.5 rounded-full bg-red-500 border-2 border-white dark:border-slate-900" />
