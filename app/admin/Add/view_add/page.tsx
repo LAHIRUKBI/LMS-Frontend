@@ -1,8 +1,11 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import axios from "axios";
-import { Megaphone, Trash2, Edit, X, Link as LinkIcon, Plus, Loader2 } from "lucide-react";
+import { 
+  Megaphone, Trash2, Edit, X, Link as LinkIcon, Plus, 
+  Loader2, Users, Clock, ChevronLeft, ChevronRight, Film, Image as ImageIcon, ImagePlus 
+} from "lucide-react";
 import { useTheme } from "@/app/context/ThemeContext";
 
 interface AdLink {
@@ -15,9 +18,14 @@ interface AdData {
   _id: string;
   headline: string;
   description: string;
+  mediaType: "image" | "video" | "both";
   images: string[];
+  video?: string | null;
   links: AdLink[];
   status: "active" | "inactive";
+  targetAudience?: string;
+  publishStartDate?: string;
+  publishEndDate?: string | null;
   createdAt: string;
 }
 
@@ -28,6 +36,17 @@ export default function ViewAdsPage() {
 
   const [editingAd, setEditingAd] = useState<AdData | null>(null);
   const [editLoading, setEditLoading] = useState(false);
+  const [scheduleMode, setScheduleMode] = useState("now");
+
+  const [newImages, setNewImages] = useState<File[]>([]);
+  const [newImagePreviews, setNewImagePreviews] = useState<string[]>([]);
+  const editImageInputRef = useRef<HTMLInputElement>(null);
+
+  const [newVideo, setNewVideo] = useState<File | null>(null);
+  const [newVideoPreview, setNewVideoPreview] = useState<string | null>(null);
+  const editVideoInputRef = useRef<HTMLInputElement>(null);
+
+  const [imageIndexes, setImageIndexes] = useState<Record<string, number>>({});
 
   useEffect(() => {
     fetchAds();
@@ -63,6 +82,31 @@ export default function ViewAdsPage() {
     }
   };
 
+  const formatForDateTimeLocal = (dateStr?: string | null) => {
+    if (!dateStr) return "";
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return "";
+    const offset = d.getTimezoneOffset() * 60000;
+    return new Date(d.getTime() - offset).toISOString().slice(0, 16);
+  };
+
+  const openEditModal = (ad: AdData) => {
+    const mode = ad.publishEndDate ? "timeframe" : (ad.publishStartDate ? "schedule" : "now");
+    setScheduleMode(mode);
+    setNewImages([]);
+    setNewImagePreviews([]);
+    setNewVideo(null);
+    setNewVideoPreview(null);
+    
+    setEditingAd({
+      ...ad,
+      mediaType: ad.mediaType || "image",
+      targetAudience: ad.targetAudience || "all",
+      publishStartDate: formatForDateTimeLocal(ad.publishStartDate),
+      publishEndDate: formatForDateTimeLocal(ad.publishEndDate)
+    });
+  };
+
   const handleEditChange = (field: keyof AdData, value: any) => {
     if (editingAd) {
       setEditingAd({ ...editingAd, [field]: value });
@@ -90,22 +134,88 @@ export default function ViewAdsPage() {
     }
   };
 
+  const handleRemoveExistingImage = (index: number) => {
+    if (editingAd) {
+      const updatedImages = editingAd.images.filter((_, i) => i !== index);
+      setEditingAd({ ...editingAd, images: updatedImages });
+    }
+  };
+
+  const handleRemoveExistingVideo = () => {
+    if (editingAd) {
+      setEditingAd({ ...editingAd, video: null });
+    }
+  };
+
+  const handleNewImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      const filesArray = Array.from(e.target.files);
+      setNewImages(prev => [...prev, ...filesArray]);
+      const previews = filesArray.map(file => URL.createObjectURL(file));
+      setNewImagePreviews(prev => [...prev, ...previews]);
+    }
+  };
+
+  const handleRemoveNewImage = (index: number) => {
+    setNewImages(prev => prev.filter((_, i) => i !== index));
+    setNewImagePreviews(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleNewVideoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      setNewVideo(file);
+      setNewVideoPreview(URL.createObjectURL(file));
+    }
+  };
+
   const submitEdit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingAd) return;
     
+    if (scheduleMode === "timeframe" && (!editingAd.publishStartDate || !editingAd.publishEndDate)) {
+      alert("Please select both start and end date/time for the timeframe.");
+      return;
+    }
+
     const validLinks = editingAd.links.filter(l => l.label.trim() !== "" && l.url.trim() !== "");
+
+    let finalStartDate = editingAd.publishStartDate;
+    let finalEndDate = editingAd.publishEndDate;
+
+    if (scheduleMode === "now") {
+      finalStartDate = new Date().toISOString();
+      finalEndDate = null;
+    } else if (scheduleMode === "schedule") {
+      finalEndDate = null;
+    }
 
     setEditLoading(true);
     try {
       const token = localStorage.getItem("token");
-      const res = await axios.put(`http://localhost:5000/api/ads/admin/${editingAd._id}`, {
-        headline: editingAd.headline,
-        description: editingAd.description,
-        status: editingAd.status,
-        links: validLinks
-      }, {
-        headers: { Authorization: `Bearer ${token}` }
+      const formData = new FormData();
+      
+      formData.append("headline", editingAd.headline);
+      formData.append("description", editingAd.description);
+      formData.append("status", editingAd.status);
+      formData.append("mediaType", editingAd.mediaType);
+      formData.append("targetAudience", editingAd.targetAudience || "all");
+      if (finalStartDate) formData.append("publishStartDate", finalStartDate);
+      if (finalEndDate) formData.append("publishEndDate", finalEndDate);
+      formData.append("links", JSON.stringify(validLinks));
+      
+      formData.append("existingImages", JSON.stringify(editingAd.images));
+      formData.append("hasVideo", editingAd.video ? "true" : "false");
+
+      newImages.forEach(img => formData.append("images", img));
+      
+      if (newVideo) formData.append("video", newVideo);
+
+      const res = await axios.put(`http://localhost:5000/api/ads/admin/${editingAd._id}`, formData, {
+        headers: { 
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "multipart/form-data"
+        }
       });
 
       if (res.data.success) {
@@ -121,13 +231,25 @@ export default function ViewAdsPage() {
     }
   };
 
-  // 👇 DB එකේ /advertisement/... කියා සේව් වන නිසා, සෘජුවම එය යොදාගනී
-  const getImageUrl = (imagePath: string) => {
-    if (!imagePath) return "";
-    if (imagePath.startsWith("http")) return imagePath;
-    
-    const cleanPath = imagePath.startsWith("/") ? imagePath : `/${imagePath}`;
+  const getMediaUrl = (mediaPath: string) => {
+    if (!mediaPath) return "";
+    if (mediaPath.startsWith("http")) return mediaPath;
+    const cleanPath = mediaPath.startsWith("/") ? mediaPath : `/${mediaPath}`;
     return `http://localhost:5000${cleanPath}?v=${Date.now()}`;
+  };
+
+  const nextImage = (adId: string, maxImages: number) => {
+    setImageIndexes(prev => ({
+      ...prev,
+      [adId]: ((prev[adId] || 0) + 1) % maxImages
+    }));
+  };
+
+  const prevImage = (adId: string, maxImages: number) => {
+    setImageIndexes(prev => ({
+      ...prev,
+      [adId]: ((prev[adId] || 0) - 1 + maxImages) % maxImages
+    }));
   };
 
   const inputClass = `w-full rounded-xl border py-2 px-3 text-sm outline-none focus:ring-2 transition-colors ${
@@ -169,35 +291,66 @@ export default function ViewAdsPage() {
               const validImages = ad.images && Array.isArray(ad.images) 
                 ? ad.images.filter(img => img && img.trim() !== "") 
                 : [];
+              
+              const currentImageIndex = imageIndexes[ad._id] || 0;
 
               return (
                 <div key={ad._id} className={`group flex flex-col rounded-2xl border overflow-hidden shadow-sm transition-all hover:shadow-md ${darkMode ? "bg-slate-900 border-slate-800" : "bg-white border-slate-200"}`}>
                   
-                  <div className="h-40 w-full bg-slate-200 dark:bg-slate-800 relative overflow-hidden">
-                    {validImages.length > 0 ? (
-                      <>
+                  <div className={`h-56 w-full relative overflow-hidden flex items-center justify-center ${darkMode ? "bg-slate-800/80" : "bg-slate-100"}`}>
+                    
+                    {((ad.mediaType as string) === "video" || ad.mediaType === "both") && ad.video ? (
+                      <div className="w-full h-full relative bg-black flex items-center justify-center">
+                        <video 
+                          src={getMediaUrl(ad.video)} 
+                          controls 
+                          className="w-full h-full object-contain"
+                        />
+                      </div>
+                    ) : null}
+
+                    {((ad.mediaType as string) === "image" || ad.mediaType === "both") && validImages.length > 0 && (ad.mediaType as string) !== "video" ? (
+                      <div className={`w-full h-full relative flex items-center justify-center ${ad.mediaType === "both" && ad.video ? "absolute inset-0 bg-slate-900/90 hidden group-hover:flex transition-all" : ""}`}>
                         <img 
-                          src={getImageUrl(validImages[0])} 
+                          src={getMediaUrl(validImages[currentImageIndex])} 
                           alt={ad.headline} 
-                          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" 
+                          className="w-full h-full object-contain transition-transform duration-500" 
                           onError={(e) => { 
-                            console.error("Image failed to load:", getImageUrl(validImages[0]));
                             (e.target as HTMLImageElement).src = "https://placehold.co/600x400/png?text=Image+Not+Found";
                           }}
                         />
+
                         {validImages.length > 1 && (
-                          <div className="absolute bottom-2 left-2 bg-black/70 backdrop-blur-sm text-white text-[10px] font-bold px-2 py-1 rounded-md z-10 shadow-sm">
-                            1 / {validImages.length} Photos
-                          </div>
+                          <>
+                            <button 
+                              onClick={() => prevImage(ad._id, validImages.length)}
+                              className="absolute left-2 top-1/2 -translate-y-1/2 p-1.5 rounded-full bg-black/50 text-white hover:bg-black/80 transition-colors backdrop-blur-sm z-10"
+                            >
+                              <ChevronLeft size={18} />
+                            </button>
+                            <button 
+                              onClick={() => nextImage(ad._id, validImages.length)}
+                              className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-full bg-black/50 text-white hover:bg-black/80 transition-colors backdrop-blur-sm z-10"
+                            >
+                              <ChevronRight size={18} />
+                            </button>
+                            
+                            <div className="absolute bottom-2 left-1/2 -translate-x-1/2 bg-black/70 backdrop-blur-sm text-white text-[10px] font-bold px-2.5 py-1 rounded-full z-10 shadow-sm tracking-wider">
+                              {currentImageIndex + 1} / {validImages.length}
+                            </div>
+                          </>
                         )}
-                      </>
-                    ) : (
-                      <div className="w-full h-full flex flex-col items-center justify-center text-slate-400 dark:text-slate-600">
-                        <Megaphone size={32} className="mb-2" />
-                        <span className="text-[10px] font-bold uppercase tracking-wider">No Image</span>
+                      </div>
+                    ) : null}
+
+                    {(!ad.video && validImages.length === 0) && (
+                      <div className="w-full h-full flex flex-col items-center justify-center text-slate-400 dark:text-slate-500">
+                        <Megaphone size={32} className="mb-2 opacity-50" />
+                        <span className="text-[10px] font-bold uppercase tracking-wider">No Media Provided</span>
                       </div>
                     )}
-                    <div className="absolute top-2 right-2 z-10">
+
+                    <div className="absolute top-2 right-2 z-20">
                       <span className={`px-2.5 py-1 text-[10px] font-bold uppercase rounded-lg shadow-sm backdrop-blur-md border ${
                         ad.status === 'active' 
                           ? 'bg-green-500/90 text-white border-green-400/50' 
@@ -208,16 +361,22 @@ export default function ViewAdsPage() {
                     </div>
                   </div>
 
-                  <div className="p-4 flex flex-col flex-grow z-10 bg-white dark:bg-slate-900">
-                    <h3 className={`font-bold text-lg leading-tight mb-2 line-clamp-2 ${darkMode ? "text-white" : "text-slate-900"}`}>
+                  <div className="p-4 flex flex-col flex-grow z-10 bg-white dark:bg-slate-900 border-t dark:border-slate-800 space-y-3">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="text-[10px] font-bold px-2.5 py-1 rounded-md bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400 flex items-center gap-1">
+                        <Users size={11} /> {ad.targetAudience === "all" ? "All Batches" : `${ad.targetAudience} Batch`}
+                      </span>
+                    </div>
+
+                    <h3 className={`font-bold text-lg leading-tight line-clamp-2 ${darkMode ? "text-white" : "text-slate-900"}`}>
                       {ad.headline}
                     </h3>
-                    <p className={`text-xs mb-4 line-clamp-3 ${darkMode ? "text-slate-400" : "text-slate-600"}`}>
+                    <p className={`text-xs line-clamp-3 ${darkMode ? "text-slate-400" : "text-slate-600"}`}>
                       {ad.description}
                     </p>
                     
                     {ad.links && ad.links.length > 0 && (
-                      <div className="mb-4 flex flex-wrap gap-2">
+                      <div className="flex flex-wrap gap-2">
                         {ad.links.map((link, idx) => (
                           <span key={idx} className={`text-[10px] font-semibold px-2 py-1 rounded-md flex items-center gap-1 border ${darkMode ? "bg-slate-800 text-blue-400 border-slate-700" : "bg-blue-50 text-blue-600 border-blue-100"}`}>
                             <LinkIcon size={10} /> {link.label}
@@ -226,13 +385,13 @@ export default function ViewAdsPage() {
                       </div>
                     )}
 
-                    <div className="mt-auto pt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
-                      <span className={`text-[10px] font-medium ${darkMode ? "text-slate-500" : "text-slate-400"}`}>
-                        {new Date(ad.createdAt).toLocaleDateString()}
+                    <div className="mt-auto pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                      <span className={`text-[10px] font-medium flex items-center gap-1 ${darkMode ? "text-slate-500" : "text-slate-400"}`}>
+                        Created: {new Date(ad.createdAt).toLocaleDateString()}
                       </span>
                       <div className="flex gap-2">
                         <button 
-                          onClick={() => setEditingAd(ad)}
+                          onClick={() => openEditModal(ad)}
                           className={`p-2 rounded-lg transition-colors border ${darkMode ? "bg-slate-800 text-blue-400 hover:bg-slate-700 border-slate-700" : "bg-blue-50 text-blue-600 hover:bg-blue-100 border-blue-100"}`}
                           title="Edit Ad"
                         >
@@ -255,7 +414,6 @@ export default function ViewAdsPage() {
         )}
       </div>
 
-      {/* Edit Modal */}
       {editingAd && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in">
           <div className={`w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-3xl shadow-2xl border ${darkMode ? "bg-slate-950 border-slate-800" : "bg-white border-slate-200"}`}>
@@ -270,6 +428,7 @@ export default function ViewAdsPage() {
             </div>
 
             <form onSubmit={submitEdit} className="p-5 sm:p-6 space-y-5">
+              
               <div>
                 <label className={`block text-xs font-bold mb-1.5 ${darkMode ? "text-slate-400" : "text-slate-600"}`}>Primary Headline</label>
                 <input 
@@ -286,24 +445,208 @@ export default function ViewAdsPage() {
                 <textarea 
                   value={editingAd.description}
                   onChange={(e) => handleEditChange("description", e.target.value)}
-                  className={`${inputClass} min-h-[120px]`}
+                  className={`${inputClass} min-h-[100px]`}
                   required
                 />
               </div>
 
-              <div>
-                <label className={`block text-xs font-bold mb-1.5 ${darkMode ? "text-slate-400" : "text-slate-600"}`}>Status</label>
-                <select 
-                  value={editingAd.status}
-                  onChange={(e) => handleEditChange("status", e.target.value)}
-                  className={inputClass}
-                >
-                  <option value="active">Active (Visible)</option>
-                  <option value="inactive">Inactive (Hidden)</option>
-                </select>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <label className={`block text-xs font-bold mb-1.5 ${darkMode ? "text-slate-400" : "text-slate-600"}`}>Status</label>
+                  <select 
+                    value={editingAd.status}
+                    onChange={(e) => handleEditChange("status", e.target.value)}
+                    className={inputClass}
+                  >
+                    <option value="active">Active (Visible)</option>
+                    <option value="inactive">Inactive (Hidden)</option>
+                  </select>
+                </div>
+                <div>
+                  <label className={`block text-xs font-bold mb-1.5 ${darkMode ? "text-slate-400" : "text-slate-600"}`}>Media Type</label>
+                  <select 
+                    value={editingAd.mediaType}
+                    onChange={(e) => handleEditChange("mediaType", e.target.value)}
+                    className={inputClass}
+                  >
+                    <option value="image">Images Only</option>
+                    <option value="video">Video Only</option>
+                    <option value="both">Images & Video</option>
+                  </select>
+                </div>
+                <div>
+                  <label className={`flex items-center gap-1 text-xs font-bold mb-1.5 ${darkMode ? "text-slate-400" : "text-slate-600"}`}>
+                    <Users size={14}/> Target Audience
+                  </label>
+                  <select 
+                    value={editingAd.targetAudience} 
+                    onChange={(e) => handleEditChange("targetAudience", e.target.value)} 
+                    className={inputClass}
+                  >
+                    <option value="all">All Students</option>
+                    <option value="2025">2025 Batch</option>
+                    <option value="2026">2026 Batch</option>
+                    <option value="2027">2027 Batch</option>
+                  </select>
+                </div>
               </div>
 
-              <div>
+              <div className={`p-4 rounded-xl border ${darkMode ? "bg-slate-900 border-slate-800" : "bg-slate-50 border-slate-200"} space-y-4`}>
+                <h3 className={`text-xs font-bold uppercase tracking-wider ${darkMode ? "text-slate-300" : "text-slate-700"}`}>Manage Media</h3>
+                
+                {(editingAd.mediaType === "image" || editingAd.mediaType === "both") && (
+                  <div className="space-y-3">
+                    <span className="text-xs font-semibold text-slate-500">Existing Images:</span>
+                    <div className="flex flex-wrap gap-3">
+                      {editingAd.images && editingAd.images.length > 0 ? (
+                        editingAd.images.map((img, idx) => (
+                          <div key={idx} className="relative w-20 h-20 rounded-xl border overflow-hidden bg-slate-200 group">
+                            <img src={getMediaUrl(img)} alt="Ad" className="w-full h-full object-cover" />
+                            <button 
+                              type="button" 
+                              onClick={() => handleRemoveExistingImage(idx)}
+                              className="absolute top-1 right-1 p-1 bg-red-600 text-white rounded-md opacity-80 hover:opacity-100 transition shadow"
+                              title="Remove Image"
+                            >
+                              <Trash2 size={12} />
+                            </button>
+                          </div>
+                        ))
+                      ) : (
+                        <p className="text-xs text-slate-400">No existing images.</p>
+                      )}
+                    </div>
+
+                    {newImagePreviews.length > 0 && (
+                      <div className="pt-2">
+                        <span className="text-xs font-semibold text-teal-600 dark:text-teal-400">Newly Added Images:</span>
+                        <div className="flex flex-wrap gap-3 mt-1">
+                          {newImagePreviews.map((src, idx) => (
+                            <div key={idx} className="relative w-20 h-20 rounded-xl border border-teal-500 overflow-hidden bg-slate-200 group">
+                              <img src={src} alt="New" className="w-full h-full object-cover" />
+                              <button 
+                                type="button" 
+                                onClick={() => handleRemoveNewImage(idx)}
+                                className="absolute top-1 right-1 p-1 bg-red-600 text-white rounded-md opacity-80 hover:opacity-100 transition shadow"
+                                title="Remove New Image"
+                              >
+                                <Trash2 size={12} />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="pt-2">
+                      <button 
+                        type="button" 
+                        onClick={() => editImageInputRef.current?.click()}
+                        className="px-4 py-2 bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400 text-xs font-bold rounded-xl border border-blue-200 dark:border-blue-800 flex items-center gap-1.5"
+                      >
+                        <ImagePlus size={14} /> Add More Images
+                      </button>
+                      <input type="file" multiple accept="image/*" ref={editImageInputRef} onChange={handleNewImageSelect} className="hidden" />
+                    </div>
+                  </div>
+                )}
+
+                {(editingAd.mediaType === "video" || editingAd.mediaType === "both") && (
+                  <div className="space-y-3 pt-3 border-t dark:border-slate-800">
+                    <span className="text-xs font-semibold text-slate-500">Video Management:</span>
+                    
+                    {editingAd.video && !newVideo ? (
+                      <div className="relative w-full sm:w-2/3 h-36 bg-black rounded-xl overflow-hidden group">
+                        <video src={getMediaUrl(editingAd.video)} controls className="w-full h-full object-contain" />
+                        <button 
+                          type="button" 
+                          onClick={handleRemoveExistingVideo}
+                          className="absolute top-2 right-2 p-1.5 bg-red-600 text-white rounded-lg opacity-80 hover:opacity-100 transition shadow z-10"
+                          title="Remove Video"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    ) : newVideoPreview ? (
+                      <div className="relative w-full sm:w-2/3 h-36 bg-black rounded-xl overflow-hidden border border-purple-500 group">
+                        <video src={newVideoPreview} controls className="w-full h-full object-contain" />
+                        <button 
+                          type="button" 
+                          onClick={() => { setNewVideo(null); setNewVideoPreview(null); }}
+                          className="absolute top-2 right-2 p-1.5 bg-red-600 text-white rounded-lg opacity-80 hover:opacity-100 transition shadow z-10"
+                          title="Remove New Video"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    ) : (
+                      <p className="text-xs text-slate-400">No video uploaded.</p>
+                    )}
+
+                    {!newVideo && (
+                      <div className="pt-1">
+                        <button 
+                          type="button" 
+                          onClick={() => editVideoInputRef.current?.click()}
+                          className="px-4 py-2 bg-purple-50 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400 text-xs font-bold rounded-xl border border-purple-200 dark:border-purple-800 flex items-center gap-1.5"
+                        >
+                          <Film size={14} /> {editingAd.video ? "Replace Video" : "Upload Video"}
+                        </button>
+                        <input type="file" accept="video/*" ref={editVideoInputRef} onChange={handleNewVideoSelect} className="hidden" />
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              <div className={`pt-4 border-t ${darkMode ? "border-slate-800" : "border-slate-100"} space-y-4`}>
+                <h3 className={`flex items-center gap-2 text-sm font-bold tracking-wider ${darkMode ? "text-slate-300" : "text-slate-700"}`}>
+                  <Clock size={16} /> Publishing & Scheduling
+                </h3>
+                
+                <div>
+                  <label className={`block text-xs font-bold mb-1.5 ${darkMode ? "text-slate-400" : "text-slate-600"}`}>Publishing Option</label>
+                  <select value={scheduleMode} onChange={(e) => setScheduleMode(e.target.value)} className={inputClass}>
+                    <option value="now">Publish Immediately</option>
+                    <option value="schedule">Schedule for Later</option>
+                    <option value="timeframe">Set a Timeframe</option>
+                  </select>
+                </div>
+
+                {scheduleMode !== "now" && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 rounded-xl bg-slate-100 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700">
+                    <div>
+                      <label className={`block text-xs font-bold mb-1.5 ${darkMode ? "text-slate-400" : "text-slate-600"}`}>
+                        Start Date & Time *
+                      </label>
+                      <input 
+                        type="datetime-local" 
+                        value={editingAd.publishStartDate || ""}
+                        onChange={(e) => handleEditChange("publishStartDate", e.target.value)}
+                        className={inputClass}
+                        required={scheduleMode !== "now"}
+                      />
+                    </div>
+
+                    {scheduleMode === "timeframe" && (
+                      <div>
+                        <label className={`block text-xs font-bold mb-1.5 ${darkMode ? "text-slate-400" : "text-slate-600"}`}>
+                          End Date & Time *
+                        </label>
+                        <input 
+                          type="datetime-local" 
+                          value={editingAd.publishEndDate || ""}
+                          onChange={(e) => handleEditChange("publishEndDate", e.target.value)}
+                          className={inputClass}
+                          required={scheduleMode === "timeframe"}
+                        />
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              <div className={`pt-4 border-t ${darkMode ? "border-slate-800" : "border-slate-100"}`}>
                 <div className="flex items-center justify-between mb-2">
                   <label className={`text-xs font-bold ${darkMode ? "text-slate-400" : "text-slate-600"}`}>Action Links</label>
                   <button type="button" onClick={handleAddLink} className="text-[10px] font-bold text-blue-500 flex items-center gap-1 hover:underline">
@@ -340,7 +683,7 @@ export default function ViewAdsPage() {
                 </div>
               </div>
 
-              <div className="pt-4 flex justify-end gap-3">
+              <div className="pt-6 flex justify-end gap-3 border-t dark:border-slate-800">
                 <button 
                   type="button" 
                   onClick={() => setEditingAd(null)}
