@@ -4,6 +4,7 @@
 
 import React, { useEffect, useState } from "react";
 import { CheckCircle, XCircle, Trash2, Image as ImageIcon, User } from "lucide-react";
+import axios from "axios";
 
 interface QuizSubmission {
   _id: string;
@@ -23,6 +24,7 @@ interface QuizSubmission {
   status: "pending" | "approved" | "rejected";
   rejectReason?: string;
   createdAt: string;
+  isNewForTable?: boolean;
 }
 
 export default function AdminQuizViewPage() {
@@ -40,6 +42,20 @@ export default function AdminQuizViewPage() {
       .then((res) => res.json())
       .then((data) => setQuizzes(data))
       .catch((err) => console.error("Error fetching quizzes:", err));
+  };
+
+  // 1. The function to remove the dot
+  const handleClearQuizDot = async (quizId: string) => {
+    try {
+      const token = localStorage.getItem("token");
+      await axios.put(`http://localhost:5000/api/quiz/admin/${quizId}/clear-dot`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      // Instantly remove the dot from the local state.ම
+      setQuizzes(prev => prev.map(q => q._id === quizId ? { ...q, isNewForTable: false } : q));
+    } catch (error) {
+      console.error("Error clearing quiz dot:", error);
+    }
   };
 
   const handleUpdateStatus = async (quizId: string, status: "approved" | "rejected") => {
@@ -110,7 +126,25 @@ export default function AdminQuizViewPage() {
             const tPhoto = teacherObj?.profilePhoto;
 
             return (
-              <div key={quiz._id} className="bg-white dark:bg-gray-800 border dark:border-gray-700 rounded-xl shadow-sm p-6 space-y-4">
+              // An onClick handler and conditional classes have been added to the Quiz Card Wrapper.
+              <div 
+                key={quiz._id} 
+                onClick={() => quiz.isNewForTable && handleClearQuizDot(quiz._id)} 
+                className={`relative transition-all border dark:border-gray-700 rounded-xl shadow-sm p-6 space-y-4 ${
+                  // If it is a new quiz, a red background is displayed.
+                  quiz.isNewForTable 
+                    ? "bg-red-50/50 dark:bg-red-950/20 border-red-200 cursor-pointer" 
+                    : "bg-white dark:bg-gray-800"
+                }`}
+              >
+                {/* The red Pulse Dot (at the top edge of the card)*/}
+                {quiz.isNewForTable && (
+                  <span className="absolute -top-1.5 -right-1.5 flex h-4 w-4 z-10" title="New Quiz">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-4 w-4 bg-red-500 shadow-sm border-2 border-white dark:border-slate-900"></span>
+                  </span>
+                )}
+
                 <div className="flex justify-between items-start">
                   <div className="flex items-center gap-3">
                     <div className="w-9 h-9 rounded-full overflow-hidden flex items-center justify-center border bg-gray-100 dark:bg-slate-800 border-gray-300 dark:border-gray-700">
@@ -166,7 +200,7 @@ export default function AdminQuizViewPage() {
                           </span>
                         </div>
 
-                        {/* Image Preview if available (ගුරුවරයා උඩුගත කළ රූපය සර්වර් එකෙන් පෙන්වීම) */}
+                        {/* Image Preview, if available (displaying the image uploaded by the teacher from the server) */}
                         {q.imageUrl && (
                           <div className="mt-2">
                             <span className="text-xs text-gray-500 flex items-center gap-1 mb-1">
