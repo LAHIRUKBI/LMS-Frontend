@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from "react";
 import axios from "axios";
-import { Megaphone, Trash2, Edit, X, Link as LinkIcon, Plus, Eye, EyeOff, Loader2 } from "lucide-react";
+import { Megaphone, Trash2, Edit, X, Link as LinkIcon, Plus, Loader2 } from "lucide-react";
 import { useTheme } from "@/app/context/ThemeContext";
 
 interface AdLink {
@@ -121,13 +121,13 @@ export default function ViewAdsPage() {
     }
   };
 
+  // 👇 DB එකේ /advertisement/... කියා සේව් වන නිසා, සෘජුවම එය යොදාගනී
   const getImageUrl = (imagePath: string) => {
     if (!imagePath) return "";
     if (imagePath.startsWith("http")) return imagePath;
     
-    const fileName = imagePath.split('/').pop() || ""; 
-    const encodedFileName = encodeURIComponent(fileName);
-    return `http://localhost:5000/api/ads/image/${encodedFileName}`;
+    const cleanPath = imagePath.startsWith("/") ? imagePath : `/${imagePath}`;
+    return `http://localhost:5000${cleanPath}?v=${Date.now()}`;
   };
 
   const inputClass = `w-full rounded-xl border py-2 px-3 text-sm outline-none focus:ring-2 transition-colors ${
@@ -255,6 +255,7 @@ export default function ViewAdsPage() {
         )}
       </div>
 
+      {/* Edit Modal */}
       {editingAd && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in">
           <div className={`w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-3xl shadow-2xl border ${darkMode ? "bg-slate-950 border-slate-800" : "bg-white border-slate-200"}`}>
