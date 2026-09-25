@@ -35,6 +35,7 @@ export default function AdminSidebar() {
   const router = useRouter();
   const { darkMode, toggleDarkMode } = useTheme();
   const [newStudentCount, setNewStudentCount] = useState(0);
+  const [newMaterialCount, setNewMaterialCount] = useState(0);
   
   // Notifications States
   const [adminNotifications, setAdminNotifications] = useState<any[]>([]);
@@ -62,6 +63,18 @@ export default function AdminSidebar() {
       console.error(error);
     }
   }
+  // Material logic
+  if (path === "/admin/materials/review" && newMaterialCount > 0) {
+    try {
+      const token = localStorage.getItem("token");
+      await axios.put("http://localhost:5000/api/materials/admin/clear-sidebar", {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setNewMaterialCount(0);
+    } catch (error) {
+      console.error(error);
+    }
+  }
 };
 
   // Socket.io සහ Notifications Logic
@@ -79,7 +92,12 @@ export default function AdminSidebar() {
       headers: { Authorization: `Bearer ${token}` }
     }).then(res => setNewStudentCount(res.data.count)).catch(console.error);
 
-      // 3. Socket Connect කිරීම සහ admin_room එකට එක් වීම
+      // 3. getting the number of new Material Count
+      axios.get("http://localhost:5000/api/materials/admin/new-count", {
+      headers: { Authorization: `Bearer ${token}` }
+    }).then(res => setNewMaterialCount(res.data.count)).catch(console.error);
+
+      // 4. Socket Connect කිරීම සහ admin_room එකට එක් වීම
       const socket = io("http://localhost:5000");
       socket.emit("join_admin_room");
 
@@ -265,8 +283,19 @@ export default function AdminSidebar() {
         {/* Displaying the icon and name */}
         <Icon size={18} className="..." />
         <span className="...">{item.name}</span>
+        {/* Newly added element: Badge for the 'Review Materials' tab (when expanded) */}
+        {item.name === "Review Materials" && newMaterialCount > 0 && !isCollapsed && (
+          <span className="ml-auto flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white shadow-sm">
+            {newMaterialCount}
+        </span>
+        )}
 
         {/* Red badge for the 'Students' tab (when the sidebar is expanded) */}
+        {/* Newly added element: The dot for the 'Review Materials' tab (when collapsed) */}
+        {item.name === "Review Materials" && newMaterialCount > 0 && isCollapsed && (
+          <span className="absolute top-2 right-2 h-2.5 w-2.5 rounded-full bg-red-500 border-2 border-white dark:border-slate-900" />
+        )}
+
         {item.name === "Students" && newStudentCount > 0 && !isCollapsed && (
           <span className="ml-auto flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white shadow-sm">
             {newStudentCount}

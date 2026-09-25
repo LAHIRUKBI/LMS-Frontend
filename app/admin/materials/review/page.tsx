@@ -1,18 +1,18 @@
-// src/app/admin/materials/page.tsx
+// src/app/admin/materials/review/page.tsx
 "use client";
 
 import { useEffect, useState, useMemo } from "react";
 import React from "react";
 import axios from "axios";
-import { 
-  ClipboardCheck, 
-  CheckCircle, 
-  XCircle, 
-  Loader2, 
-  Trash2, 
-  Search, 
-  Filter, 
-  User, 
+import {
+  ClipboardCheck,
+  CheckCircle,
+  XCircle,
+  Loader2,
+  Trash2,
+  Search,
+  Filter,
+  User,
   AlertCircle,
   PlayCircle,
   FileText,
@@ -35,7 +35,7 @@ export default function ReviewMaterialsPage() {
   // Modals States
   const [rejectItem, setRejectItem] = useState<any>(null);
   const [rejectReason, setRejectReason] = useState("");
-  
+
   const [deleteItem, setDeleteItem] = useState<any>(null);
 
   const fetchMaterials = async () => {
@@ -52,6 +52,20 @@ export default function ReviewMaterialsPage() {
     }
   };
 
+  // The function to remove the dot
+  const handleClearCardDot = async (materialId: string) => {
+    try {
+      const token = localStorage.getItem("token");
+      await axios.put(`http://localhost:5000/api/materials/admin/${materialId}/clear-dot`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      // Removing the dot from the local state immediately.
+      setMaterials(prev => prev.map(m => m._id === materialId ? { ...m, isNewForTable: false } : m));
+    } catch (error) {
+      console.error("Error clearing dot:", error);
+    }
+  };
+
   useEffect(() => {
     fetchMaterials();
   }, []);
@@ -59,13 +73,13 @@ export default function ReviewMaterialsPage() {
   const handleStatusUpdate = async (id: string, newStatus: string, reason: string = "") => {
     try {
       const token = localStorage.getItem("token");
-      await axios.put(`http://localhost:5000/api/materials/admin/${id}/status`, 
+      await axios.put(`http://localhost:5000/api/materials/admin/${id}/status`,
         { status: newStatus, rejectReason: reason },
         { headers: { Authorization: `Bearer ${token}` } }
       );
       setRejectItem(null);
       setRejectReason("");
-      fetchMaterials(); 
+      fetchMaterials();
     } catch (err) {
       alert("An error occurred while updating the status.");
     }
@@ -88,8 +102,8 @@ export default function ReviewMaterialsPage() {
   // 1. Data Filter
   const filteredMaterials = useMemo(() => {
     return materials.filter(m => {
-      const matchesSearch = m.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                            m.teacherId?.name?.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesSearch = m.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        m.teacherId?.name?.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesStatus = filterStatus === "all" || m.status === filterStatus;
       return matchesSearch && matchesStatus;
     });
@@ -112,11 +126,11 @@ export default function ReviewMaterialsPage() {
 
   return (
     <div className={`p-3 sm:p-5 lg:p-6 min-h-screen transition-colors duration-300 font-sans ${darkMode ? "bg-slate-950" : "bg-slate-50/80"}`}>
-      
+
       {/* Delete Confirmation Modal */}
-      <DeleteConfirmPopup 
-        isOpen={!!deleteItem} 
-        onClose={() => setDeleteItem(null)} 
+      <DeleteConfirmPopup
+        isOpen={!!deleteItem}
+        onClose={() => setDeleteItem(null)}
         onConfirm={handleDelete}
         title="Delete Material"
         itemName={deleteItem?.title}
@@ -164,24 +178,22 @@ export default function ReviewMaterialsPage() {
           <div className="flex flex-col sm:flex-row items-center gap-2 w-full md:w-auto">
             <div className="relative w-full md:w-64">
               <Search className={`absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 ${darkMode ? "text-slate-500" : "text-slate-400"}`} />
-              <input 
-                type="text" 
-                placeholder="Search title or teacher..." 
+              <input
+                type="text"
+                placeholder="Search title or teacher..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className={`w-full pl-9 pr-3 py-2 rounded-xl border text-xs font-medium transition-all focus:outline-none focus:ring-2 focus:ring-indigo-500/50 ${
-                  darkMode ? "bg-slate-900 border-slate-800 text-slate-200 placeholder-slate-500" : "bg-white border-slate-200 text-slate-800 placeholder-slate-400 shadow-sm"
-                }`}
+                className={`w-full pl-9 pr-3 py-2 rounded-xl border text-xs font-medium transition-all focus:outline-none focus:ring-2 focus:ring-indigo-500/50 ${darkMode ? "bg-slate-900 border-slate-800 text-slate-200 placeholder-slate-500" : "bg-white border-slate-200 text-slate-800 placeholder-slate-400 shadow-sm"
+                  }`}
               />
             </div>
             <div className="relative w-full sm:w-auto">
               <Filter className={`absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 ${darkMode ? "text-slate-500" : "text-slate-400"}`} />
-              <select 
+              <select
                 value={filterStatus}
                 onChange={(e) => setFilterStatus(e.target.value)}
-                className={`w-full pl-9 pr-7 py-2 rounded-xl border font-semibold text-xs outline-none transition-all appearance-none cursor-pointer ${
-                  darkMode ? "bg-slate-900 border-slate-800 text-slate-200 focus:ring-2 focus:ring-indigo-500/50" : "bg-white border-slate-200 text-slate-700 shadow-sm focus:ring-2 focus:ring-indigo-500/50"
-                }`}
+                className={`w-full pl-9 pr-7 py-2 rounded-xl border font-semibold text-xs outline-none transition-all appearance-none cursor-pointer ${darkMode ? "bg-slate-900 border-slate-800 text-slate-200 focus:ring-2 focus:ring-indigo-500/50" : "bg-white border-slate-200 text-slate-700 shadow-sm focus:ring-2 focus:ring-indigo-500/50"
+                  }`}
               >
                 <option value="all">All Status</option>
                 <option value="pending">Pending</option>
@@ -212,15 +224,15 @@ export default function ReviewMaterialsPage() {
           <div className="space-y-4">
             {Object.values(groupedMaterials).map((group: any) => (
               <div key={group.teacherInfo._id} className={`rounded-xl border p-3 sm:p-4 transition-all shadow-sm ${darkMode ? "bg-slate-900/80 border-slate-800" : "bg-white border-slate-200"}`}>
-                
+
                 {/* Teacher Header Bar */}
                 <div className="flex items-center justify-between pb-2.5 mb-3 border-b border-slate-100 dark:border-slate-800/80">
                   <div className="flex items-center gap-2.5">
                     <div className={`w-8 h-8 rounded-full overflow-hidden flex items-center justify-center border shadow-sm ${darkMode ? "border-slate-700 bg-slate-800" : "border-white bg-slate-200"}`}>
                       {group.teacherInfo.profilePhoto ? (
-                        <img 
-                          src={`http://localhost:5000/profile_photos/${group.teacherInfo.profilePhoto}`} 
-                          alt={group.teacherInfo.name} 
+                        <img
+                          src={`http://localhost:5000/profile_photos/${group.teacherInfo.profilePhoto}`}
+                          alt={group.teacherInfo.name}
                           className="w-full h-full object-cover"
                         />
                       ) : (
@@ -243,30 +255,41 @@ export default function ReviewMaterialsPage() {
                   </div>
                 </div>
 
-                {/* Compact Grid Cards (කාඩ්පත් පළල මදක් වැඩි කර ඇත: lg:grid-cols-3 xl:grid-cols-4) */}
+                {/* Compact Grid Cards */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3.5">
                   {group.items.map((m: any) => (
-                    <div 
-                      key={m._id} 
-                      className={`group flex flex-col justify-between rounded-xl border p-3.5 transition-all hover:shadow-md ${
-                        darkMode ? "bg-slate-950/60 border-slate-800 hover:border-slate-700" : "bg-slate-50/70 border-slate-200/80 hover:bg-white hover:border-slate-300"
-                      }`}
+                    <div
+                      key={m._id}
+                      onClick={() => m.isNewForTable && handleClearCardDot(m._id)}
+                      className={`group flex flex-col justify-between rounded-xl border p-3.5 transition-all hover:shadow-md relative ${
+                        // If it is a new material, apply a red background.
+                        m.isNewForTable ? (darkMode ? "bg-red-950/20 border-red-900/50 cursor-pointer" : "bg-red-50/50 border-red-200 cursor-pointer") : ""
+                        } ${!m.isNewForTable && darkMode ? "bg-slate-950/60 border-slate-800 hover:border-slate-700" : ""
+                        } ${!m.isNewForTable && !darkMode ? "bg-slate-50/70 border-slate-200/80 hover:bg-white hover:border-slate-300" : ""
+                        }`}
                     >
+
+                      {/* The red dot (with a pulse animation, located at the top right corner of the card) */}
+                      {m.isNewForTable && (
+                        <span className="absolute -top-1.5 -right-1.5 flex h-4 w-4 z-10" title="New Material">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                          <span className="relative inline-flex rounded-full h-4 w-4 bg-red-500 shadow-sm border-2 border-white dark:border-slate-900"></span>
+                        </span>
+                      )}
                       <div className="space-y-2">
                         {/* Thumbnail / Media Preview with Cover Image Support */}
-                        <a 
-                          href={`http://localhost:5000${m.fileUrl}`} 
-                          target="_blank" 
-                          rel="noopener noreferrer" 
+                        <a
+                          href={`http://localhost:5000${m.fileUrl}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
                           title="Click to view full screen"
-                          className={`relative aspect-video w-full rounded-lg overflow-hidden border block transition-transform group-hover:scale-[1.01] shadow-sm ${
-                            darkMode ? "border-slate-800 bg-slate-900" : "border-slate-200 bg-slate-100"
-                          }`}
+                          className={`relative aspect-video w-full rounded-lg overflow-hidden border block transition-transform group-hover:scale-[1.01] shadow-sm ${darkMode ? "border-slate-800 bg-slate-900" : "border-slate-200 bg-slate-100"
+                            }`}
                         >
                           {m.type === 'video' ? (
                             <>
-                              <video 
-                                src={`http://localhost:5000${m.fileUrl}#t=0.1`} 
+                              <video
+                                src={`http://localhost:5000${m.fileUrl}#t=0.1`}
                                 className="w-full h-full object-cover"
                                 preload="metadata"
                                 muted
@@ -281,10 +304,10 @@ export default function ReviewMaterialsPage() {
                             </>
                           ) : m.coverImage ? (
                             <>
-                              <img 
-                                src={`http://localhost:5000${m.coverImage}`} 
-                                alt={m.title} 
-                                className="w-full h-full object-cover" 
+                              <img
+                                src={`http://localhost:5000${m.coverImage}`}
+                                alt={m.title}
+                                className="w-full h-full object-cover"
                               />
                               <span className="absolute top-1 right-1 bg-black/60 backdrop-blur-sm text-white text-[8px] px-1.5 py-0.5 rounded font-bold uppercase">
                                 {m.type}
@@ -310,11 +333,10 @@ export default function ReviewMaterialsPage() {
                         </h4>
 
                         <div className="flex flex-wrap items-center gap-1">
-                          <span className={`text-[9px] uppercase font-bold px-1.5 py-0.5 rounded border ${
-                            m.type === 'video' ? darkMode ? "bg-indigo-500/10 text-indigo-400 border-indigo-500/20" : "bg-indigo-50 text-indigo-700 border-indigo-200"
-                            : m.type === 'pdf' ? darkMode ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" : "bg-emerald-50 text-emerald-700 border-emerald-200"
-                            : darkMode ? "bg-blue-500/10 text-blue-400 border-blue-500/20" : "bg-blue-50 text-blue-700 border-blue-200"
-                          }`}>
+                          <span className={`text-[9px] uppercase font-bold px-1.5 py-0.5 rounded border ${m.type === 'video' ? darkMode ? "bg-indigo-500/10 text-indigo-400 border-indigo-500/20" : "bg-indigo-50 text-indigo-700 border-indigo-200"
+                              : m.type === 'pdf' ? darkMode ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" : "bg-emerald-50 text-emerald-700 border-emerald-200"
+                                : darkMode ? "bg-blue-500/10 text-blue-400 border-blue-500/20" : "bg-blue-50 text-blue-700 border-blue-200"
+                            }`}>
                             {m.type}
                           </span>
                           <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded border ${darkMode ? "bg-slate-800 text-slate-300 border-slate-700" : "bg-white text-slate-600 border-slate-200"}`}>
@@ -327,11 +349,10 @@ export default function ReviewMaterialsPage() {
                           )}
                         </div>
 
-                        {/* Description සමඟ Scroll එකක් එකතු කර ඇත (Max Height: 24) */}
+                        {/* A scroll has been added along with the description. (Max Height: 24) */}
                         {m.description && (
-                          <div className={`mt-2 p-2 rounded-lg border text-[11px] font-normal leading-relaxed max-h-24 overflow-y-auto scrollbar-thin ${
-                            darkMode ? "bg-slate-900/90 border-slate-800 text-slate-300 scrollbar-thumb-slate-700" : "bg-white border-slate-200/70 text-slate-700 scrollbar-thumb-slate-300"
-                          }`}>
+                          <div className={`mt-2 p-2 rounded-lg border text-[11px] font-normal leading-relaxed max-h-24 overflow-y-auto scrollbar-thin ${darkMode ? "bg-slate-900/90 border-slate-800 text-slate-300 scrollbar-thumb-slate-700" : "bg-white border-slate-200/70 text-slate-700 scrollbar-thumb-slate-300"
+                            }`}>
                             <p className="whitespace-pre-wrap break-words">{m.description}</p>
                           </div>
                         )}
