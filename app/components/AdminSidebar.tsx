@@ -34,6 +34,7 @@ export default function AdminSidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const { darkMode, toggleDarkMode } = useTheme();
+  const [newStudentCount, setNewStudentCount] = useState(0);
   
   // Notifications States
   const [adminNotifications, setAdminNotifications] = useState<any[]>([]);
@@ -49,6 +50,20 @@ export default function AdminSidebar() {
     router.push("/login");
   };
 
+  const handleNavClick = async (path: string) => {
+  if (path === "/admin/student/student_view" && newStudentCount > 0) {
+    try {
+      const token = localStorage.getItem("token");
+      await axios.put("http://localhost:5000/api/admin/students/clear-sidebar", {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setNewStudentCount(0); // Badge එක බිංදුව කරන්න
+    } catch (error) {
+      console.error(error);
+    }
+  }
+};
+
   // Socket.io සහ Notifications Logic
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -58,8 +73,13 @@ export default function AdminSidebar() {
       axios.get("http://localhost:5000/api/notifications/admin", {
         headers: { Authorization: `Bearer ${token}` }
       }).then(res => setAdminNotifications(res.data)).catch(console.error);
+   
+      // 2. getting the number of new students
+      axios.get("http://localhost:5000/api/admin/students/new-count", {
+      headers: { Authorization: `Bearer ${token}` }
+    }).then(res => setNewStudentCount(res.data.count)).catch(console.error);
 
-      // 2. Socket Connect කිරීම සහ admin_room එකට එක් වීම
+      // 3. Socket Connect කිරීම සහ admin_room එකට එක් වීම
       const socket = io("http://localhost:5000");
       socket.emit("join_admin_room");
 
@@ -220,57 +240,52 @@ export default function AdminSidebar() {
         </div>
 
         {navItems.map((item) => {
-          const isActive = pathname === item.path;
-          const Icon = item.icon;
-          return (
-            <Link href={item.path} key={item.path} title={item.name}>
-              <div
-                className={`group flex items-center rounded-2xl px-3 py-2.5 text-sm font-medium transition-all duration-300 ease-in-out border backdrop-blur-sm ${
-                  isCollapsed ? "justify-center px-0" : "gap-3"
-                } ${
-                  isActive
-                    ? darkMode
-                      ? "bg-blue-600/30 text-blue-300 border-blue-500/40 shadow-md shadow-blue-500/10 -translate-y-0.5"
-                      : "bg-blue-50/80 text-blue-700 border-blue-200/70 shadow-md shadow-blue-100/60 -translate-y-0.5"
-                    : darkMode
-                    ? "text-slate-400 bg-slate-900/10 border-slate-800/30 hover:bg-slate-800/40 hover:text-white hover:-translate-y-0.5"
-                    : "text-slate-600 bg-white/30 border-slate-200/30 hover:bg-white/60 hover:text-slate-900 hover:-translate-y-0.5"
-                }`}
-              >
-                <Icon
-                  size={18}
-                  className={`transition-transform duration-300 shrink-0 ${
-                    isActive ? "scale-110" : "group-hover:scale-110"
-                  } ${
-                    isActive
-                      ? darkMode
-                        ? "text-blue-400"
-                        : "text-blue-600"
-                      : darkMode
-                      ? "text-slate-500"
-                      : "text-slate-400"
-                  }`}
-                />
+  const isActive = pathname === item.path;
+  const Icon = item.icon;
+  return (
+    <Link 
+      href={item.path} 
+      key={item.path} 
+      title={item.name}
+      onClick={() => handleNavClick(item.path)}
+    >
+      <div
+        className={`group flex items-center rounded-2xl px-3 py-2.5 text-sm font-medium transition-all duration-300 ease-in-out border backdrop-blur-sm relative ${ // relative එකතු කලා
+          isCollapsed ? "justify-center px-0" : "gap-3"
+        } ${
+          isActive
+            ? darkMode
+              ? "bg-blue-600/30 text-blue-300 border-blue-500/40 shadow-md shadow-blue-500/10 -translate-y-0.5"
+              : "bg-blue-50/80 text-blue-700 border-blue-200/70 shadow-md shadow-blue-100/60 -translate-y-0.5"
+            : darkMode
+            ? "text-slate-400 bg-slate-900/10 border-slate-800/30 hover:bg-slate-800/40 hover:text-white hover:-translate-y-0.5"
+            : "text-slate-600 bg-white/30 border-slate-200/30 hover:bg-white/60 hover:text-slate-900 hover:-translate-y-0.5"
+        }`}
+      >
+        {/* Displaying the icon and name */}
+        <Icon size={18} className="..." />
+        <span className="...">{item.name}</span>
 
-                <span
-                  className={`truncate transition-all duration-300 ${
-                    isCollapsed ? "w-0 opacity-0 overflow-hidden hidden" : "w-auto opacity-100"
-                  }`}
-                >
-                  {item.name}
-                </span>
+        {/* Red badge for the 'Students' tab (when the sidebar is expanded) */}
+        {item.name === "Students" && newStudentCount > 0 && !isCollapsed && (
+          <span className="ml-auto flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white shadow-sm">
+            {newStudentCount}
+          </span>
+        )}
 
-                {isActive && !isCollapsed && (
-                  <span
-                    className={`ml-auto h-1.5 w-1.5 rounded-full transition-all duration-300 ${
-                      darkMode ? "bg-blue-400" : "bg-blue-600"
-                    }`}
-                  />
-                )}
-              </div>
-            </Link>
-          );
-        })}
+        {/* Red dot for the 'Students' tab (when the sidebar is collapsed) */}
+        {item.name === "Students" && newStudentCount > 0 && isCollapsed && (
+          <span className="absolute top-2 right-2 h-2.5 w-2.5 rounded-full bg-red-500 border-2 border-white dark:border-slate-900" />
+        )}
+
+        {/* Active dot */}
+        {isActive && !isCollapsed && item.name !== "Students" && (
+          <span className={`ml-auto h-1.5 w-1.5 rounded-full transition-all duration-300 ${darkMode ? "bg-blue-400" : "bg-blue-600"}`} />
+        )}
+      </div>
+    </Link>
+  );
+})}
       </nav>
 
       {/* Footer: Notifications, Theme Toggle & Logout */}

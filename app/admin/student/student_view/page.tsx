@@ -1,10 +1,11 @@
+//src/app/admin/student/student_view/page.tsx
 "use client";
 
 import { useEffect, useState } from "react";
 import axios from "axios";
 import { Search, User, Mail, Phone, GraduationCap, Building, Calendar, Loader2, MoreVertical, Globe, Clock, BookOpen, Users } from "lucide-react";
 
-// නව ක්ෂේත්‍ර සමඟ Student Interface එක යාවත්කාලීන කිරීම
+// Student Interface
 interface Student {
   _id: string;
   name: string;
@@ -21,6 +22,7 @@ interface Student {
   medium?: string;
   parentName?: string;
   parentPhone?: string;
+  isNewForTable?: boolean;
 }
 
 export default function AdminStudentView() {
@@ -36,26 +38,42 @@ export default function AdminStudentView() {
   const fetchStudents = async () => {
     try {
       const token = localStorage.getItem("token");
-      // Admin සඳහා සියලු සිසුන් ලබාගැනීමේ API එක
       const res = await axios.get("http://localhost:5000/api/admin/students", {
         headers: { Authorization: `Bearer ${token}` }
       });
       setStudents(res.data);
     } catch (err: any) {
       console.error(err);
-      setError("සිසුන්ගේ තොරතුරු ලබාගැනීමේදී දෝෂයක් මතු විය.");
+      setError("An error occurred while retrieving student information.");
     } finally {
       setLoading(false);
     }
   };
 
-  // Search Filter එක
+  const handleClearRowDot = async (studentId: string) => {
+  try {
+    const token = localStorage.getItem("token");
+    await axios.put(`http://localhost:5000/api/admin/students/${studentId}/clear-dot`, {}, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    // Updating the local state upon success (so the dot disappears from the UI immediately).
+    setStudents(prevStudents => 
+      prevStudents.map(student => 
+        student._id === studentId ? { ...student, isNewForTable: false } : student
+      )
+    );
+  } catch (error) {
+    console.error("Error clearing dot:", error);
+  }
+};
+
+  // Search Filter
   const filteredStudents = students.filter(student => 
     student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     student.email.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // Profile Image URL සැකසීම
+  // Setting the Profile Image URL
   const getProfileImageUrl = (url: string) => {
     if (!url) return null;
     if (url.startsWith("http")) return url;
@@ -121,11 +139,24 @@ export default function AdminStudentView() {
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                 {filteredStudents.length > 0 ? (
                   filteredStudents.map((student) => (
-                    <tr key={student._id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors group">
+                    <tr 
+        key={student._id} 
+        onClick={() => student.isNewForTable && handleClearRowDot(student._id)} // 👈 අලුතින් එකතු කලා
+        className={`hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors group ${student.isNewForTable ? "cursor-pointer bg-red-50/30 dark:bg-red-900/10" : ""}`}
+      >
                       
                       {/* Name & Image */}
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center gap-4">
+                          {student.isNewForTable && (
+              <span 
+                className="absolute -left-3 top-1/2 -translate-y-1/2 flex h-3 w-3"
+                title="New Student"
+              >
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500 shadow-sm"></span>
+              </span>
+            )}
                           <div className="w-10 h-10 rounded-full overflow-hidden bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex flex-shrink-0 items-center justify-center">
                             {student.profileImage ? (
                               <img src={getProfileImageUrl(student.profileImage) || ""} alt={student.name} className="w-full h-full object-cover" />
@@ -219,7 +250,7 @@ export default function AdminStudentView() {
                     <td colSpan={6} className="px-6 py-12 text-center text-slate-500 dark:text-slate-400">
                       <div className="flex flex-col items-center gap-2">
                         <User size={32} className="text-slate-300 dark:text-slate-600" />
-                        <p>කිසිදු සිසුවෙකු හමු නොවීය.</p>
+                        <p>No student was found.</p>
                       </div>
                     </td>
                   </tr>
