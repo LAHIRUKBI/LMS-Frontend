@@ -193,13 +193,14 @@ export default function AdminSidebar() {
     { name: "Class view", path: "/admin/materials/class_view", icon: School },
     { name: "Create Add", path: "/admin/Add/create_add", icon: School },
     { name: "View Add", path: "/admin/Add/view_add", icon: School },
+    { name: "View Add", path: "/admin/swp", icon: School },
   ];
 
   const notifDropdownRef = useRef<HTMLDivElement>(null);
 
   return (
     <aside
-      className={`fixed left-3 top-3 bottom-3 flex flex-col transition-all duration-300 ease-in-out z-45 shadow-2xl rounded-3xl overflow-visible backdrop-blur-2xl ${
+      className={`fixed left-6 top-3 bottom-3 flex flex-col transition-all duration-300 ease-in-out z-45 shadow-2xl rounded-3xl overflow-visible backdrop-blur-2xl ${
         darkMode 
           ? "bg-[#0F172A]/60 border border-slate-700/40 shadow-black/50" 
           : "bg-white/50 border border-white/80 shadow-indigo-500/10"
@@ -269,15 +270,7 @@ export default function AdminSidebar() {
       </div>
 
       {/* Nav Items */}
-      <nav className="flex-1 space-y-1.5 overflow-y-auto px-2.5 pt-1 scrollbar-thin">
-        <div
-          className={`px-2 font-bold uppercase tracking-wider transition-all duration-300 ${
-            darkMode ? "text-slate-500" : "text-slate-400"
-          } ${isCollapsed ? "text-[8px] text-center opacity-0 h-0 overflow-hidden" : "text-[9px] opacity-100"}`}
-        >
-          Main Menu
-        </div>
-
+      <nav className="flex-1 space-y-1.0 overflow-y-auto px-2.5 pt-1 scrollbar-thin">
         {navItems.map((item) => {
   const isActive = pathname === item.path;
   const Icon = item.icon;
