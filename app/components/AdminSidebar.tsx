@@ -36,6 +36,7 @@ export default function AdminSidebar() {
   const { darkMode, toggleDarkMode } = useTheme();
   const [newStudentCount, setNewStudentCount] = useState(0);
   const [newMaterialCount, setNewMaterialCount] = useState(0);
+  const [newQuizCount, setNewQuizCount] = useState(0);
   
   // Notifications States
   const [adminNotifications, setAdminNotifications] = useState<any[]>([]);
@@ -63,6 +64,19 @@ export default function AdminSidebar() {
       console.error(error);
     }
   }
+  // Quiz logic
+  if (path === "/admin/materials/quize_view" && newQuizCount > 0) {
+    try {
+      const token = localStorage.getItem("token");
+      await axios.put("http://localhost:5000/api/quiz/admin/clear-sidebar", {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setNewQuizCount(0);
+    } catch (error) {
+      console.error(error);
+    }
+  }
+
   // Material logic
   if (path === "/admin/materials/review" && newMaterialCount > 0) {
     try {
@@ -96,6 +110,11 @@ export default function AdminSidebar() {
       axios.get("http://localhost:5000/api/materials/admin/new-count", {
       headers: { Authorization: `Bearer ${token}` }
     }).then(res => setNewMaterialCount(res.data.count)).catch(console.error);
+
+    // getting the number of new Quiz Count
+    axios.get("http://localhost:5000/api/quiz/admin/new-count", {
+      headers: { Authorization: `Bearer ${token}` }
+    }).then(res => setNewQuizCount(res.data.count)).catch(console.error);
 
       // 4. Socket Connect කිරීම සහ admin_room එකට එක් වීම
       const socket = io("http://localhost:5000");
@@ -290,11 +309,21 @@ export default function AdminSidebar() {
         </span>
         )}
 
+        {item.name === "Review Quiz" && newQuizCount > 0 && !isCollapsed && (
+  <span className="ml-auto flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white shadow-sm">
+    {newQuizCount}
+  </span>
+)}
+
         {/* Red badge for the 'Students' tab (when the sidebar is expanded) */}
         {/* Newly added element: The dot for the 'Review Materials' tab (when collapsed) */}
         {item.name === "Review Materials" && newMaterialCount > 0 && isCollapsed && (
           <span className="absolute top-2 right-2 h-2.5 w-2.5 rounded-full bg-red-500 border-2 border-white dark:border-slate-900" />
         )}
+
+        {item.name === "Review Quiz" && newQuizCount > 0 && isCollapsed && (
+  <span className="absolute top-2 right-2 h-2.5 w-2.5 rounded-full bg-red-500 border-2 border-white dark:border-slate-900" />
+)}
 
         {item.name === "Students" && newStudentCount > 0 && !isCollapsed && (
           <span className="ml-auto flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white shadow-sm">
