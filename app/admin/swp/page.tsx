@@ -2,7 +2,21 @@
 
 import { useEffect, useState } from "react";
 import axios from "axios";
-import { Loader2, Save, CheckCircle, Plus, Trash2, Upload, Image as ImageIcon, AlertCircle } from "lucide-react";
+import { Loader2, Save, CheckCircle, Plus, Trash2, Upload, Image as ImageIcon, AlertCircle, Share2 } from "lucide-react";
+
+const POPULAR_SOCIAL_PLATFORMS = [
+  "Facebook",
+  "YouTube",
+  "Instagram",
+  "TikTok",
+  "WhatsApp",
+  "X (Twitter)",
+  "LinkedIn",
+  "Snapchat",
+  "Telegram",
+  "Pinterest",
+  "Threads"
+];
 
 export default function AdminDashboardSettings() {
   const [loading, setLoading] = useState(true);
@@ -20,12 +34,12 @@ export default function AdminDashboardSettings() {
     secondaryBtnText: "",
     heroImages: [] as { id: number; image: string; title: string }[],
     galleryItems: [] as { image: string; text: string }[],
+    socialLinks: [] as { platform: string; url: string }[],
   });
 
   const [heroFiles, setHeroFiles] = useState<Record<number, File>>({});
   const [galleryFiles, setGalleryFiles] = useState<Record<number, File>>({});
 
-  // නිවැරදි UI සීමාවන්: Hero Carousel සඳහා උපරිම 3 ක් සහ Gallery සඳහා උපරිම 5 ක්
   const MAX_HERO_IMAGES = 3;
   const MAX_GALLERY_ITEMS = 5;
 
@@ -130,6 +144,25 @@ export default function AdminDashboardSettings() {
       delete updated[index];
       return updated;
     });
+  };
+
+  // --- Social Media Handlers ---
+  const handleSocialChange = (index: number, field: string, value: string) => {
+    const updatedSocial = [...settings.socialLinks];
+    updatedSocial[index] = { ...updatedSocial[index], [field]: value };
+    setSettings(prev => ({ ...prev, socialLinks: updatedSocial }));
+  };
+
+  const addSocialLink = () => {
+    setSettings(prev => ({
+      ...prev,
+      socialLinks: [...prev.socialLinks, { platform: POPULAR_SOCIAL_PLATFORMS[0], url: "" }]
+    }));
+  };
+
+  const removeSocialLink = (index: number) => {
+    const updatedSocial = settings.socialLinks.filter((_, idx) => idx !== index);
+    setSettings(prev => ({ ...prev, socialLinks: updatedSocial }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -281,6 +314,68 @@ export default function AdminDashboardSettings() {
                 className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-sm focus:border-orange-500 outline-none resize-none"
               />
             </div>
+          </div>
+
+          {/* Social Media Links Settings */}
+          <div className="bg-slate-800/50 p-6 rounded-3xl border border-slate-700/50 space-y-6">
+            <div className="flex justify-between items-center">
+              <div>
+                <h2 className="text-xl font-bold text-orange-400 flex items-center gap-2">
+                  <Share2 size={20} /> Social Media Links
+                </h2>
+                <p className="text-xs text-slate-400 mt-0.5">Add social media accounts to display under the hero left content</p>
+              </div>
+              <button 
+                type="button"
+                onClick={addSocialLink}
+                className="bg-teal-500/20 text-teal-400 hover:bg-teal-500 hover:text-white px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer"
+              >
+                <Plus size={16} /> Add Social Link
+              </button>
+            </div>
+
+            {settings.socialLinks?.length === 0 ? (
+              <p className="text-slate-500 text-sm italic">No social media links added yet.</p>
+            ) : (
+              settings.socialLinks.map((social, idx) => (
+                <div key={idx} className="grid grid-cols-1 md:grid-cols-12 gap-4 p-4 bg-slate-900 rounded-2xl border border-slate-700 items-center">
+                  <div className="md:col-span-5">
+                    <label className="block text-xs text-slate-400 mb-1">Platform</label>
+                    <select
+                      value={social.platform}
+                      onChange={(e) => handleSocialChange(idx, "platform", e.target.value)}
+                      className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs outline-none focus:border-teal-500 text-white"
+                    >
+                      {POPULAR_SOCIAL_PLATFORMS.map((plat) => (
+                        <option key={plat} value={plat}>{plat}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="md:col-span-6">
+                    <label className="block text-xs text-slate-400 mb-1">Profile / Page URL</label>
+                    <input 
+                      type="text" 
+                      value={social.url} 
+                      onChange={(e) => handleSocialChange(idx, "url", e.target.value)}
+                      placeholder="https://facebook.com/yourprofile"
+                      className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs outline-none focus:border-teal-500"
+                    />
+                  </div>
+
+                  <div className="md:col-span-1 flex justify-end">
+                    <button 
+                      type="button"
+                      onClick={() => removeSocialLink(idx)}
+                      className="bg-rose-500/20 text-rose-400 hover:bg-rose-500 hover:text-white p-2.5 rounded-xl transition-all cursor-pointer"
+                      title="Remove Item"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
 
           {/* Hero Images Settings (Max 3) */}
