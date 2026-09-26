@@ -3,7 +3,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { CheckCircle, Clock, Globe, FileText, Trash2, AlertCircle, Image as ImageIcon, X, Check, Eye, User, CheckSquare, Calculator } from "lucide-react";
+import { CheckCircle, Clock, Globe, FileText, Trash2, AlertCircle, Image as ImageIcon, X, Check, Eye, User, CheckSquare, Calculator, Calendar } from "lucide-react";
 import { useTheme } from "@/app/context/ThemeContext";
 import axios from "axios";
 
@@ -17,6 +17,15 @@ interface Question {
   marks: number;
 }
 
+interface ClassSchedule {
+  classId: any;
+  publishType: "now" | "schedule";
+  startDate?: string;
+  startTime?: string;
+  endDate?: string;
+  endTime?: string;
+}
+
 interface QuizItem {
   _id: string;
   title: string;
@@ -26,6 +35,7 @@ interface QuizItem {
   rejectReason?: string;
   isPublished: boolean;
   classIds?: any[];
+  classSchedules?: ClassSchedule[];
   questions: Question[];
   createdAt: string;
 }
@@ -42,12 +52,16 @@ export default function TeacherMyQuizzesPage() {
   const [selectedQuizForPublish, setSelectedQuizForPublish] = useState<QuizItem | null>(null);
   const [teacherClasses, setTeacherClasses] = useState<any[]>([]);
   const [selectedClassIds, setSelectedClassIds] = useState<string[]>([]);
+  
+  const [publishModes, setPublishModes] = useState<{ [classId: string]: "now" | "schedule" }>({});
+  const [classScheduleData, setClassScheduleData] = useState<{ 
+    [classId: string]: { startDate: string; startTime: string; endDate: string; endTime: string } 
+  }>({});
 
   const [submissionsModalOpen, setSubmissionsModalOpen] = useState(false);
   const [selectedQuizSubmissions, setSelectedQuizSubmissions] = useState<any[]>([]);
   const [selectedQuizDetails, setSelectedQuizDetails] = useState<any>(null);
   const [essayMarksInput, setEssayMarksInput] = useState<{ [key: string]: { [qId: string]: number } }>({});
-  
   const [checkedPapers, setCheckedPapers] = useState<{ [subId: string]: boolean }>({});
 
   const fetchMyQuizzes = async () => {
@@ -83,7 +97,25 @@ export default function TeacherMyQuizzesPage() {
 
   const openPublishModal = (quiz: QuizItem) => {
     setSelectedQuizForPublish(quiz);
-    setSelectedClassIds(quiz.classIds ? quiz.classIds.map((c: any) => c._id || c) : []);
+    const existingIds = quiz.classIds ? quiz.classIds.map((c: any) => c._id || c) : [];
+    setSelectedClassIds(existingIds);
+
+    const modes: { [key: string]: "now" | "schedule" } = {};
+    const schedules: any = {};
+    
+    quiz.classSchedules?.forEach((sch) => {
+      const cId = sch.classId?._id || sch.classId;
+      modes[cId] = sch.publishType || "now";
+      schedules[cId] = {
+        startDate: sch.startDate ? sch.startDate.split('T')[0] : "",
+        startTime: sch.startTime || "",
+        endDate: sch.endDate ? sch.endDate.split('T')[0] : "",
+        endTime: sch.endTime || ""
+      };
+    });
+
+    setPublishModes(modes);
+    setClassScheduleData(schedules);
     setPublishModalOpen(true);
   };
 
@@ -91,8 +123,19 @@ export default function TeacherMyQuizzesPage() {
     if (!selectedQuizForPublish) return;
     try {
       const token = localStorage.getItem("token");
+      
+      const formattedSchedules = selectedClassIds.map(cId => ({
+        classId: cId,
+        publishType: publishModes[cId] || "now",
+        startDate: classScheduleData[cId]?.startDate || null,
+        startTime: classScheduleData[cId]?.startTime || null,
+        endDate: classScheduleData[cId]?.endDate || null,
+        endTime: classScheduleData[cId]?.endTime || null,
+      }));
+
       const res = await axios.put(`http://localhost:5000/api/quiz/${selectedQuizForPublish._id}/publish`, {
-        classIds: selectedClassIds
+        classIds: selectedClassIds,
+        classSchedules: formattedSchedules
       }, {
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -111,7 +154,8 @@ export default function TeacherMyQuizzesPage() {
     try {
       const token = localStorage.getItem("token");
       const res = await axios.put(`http://localhost:5000/api/quiz/${id}/publish`, {
-        classIds: []
+        classIds: [],
+        classSchedules: []
       }, {
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -124,11 +168,42 @@ export default function TeacherMyQuizzesPage() {
     }
   };
 
+  // එක් එක් පන්තිය සඳහා වෙනම remove/delete කිරීමේ පහසුකම
+  const handleRemoveClassFromQuiz = async (quiz: QuizItem, classIdToRemove: string) => {
+    try {
+      const token = localStorage.getItem("token");
+      const updatedClassIds = (quiz.classIds || [])
+        .map((c: any) => c._id || c)
+        .filter((id: string) => id !== classIdToRemove);
+
+      const updatedSchedules = (quiz.classSchedules || []).filter((sch: any) => {
+        const cId = sch.classId?._id || sch.classId;
+        return cId !== classIdToRemove;
+      });
+
+      const res = await axios.put(`http://localhost:5000/api/quiz/${quiz._id}/publish`, {
+        classIds: updatedClassIds,
+        classSchedules: updatedSchedules
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      if (res.status === 200) {
+        fetchMyQuizzes();
+      }
+    } catch (err: any) {
+      console.error("Failed to remove class from quiz.");
+    }
+  };
+
   const toggleClassSelection = (classId: string) => {
     if (selectedClassIds.includes(classId)) {
       setSelectedClassIds(selectedClassIds.filter(id => id !== classId));
     } else {
       setSelectedClassIds([...selectedClassIds, classId]);
+      if (!publishModes[classId]) {
+        setPublishModes({ ...publishModes, [classId]: "now" });
+      }
     }
   };
 
@@ -167,7 +242,6 @@ export default function TeacherMyQuizzesPage() {
     }
   };
 
-  // Check MCQ බොත්තම එබූ විට ක්‍රියාත්මක වේ
   const handleCheckMCQ = (subId: string) => {
     setCheckedPapers({ ...checkedPapers, [subId]: true });
   };
@@ -182,7 +256,6 @@ export default function TeacherMyQuizzesPage() {
     });
   };
 
-  // Calculate & Finish (Save to DB)
   const calculateAndSaveMarks = async (subId: string) => {
     try {
       const token = localStorage.getItem("token");
@@ -231,7 +304,6 @@ export default function TeacherMyQuizzesPage() {
                 {selectedQuizSubmissions.map((sub) => {
                   const student = sub.studentId;
                   if (!student) return null;
-
                   const isChecked = checkedPapers[sub._id] || false;
                   const studentAnswers = sub.answers instanceof Map ? Object.fromEntries(sub.answers) : (sub.answers || {});
 
@@ -251,15 +323,11 @@ export default function TeacherMyQuizzesPage() {
                             <p className="text-[11px] text-slate-400">{student.email} • {sub.timeTaken}</p>
                           </div>
                         </div>
-
-                        <div className="flex items-center gap-3">
-                          <span className="px-3 py-1 rounded-full text-xs font-bold bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
-                            Total Score: {sub.score} / {sub.maxScore} Marks
-                          </span>
-                        </div>
+                        <span className="px-3 py-1 rounded-full text-xs font-bold bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+                          Total Score: {sub.score} / {sub.maxScore} Marks
+                        </span>
                       </div>
 
-                      {/* Check MCQ Button */}
                       {!isChecked ? (
                         <div className="my-3">
                           <button 
@@ -276,11 +344,8 @@ export default function TeacherMyQuizzesPage() {
                             const qId = q._id.toString();
                             const studentAns = String(studentAnswers[qId] || "No Answer Given").trim();
                             const correctAns = String(q.correctAnswer || "").trim();
-
-                            // පිළිතුරු නිවැරදිව සංසන්දනය කිරීම සඳහා මුල් අකුර හෝ ප්‍රධාන වචනය පරීක්ෂා කිරීම (උදා: 'B' හෝ 'RAM')
                             const studentFirstChar = studentAns.charAt(0).toLowerCase();
                             const correctFirstChar = correctAns.charAt(0).toLowerCase();
-                            
                             const cleanStudent = studentAns.toLowerCase().replace(/[^a-z0-9]/g, '');
                             const cleanCorrect = correctAns.toLowerCase().replace(/[^a-z0-9]/g, '');
 
@@ -303,16 +368,13 @@ export default function TeacherMyQuizzesPage() {
                                   ) : (
                                     <span className="text-slate-300 font-medium">Student Answer (Essay): {studentAns}</span>
                                   )}
-
                                   {q.type !== 'essay' && (
                                     <span className="text-emerald-400 font-bold">Teacher's Key: {q.correctAnswer}</span>
                                   )}
                                 </div>
-
-                                {/* Essay Evaluation Input */}
                                 {q.type === 'essay' && (
                                   <div className="mt-2 pt-2 border-t flex items-center gap-3">
-                                    <span className="font-bold text-[11px]">ᲒGive Essay Marks (Max {q.marks || 5}):</span>
+                                    <span className="font-bold text-[11px]">Give Essay Marks (Max {q.marks || 5}):</span>
                                     <input 
                                       type="number"
                                       max={q.marks || 5}
@@ -329,7 +391,6 @@ export default function TeacherMyQuizzesPage() {
                         </div>
                       )}
 
-                      {/* Calculate & Finish Button */}
                       <div className="mt-4 flex justify-end">
                         <button 
                           onClick={() => calculateAndSaveMarks(sub._id)}
@@ -347,44 +408,125 @@ export default function TeacherMyQuizzesPage() {
         </div>
       )}
 
-      {/* Class Selection Modal for Publishing */}
+      {/* Class Selection & Scheduling Modal for Publishing */}
       {publishModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className={`w-full max-w-lg p-6 rounded-3xl shadow-2xl border ${darkMode ? "bg-slate-900 border-slate-800 text-white" : "bg-white border-slate-200 text-slate-900"}`}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
+          <div className={`w-full max-w-2xl p-6 rounded-3xl shadow-2xl border max-h-[90vh] overflow-y-auto ${darkMode ? "bg-slate-900 border-slate-800 text-white" : "bg-white border-slate-200 text-slate-900"}`}>
             <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-extrabold">Select Classes to Publish Quiz</h3>
+              <h3 className="text-lg font-extrabold">Select Classes & Schedule Quiz Publication</h3>
               <button onClick={() => setPublishModalOpen(false)} className="p-1 rounded-lg text-slate-400 hover:bg-slate-500/10">
                 <X size={20} />
               </button>
             </div>
-            <p className="text-xs text-slate-400 mb-4">Choose one or more classes where this quiz should be published.</p>
+            <p className="text-xs text-slate-400 mb-4">Choose classes and select either "Publish Now" or configure a custom date-time schedule.</p>
 
             {teacherClasses.length === 0 ? (
               <p className="text-sm text-center py-6 text-slate-500">No classes found. Please create a class first.</p>
             ) : (
-              <div className="space-y-2 max-h-60 overflow-y-auto pr-1 mb-6">
+              <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-1 mb-6">
                 {teacherClasses.map((cls) => {
                   const isSelected = selectedClassIds.includes(cls._id);
+                  const mode = publishModes[cls._id] || "now";
+                  const sched = classScheduleData[cls._id] || { startDate: "", startTime: "", endDate: "", endTime: "" };
+
                   return (
                     <div 
                       key={cls._id}
-                      onClick={() => toggleClassSelection(cls._id)}
-                      className={`p-3.5 rounded-2xl border cursor-pointer flex items-center justify-between transition-all ${
+                      className={`p-4 rounded-2xl border transition-all ${
                         isSelected 
                           ? (darkMode ? "bg-indigo-500/10 border-indigo-500/50 text-white" : "bg-indigo-50 border-indigo-300 text-slate-900")
-                          : (darkMode ? "bg-slate-800/50 border-slate-800 text-slate-300" : "bg-slate-50 border-slate-200 text-slate-700")
+                          : (darkMode ? "bg-slate-800/50 border-slate-800 text-slate-400" : "bg-slate-50 border-slate-200 text-slate-600")
                       }`}
                     >
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="font-bold text-sm">{cls.grade}</span>
-                          <span className="text-xs opacity-70">({cls.medium} - {cls.mode})</span>
+                      <div className="flex items-center justify-between cursor-pointer" onClick={() => toggleClassSelection(cls._id)}>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-sm">Grade {cls.grade}</span>
+                            <span className="text-xs opacity-70">({cls.medium} - {cls.mode})</span>
+                          </div>
+                          <p className="text-xs opacity-60 mt-0.5">{cls.day} | {cls.startTime} - {cls.endTime}</p>
                         </div>
-                        <p className="text-xs opacity-60 mt-0.5">{cls.day} | {cls.startTime} - {cls.endTime}</p>
+                        <div className={`w-5 h-5 rounded-lg flex items-center justify-center border ${isSelected ? "bg-indigo-600 border-indigo-600 text-white" : "border-slate-400"}`}>
+                          {isSelected && <Check size={14} />}
+                        </div>
                       </div>
-                      <div className={`w-5 h-5 rounded-lg flex items-center justify-center border ${isSelected ? "bg-indigo-600 border-indigo-600 text-white" : "border-slate-400"}`}>
-                        {isSelected && <Check size={14} />}
-                      </div>
+
+                      {isSelected && (
+                        <div className="mt-3 pt-3 border-t border-indigo-500/20 space-y-3">
+                          <div className="flex items-center gap-4 text-xs font-bold">
+                            <label className="flex items-center gap-1.5 cursor-pointer">
+                              <input 
+                                type="radio" 
+                                name={`pub-mode-${cls._id}`} 
+                                checked={mode === "now"} 
+                                onChange={() => setPublishModes({ ...publishModes, [cls._id]: "now" })}
+                              />
+                              Publish Now
+                            </label>
+                            <label className="flex items-center gap-1.5 cursor-pointer">
+                              <input 
+                                type="radio" 
+                                name={`pub-mode-${cls._id}`} 
+                                checked={mode === "schedule"} 
+                                onChange={() => setPublishModes({ ...publishModes, [cls._id]: "schedule" })}
+                              />
+                              Schedule Publication
+                            </label>
+                          </div>
+
+                          {mode === "schedule" && (
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-slate-900/40 p-3 rounded-xl border border-indigo-500/20 text-xs">
+                              <div>
+                                <label className="block font-semibold mb-1 text-[11px] text-slate-300">Start Date & Time:</label>
+                                <div className="flex gap-2">
+                                  <input 
+                                    type="date" 
+                                    value={sched.startDate}
+                                    onChange={(e) => setClassScheduleData({
+                                      ...classScheduleData,
+                                      [cls._id]: { ...sched, startDate: e.target.value }
+                                    })}
+                                    className="p-1.5 rounded-lg border bg-slate-800 border-slate-700 text-white flex-1"
+                                  />
+                                  <input 
+                                    type="time" 
+                                    value={sched.startTime}
+                                    onChange={(e) => setClassScheduleData({
+                                      ...classScheduleData,
+                                      [cls._id]: { ...sched, startTime: e.target.value }
+                                    })}
+                                    className="p-1.5 rounded-lg border bg-slate-800 border-slate-700 text-white"
+                                  />
+                                </div>
+                              </div>
+
+                              <div>
+                                <label className="block font-semibold mb-1 text-[11px] text-slate-300">End Date & Time (Close):</label>
+                                <div className="flex gap-2">
+                                  <input 
+                                    type="date" 
+                                    value={sched.endDate}
+                                    onChange={(e) => setClassScheduleData({
+                                      ...classScheduleData,
+                                      [cls._id]: { ...sched, endDate: e.target.value }
+                                    })}
+                                    className="p-1.5 rounded-lg border bg-slate-800 border-slate-700 text-white flex-1"
+                                  />
+                                  <input 
+                                    type="time" 
+                                    value={sched.endTime}
+                                    onChange={(e) => setClassScheduleData({
+                                      ...classScheduleData,
+                                      [cls._id]: { ...sched, endTime: e.target.value }
+                                    })}
+                                    className="p-1.5 rounded-lg border bg-slate-800 border-slate-700 text-white"
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   );
                 })}
@@ -400,20 +542,20 @@ export default function TeacherMyQuizzesPage() {
                 disabled={selectedClassIds.length === 0}
                 className="px-6 py-2.5 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-white disabled:opacity-50 shadow-md"
               >
-                Publish Now
+                Confirm & Publish
               </button>
             </div>
           </div>
         </div>
       )}
 
+      {/* Main Container */}
       <div className="max-w-5xl mx-auto space-y-6">
-        
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
             <h1 className="text-2xl font-extrabold tracking-tight">My Quizzes</h1>
             <p className={`text-sm mt-1 ${darkMode ? "text-slate-400" : "text-slate-500"}`}>
-              Manage your created quizzes, check admin approval status, view rejection reasons, and publish them.
+              Manage your created quizzes, check admin approval status, view rejection reasons, and publish them with flexible schedules.
             </p>
           </div>
         </div>
@@ -480,7 +622,6 @@ export default function TeacherMyQuizzesPage() {
                   </div>
 
                   <div className="flex flex-wrap items-center gap-2">
-                    {/* View Submissions Button */}
                     {quiz.isPublished && (
                       <button 
                         onClick={() => openSubmissionsModal(quiz)}
@@ -510,7 +651,6 @@ export default function TeacherMyQuizzesPage() {
                   </div>
                 </div>
 
-                {/* Reject Reason Box */}
                 {quiz.status === "rejected" && quiz.rejectReason && (
                   <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-xs text-rose-500 flex items-start gap-2">
                     <AlertCircle size={16} className="mt-0.5 flex-shrink-0" />
@@ -518,15 +658,78 @@ export default function TeacherMyQuizzesPage() {
                   </div>
                 )}
 
-                {/* Published Classes List Display */}
-                {quiz.isPublished && quiz.classIds && quiz.classIds.length > 0 && (
-                  <div className={`pt-3 border-t flex flex-wrap items-center gap-2 ${darkMode ? "border-slate-800" : "border-slate-100"}`}>
-                    <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mr-2">Published to Classes:</span>
-                    {quiz.classIds.map((cls: any) => (
-                      <span key={cls._id || cls} className={`text-[11px] px-2.5 py-1 rounded-lg font-bold border ${darkMode ? "bg-slate-800 border-slate-700 text-indigo-400" : "bg-indigo-50 border-indigo-200 text-indigo-700"}`}>
-                        {cls.grade ? `${cls.grade} - ${cls.medium} (${cls.mode})` : "Class"}
-                      </span>
-                    ))}
+                {/* Published Classes, Grade, Status (Open / Scheduled) & Delete Schedule Details Display */}
+                {quiz.isPublished && quiz.classSchedules && quiz.classSchedules.length > 0 && (
+                  <div className={`pt-3 border-t space-y-2 ${darkMode ? "border-slate-800" : "border-slate-100"}`}>
+                    <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Published Classes & Schedules:</span>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {quiz.classSchedules.map((sch, sIdx) => {
+                        const cls = sch.classId;
+                        const classIdVal = cls?._id || cls;
+
+                        // වත්මන් තත්ත්වය (Open හෝ Schedule) තීරණය කිරීම
+                        let isCurrentlyOpen = true;
+                        if (sch.publishType === 'schedule') {
+                          const now = new Date();
+                          const startDateTime = sch.startDate && sch.startTime 
+                            ? new Date(`${sch.startDate.split('T')[0]}T${sch.startTime}`)
+                            : (sch.startDate ? new Date(sch.startDate) : null);
+                          const endDateTime = sch.endDate && sch.endTime 
+                            ? new Date(`${sch.endDate.split('T')[0]}T${sch.endTime}`)
+                            : (sch.endDate ? new Date(sch.endDate) : null);
+
+                          const isAfterStart = startDateTime ? now >= startDateTime : true;
+                          const isBeforeEnd = endDateTime ? now <= endDateTime : true;
+                          isCurrentlyOpen = isAfterStart && isBeforeEnd;
+                        }
+
+                        return (
+                          <div key={sIdx} className={`p-3 rounded-xl border text-xs space-y-2 relative ${darkMode ? "bg-slate-950/60 border-slate-800 text-slate-300" : "bg-slate-50 border-slate-200 text-slate-700"}`}>
+                            <div className="flex justify-between items-start gap-2">
+                              <div>
+                                <div className="font-bold text-indigo-400 text-sm">
+                                  Grade {cls?.grade ? `${cls.grade} - ${cls.medium} (${cls.mode})` : "Class"}
+                                </div>
+                                <div className="text-[11px] opacity-70 mt-0.5">
+                                  {cls?.day} | {cls?.startTime} - {cls?.endTime}
+                                </div>
+                              </div>
+
+                              <div className="flex items-center gap-2">
+                                {/* Open හෝ Scheduled තත්ත්වය පෙන්වන Badge එක */}
+                                <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase ${
+                                  isCurrentlyOpen 
+                                    ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" 
+                                    : "bg-amber-500/10 text-amber-400 border border-amber-500/20"
+                                }`}>
+                                  {isCurrentlyOpen ? "Open" : "Scheduled"}
+                                </span>
+
+                                {/* එක් එක් පන්තියට අදාළව ඉවත් කිරීමේ (Delete) බටන් එක */}
+                                <button
+                                  onClick={() => handleRemoveClassFromQuiz(quiz, classIdVal)}
+                                  title="Remove from this class"
+                                  className="p-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 transition-colors"
+                                >
+                                  <Trash2 size={13} />
+                                </button>
+                              </div>
+                            </div>
+
+                            <div className="text-[11px] opacity-80 flex items-center gap-1 pt-1 border-t border-slate-500/10">
+                              <Calendar size={12} />
+                              {sch.publishType === 'now' ? (
+                                <span className="text-emerald-400 font-semibold">Published Immediately (Now)</span>
+                              ) : (
+                                <span>
+                                  Scheduled: {sch.startDate?.split('T')[0]} ({sch.startTime}) ➔ {sch.endDate?.split('T')[0]} ({sch.endTime})
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
                 )}
 
@@ -630,7 +833,6 @@ export default function TeacherMyQuizzesPage() {
             ))}
           </div>
         )}
-
       </div>
     </div>
   );
