@@ -5,17 +5,8 @@ import axios from "axios";
 import { Loader2, Save, CheckCircle, Plus, Trash2, Upload, Image as ImageIcon, AlertCircle, Share2, MessageSquare, Palette, Sun, Moon } from "lucide-react";
 
 const POPULAR_SOCIAL_PLATFORMS = [
-  "Facebook",
-  "YouTube",
-  "Instagram",
-  "TikTok",
-  "WhatsApp",
-  "X (Twitter)",
-  "LinkedIn",
-  "Snapchat",
-  "Telegram",
-  "Pinterest",
-  "Threads"
+  "Facebook", "YouTube", "Instagram", "TikTok", "WhatsApp", 
+  "X (Twitter)", "LinkedIn", "Snapchat", "Telegram", "Pinterest", "Threads"
 ];
 
 export default function AdminDashboardSettings() {
@@ -82,7 +73,6 @@ export default function AdminDashboardSettings() {
     setSettings(prev => ({ ...prev, [name]: value }));
   };
 
-  // --- Badge Avatar Handlers ---
   const handleBadgeAvatarChange = (index: number, value: string) => {
     const updated = [...settings.badgeAvatars];
     updated[index] = { image: value };
@@ -104,18 +94,13 @@ export default function AdminDashboardSettings() {
       setTimeout(() => setErrorMessage(""), 4000);
       return;
     }
-    setSettings(prev => ({
-      ...prev,
-      badgeAvatars: [...prev.badgeAvatars, { image: "" }]
-    }));
+    setSettings(prev => ({ ...prev, badgeAvatars: [...prev.badgeAvatars, { image: "" }] }));
   };
 
   const removeBadgeAvatar = (index: number) => {
-    const updated = settings.badgeAvatars.filter((_, idx) => idx !== index);
-    setSettings(prev => ({ ...prev, badgeAvatars: updated }));
+    setSettings(prev => ({ ...prev, badgeAvatars: settings.badgeAvatars.filter((_, idx) => idx !== index) }));
   };
 
-  // --- Hero Image Handlers ---
   const handleHeroImageChange = (index: number, field: string, value: any) => {
     const updatedImages = [...settings.heroImages];
     updatedImages[index] = { ...updatedImages[index], [field]: value };
@@ -126,8 +111,7 @@ export default function AdminDashboardSettings() {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
       setHeroFiles(prev => ({ ...prev, [index]: file }));
-      const previewUrl = URL.createObjectURL(file);
-      handleHeroImageChange(index, "image", previewUrl);
+      handleHeroImageChange(index, "image", URL.createObjectURL(file));
     }
   };
 
@@ -137,18 +121,13 @@ export default function AdminDashboardSettings() {
       setTimeout(() => setErrorMessage(""), 4000);
       return;
     }
-    setSettings(prev => ({
-      ...prev,
-      heroImages: [...prev.heroImages, { id: Date.now(), image: "", title: "" }]
-    }));
+    setSettings(prev => ({ ...prev, heroImages: [...prev.heroImages, { id: Date.now(), image: "", title: "" }] }));
   };
 
   const removeHeroImage = (index: number) => {
-    const updatedImages = settings.heroImages.filter((_, idx) => idx !== index);
-    setSettings(prev => ({ ...prev, heroImages: updatedImages }));
+    setSettings(prev => ({ ...prev, heroImages: settings.heroImages.filter((_, idx) => idx !== index) }));
   };
 
-  // --- Gallery Image Handlers ---
   const handleGalleryChange = (index: number, field: string, value: any) => {
     const updatedGallery = [...settings.galleryItems];
     updatedGallery[index] = { ...updatedGallery[index], [field]: value };
@@ -159,8 +138,7 @@ export default function AdminDashboardSettings() {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
       setGalleryFiles(prev => ({ ...prev, [index]: file }));
-      const previewUrl = URL.createObjectURL(file);
-      handleGalleryChange(index, "image", previewUrl);
+      handleGalleryChange(index, "image", URL.createObjectURL(file));
     }
   };
 
@@ -170,18 +148,13 @@ export default function AdminDashboardSettings() {
       setTimeout(() => setErrorMessage(""), 4000);
       return;
     }
-    setSettings(prev => ({
-      ...prev,
-      galleryItems: [...prev.galleryItems, { image: "", text: "" }]
-    }));
+    setSettings(prev => ({ ...prev, galleryItems: [...prev.galleryItems, { image: "", text: "" }] }));
   };
 
   const removeGalleryItem = (index: number) => {
-    const updatedGallery = settings.galleryItems.filter((_, idx) => idx !== index);
-    setSettings(prev => ({ ...prev, galleryItems: updatedGallery }));
+    setSettings(prev => ({ ...prev, galleryItems: settings.galleryItems.filter((_, idx) => idx !== index) }));
   };
 
-  // --- Social Media Handlers ---
   const handleSocialChange = (index: number, field: string, value: string) => {
     const updatedSocial = [...settings.socialLinks];
     updatedSocial[index] = { ...updatedSocial[index], [field]: value };
@@ -189,18 +162,13 @@ export default function AdminDashboardSettings() {
   };
 
   const addSocialLink = () => {
-    setSettings(prev => ({
-      ...prev,
-      socialLinks: [...prev.socialLinks, { platform: POPULAR_SOCIAL_PLATFORMS[0], url: "" }]
-    }));
+    setSettings(prev => ({ ...prev, socialLinks: [...prev.socialLinks, { platform: POPULAR_SOCIAL_PLATFORMS[0], url: "" }] }));
   };
 
   const removeSocialLink = (index: number) => {
-    const updatedSocial = settings.socialLinks.filter((_, idx) => idx !== index);
-    setSettings(prev => ({ ...prev, socialLinks: updatedSocial }));
+    setSettings(prev => ({ ...prev, socialLinks: settings.socialLinks.filter((_, idx) => idx !== index) }));
   };
 
-  // --- Testimonial Handlers ---
   const handleTestimonialChange = (index: number, field: string, value: any) => {
     const updatedTestimonials = [...settings.testimonials];
     updatedTestimonials[index] = { ...updatedTestimonials[index], [field]: value };
@@ -239,16 +207,18 @@ export default function AdminDashboardSettings() {
 
       formData.append("settingsData", JSON.stringify(settings));
 
+      // Hero files append කිරීම (අනුපිළිවෙලට)
       Object.keys(heroFiles).forEach((key) => {
         formData.append("heroImagesFiles", heroFiles[Number(key)]);
       });
 
+      // Gallery files append කිරීම (අනුපිළිවෙලට)
       Object.keys(galleryFiles).forEach((key) => {
         formData.append("galleryImagesFiles", galleryFiles[Number(key)]);
       });
 
       Object.keys(testimonialFiles).forEach((key) => {
-        formData.append("testimonialFiles", testimonialFiles[Number(key)]);
+        formData.append(`testimonialFile_${key}`, testimonialFiles[Number(key)]);
       });
 
       Object.keys(badgeAvatarFiles).forEach((key) => {
@@ -271,6 +241,8 @@ export default function AdminDashboardSettings() {
       setTimeout(() => setSuccessMessage(""), 4000);
     } catch (err) {
       console.error("Error updating settings:", err);
+      setErrorMessage("Failed to update settings. Please try again.");
+      setTimeout(() => setErrorMessage(""), 4000);
     } finally {
       setSaving(false);
     }
@@ -317,7 +289,7 @@ export default function AdminDashboardSettings() {
         )}
 
         <form onSubmit={handleSubmit} className="space-y-8">
-          {/* Text Settings & Light/Dark Colors */}
+          {/* Text Settings */}
           <div className="bg-slate-800/50 p-6 rounded-3xl border border-slate-700/50 space-y-6">
             <h2 className="text-xl font-bold text-orange-400">Hero Section Texts & Light/Dark Colors</h2>
             
