@@ -196,7 +196,7 @@ export default function TeacherSidebar() {
     { name: "Quize", path: "/teacher/materials/quize", icon: ClipboardList  },
     { name: "My Quize", path: "/teacher/materials/my-quize", icon: ClipboardList  },
     { name: "create class", path: "/teacher/class/create_class", icon: ClipboardList  },
-    { name: "Settings", path: "/teacher/settings", icon: Settings },
+    { name: "Marks", path: "/teacher/materials/quize_marks", icon: Settings },
   ];
 
   const notifDropdownRef = useRef<HTMLDivElement>(null);
