@@ -3,7 +3,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { CheckCircle, Clock, Globe, FileText, Trash2, AlertCircle, Image as ImageIcon, X, Check, Eye, User, CheckSquare, Send, Calendar, ArrowLeft } from "lucide-react";
+import { CheckCircle, Clock, Globe, FileText, Trash2, AlertCircle, Image as ImageIcon, X, Check, Eye, User, CheckSquare, Send, Calendar, ArrowLeft, Download } from "lucide-react";
 import { useTheme } from "@/app/context/ThemeContext";
 import axios from "axios";
 
@@ -280,7 +280,6 @@ export default function TeacherMyQuizzesPage() {
     }
   };
 
-  // නව ශ්‍රිතය: සම්පූර්ණ MCQ පත්‍ර සියල්ල එකවර පරීක්ෂා කර DB එකට යැවීම සඳහා
   const handleCheckAllStudentMCQAndSend = async () => {
     if (!selectedQuizDetails) return;
     try {
@@ -291,12 +290,72 @@ export default function TeacherMyQuizzesPage() {
 
       if (res.status === 200) {
         alert("All student MCQ papers checked and marks successfully saved to database!");
-        // අලුත් දත්ත නැවත ලබා ගැනීම
         openSubmissionsModal(selectedQuizDetails);
       }
     } catch (err) {
       alert("Failed to evaluate and send all marks.");
     }
+  };
+
+  // පිළිතුරු පත්‍රය ලස්සන PDF එකක් ලෙස ඩවුන්ලෝඩ් (Print to PDF) කරගැනීමේ ශ්‍රිතය
+  const handleDownloadPDFAnswerKey = (quiz: QuizItem) => {
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      alert("Please allow popups to download the PDF.");
+      return;
+    }
+
+    let htmlContent = `
+      <html>
+        <head>
+          <title>${quiz.title} - Answer Key</title>
+          <style>
+            body { font-family: Arial, sans-serif; padding: 30px; color: #1e293b; }
+            h1 { font-size: 22px; color: #0f172a; margin-bottom: 5px; }
+            p { font-size: 13px; color: #64748b; margin-bottom: 20px; }
+            .question-box { border: 1px solid #cbd5e1; border-radius: 8px; padding: 15px; margin-bottom: 15px; page-break-inside: avoid; }
+            .q-title { font-weight: bold; font-size: 14px; margin-bottom: 8px; }
+            .badge { background: #e0e7ff; color: #3730a3; padding: 3px 8px; font-size: 11px; border-radius: 4px; font-weight: bold; }
+            ul { margin: 8px 0; padding-left: 20px; font-size: 13px; }
+            li { margin-bottom: 4px; }
+            .correct-ans { background: #d1fae5; color: #065f46; padding: 6px 10px; border-radius: 6px; font-weight: bold; margin-top: 8px; display: inline-block; font-size: 12px; }
+          </style>
+        </head>
+        <body>
+          <h1>${quiz.title} - Teacher's Answer Key</h1>
+          <p>${quiz.description || 'No description provided.'} | Duration: ${quiz.duration} Minutes</p>
+          <hr style="border: 0; border-top: 1px solid #e2e8f0; margin-bottom: 20px;" />
+    `;
+
+    quiz.questions.forEach((q, idx) => {
+      htmlContent += `
+        <div class="question-box">
+          <div class="q-title">${idx + 1}. ${q.questionText} <span class="badge">${q.type.toUpperCase()} (${q.marks || 5} Marks)</span></div>
+      `;
+      if (q.type === 'mcq' && q.options && q.options.length > 0) {
+        htmlContent += `<ul>`;
+        q.options.forEach((opt, oIdx) => {
+          htmlContent += `<li><strong>(${oIdx + 1})</strong> ${opt}</li>`;
+        });
+        htmlContent += `</ul>`;
+      }
+      htmlContent += `
+          <div class="correct-ans">✅ Correct Answer: ${q.correctAnswer}</div>
+        </div>
+      `;
+    });
+
+    htmlContent += `
+        </body>
+      </html>
+    `;
+
+    printWindow.document.write(htmlContent);
+    printWindow.document.close();
+    printWindow.focus();
+    setTimeout(() => {
+      printWindow.print();
+    }, 500);
   };
 
   const getStudentProfileImageUrl = (photoUrl: string) => {
@@ -305,7 +364,6 @@ export default function TeacherMyQuizzesPage() {
     return `http://localhost:5000${photoUrl}`;
   };
 
-  // Quiz එක සම්පූර්ණයෙන්ම MCQ ප්‍රශ්න පමණක් ඇත්දැයි පරීක්ෂා කිරීම
   const isPureMCQQuiz = selectedQuizDetails?.questions?.every((q: any) => q.type === 'mcq' || q.type === 'short');
 
   return (
@@ -457,7 +515,6 @@ export default function TeacherMyQuizzesPage() {
                   <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-3">
                     <p className="text-xs font-bold text-slate-400">Click on a student to review their paper:</p>
                     
-                    {/* Check All Student MCQ Button (Appears only if the quiz is purely MCQ) */}
                     {isPureMCQQuiz && (
                       <button 
                         onClick={handleCheckAllStudentMCQAndSend}
@@ -793,10 +850,10 @@ export default function TeacherMyQuizzesPage() {
                             <div className="flex justify-between items-start gap-2">
                               <div>
                                 <div className="font-bold text-indigo-400 text-sm">
-                                  Grade {cls?.grade ? `${cls.grade} - ${cls.medium} (${cls.mode})` : "Class"}
+                                  {cls?.grade ? `Grade ${cls.grade}` : (cls?.name || "Class")} - {cls?.medium || ""} ({cls?.mode || ""})
                                 </div>
                                 <div className="text-[11px] opacity-70 mt-0.5">
-                                  {cls?.day} | {cls?.startTime} - {cls?.endTime}
+                                  {cls?.day || ""} {cls?.startTime ? `| ${cls.startTime} - ${cls?.endTime}` : ""}
                                 </div>
                               </div>
 
@@ -837,7 +894,17 @@ export default function TeacherMyQuizzesPage() {
                 )}
 
                 <div className={`border-t pt-4 ${darkMode ? "border-slate-800" : "border-slate-100"}`}>
-                  <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3">Questions & Answers Details:</h3>
+                  <div className="flex justify-between items-center mb-3">
+                    <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400">Questions & Answers Details:</h3>
+                    {/* ගුරුවරයාගේ පිළිතුරු පත්‍රය ලස්සන PDF එකක් ලෙස ඩවුන්ලෝඩ් කරගැනීමේ බටන් එක */}
+                    <button
+                      onClick={() => handleDownloadPDFAnswerKey(quiz)}
+                      className="px-3 py-1.5 bg-teal-600 hover:bg-teal-700 text-white rounded-lg text-xs font-bold shadow-sm flex items-center gap-1.5 transition-colors"
+                    >
+                      <Download size={14} /> Download PDF Answer Key
+                    </button>
+                  </div>
+
                   <div className="space-y-3 max-h-72 overflow-y-auto pr-2">
                     {quiz.questions.map((q, idx) => (
                       <div key={`${quiz._id}-question-${idx}`} className={`p-4 rounded-xl border text-xs space-y-2 ${darkMode ? "bg-slate-950/50 border-slate-800" : "bg-slate-50 border-slate-200"}`}>
