@@ -3,7 +3,7 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { CheckCircle, Clock, Globe, FileText, Trash2, AlertCircle, Image as ImageIcon, X, Check, Eye, User, CheckSquare, Send, Calendar } from "lucide-react";
+import { CheckCircle, Clock, Globe, FileText, Trash2, AlertCircle, Image as ImageIcon, X, Check, Eye, User, CheckSquare, Send, Calendar, ArrowLeft } from "lucide-react";
 import { useTheme } from "@/app/context/ThemeContext";
 import axios from "axios";
 
@@ -52,15 +52,18 @@ export default function TeacherMyQuizzesPage() {
   const [selectedQuizForPublish, setSelectedQuizForPublish] = useState<QuizItem | null>(null);
   const [teacherClasses, setTeacherClasses] = useState<any[]>([]);
   const [selectedClassIds, setSelectedClassIds] = useState<string[]>([]);
-
+  
   const [publishModes, setPublishModes] = useState<{ [classId: string]: "now" | "schedule" }>({});
-  const [classScheduleData, setClassScheduleData] = useState<{
-    [classId: string]: { startDate: string; startTime: string; endDate: string; endTime: string }
+  const [classScheduleData, setClassScheduleData] = useState<{ 
+    [classId: string]: { startDate: string; startTime: string; endDate: string; endTime: string } 
   }>({});
 
   const [submissionsModalOpen, setSubmissionsModalOpen] = useState(false);
   const [selectedQuizSubmissions, setSelectedQuizSubmissions] = useState<any[]>([]);
   const [selectedQuizDetails, setSelectedQuizDetails] = useState<any>(null);
+  
+  const [selectedStudentSub, setSelectedStudentSub] = useState<any | null>(null);
+
   const [essayMarksInput, setEssayMarksInput] = useState<{ [key: string]: { [qId: string]: number } }>({});
   const [checkedPapers, setCheckedPapers] = useState<{ [subId: string]: boolean }>({});
 
@@ -102,7 +105,7 @@ export default function TeacherMyQuizzesPage() {
 
     const modes: { [key: string]: "now" | "schedule" } = {};
     const schedules: any = {};
-
+    
     quiz.classSchedules?.forEach((sch) => {
       const cId = sch.classId?._id || sch.classId;
       modes[cId] = sch.publishType || "now";
@@ -123,7 +126,7 @@ export default function TeacherMyQuizzesPage() {
     if (!selectedQuizForPublish) return;
     try {
       const token = localStorage.getItem("token");
-
+      
       const formattedSchedules = selectedClassIds.map(cId => ({
         classId: cId,
         publishType: publishModes[cId] || "now",
@@ -228,6 +231,7 @@ export default function TeacherMyQuizzesPage() {
 
   const openSubmissionsModal = async (quiz: any) => {
     setSelectedQuizDetails(quiz);
+    setSelectedStudentSub(null);
     try {
       const token = localStorage.getItem("token");
       const res = await axios.get(`http://localhost:5000/api/quiz/${quiz._id}/submissions`, {
@@ -241,8 +245,7 @@ export default function TeacherMyQuizzesPage() {
     }
   };
 
-  // Check MCQ only functionality (Only evaluates when clicked by teacher)
-  const handleCheckMCQOnly = (subId: string) => {
+  const handleCheckMCQ = (subId: string) => {
     setCheckedPapers({ ...checkedPapers, [subId]: true });
   };
 
@@ -256,7 +259,6 @@ export default function TeacherMyQuizzesPage() {
     });
   };
 
-  // Send marks to database upon clicking Send button
   const handleSendMarksToDB = async (subId: string) => {
     try {
       const token = localStorage.getItem("token");
@@ -270,8 +272,30 @@ export default function TeacherMyQuizzesPage() {
 
       alert("Marks successfully sent and saved to database!");
       setSelectedQuizSubmissions(selectedQuizSubmissions.map(s => s._id === subId ? res.data.sub : s));
+      if (selectedStudentSub && selectedStudentSub._id === subId) {
+        setSelectedStudentSub(res.data.sub);
+      }
     } catch (err) {
       alert("Failed to send marks to database.");
+    }
+  };
+
+  // නව ශ්‍රිතය: සම්පූර්ණ MCQ පත්‍ර සියල්ල එකවර පරීක්ෂා කර DB එකට යැවීම සඳහා
+  const handleCheckAllStudentMCQAndSend = async () => {
+    if (!selectedQuizDetails) return;
+    try {
+      const token = localStorage.getItem("token");
+      const res = await axios.post(`http://localhost:5000/api/quiz/${selectedQuizDetails._id}/evaluate-all-mcq`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      if (res.status === 200) {
+        alert("All student MCQ papers checked and marks successfully saved to database!");
+        // අලුත් දත්ත නැවත ලබා ගැනීම
+        openSubmissionsModal(selectedQuizDetails);
+      }
+    } catch (err) {
+      alert("Failed to evaluate and send all marks.");
     }
   };
 
@@ -281,35 +305,49 @@ export default function TeacherMyQuizzesPage() {
     return `http://localhost:5000${photoUrl}`;
   };
 
+  // Quiz එක සම්පූර්ණයෙන්ම MCQ ප්‍රශ්න පමණක් ඇත්දැයි පරීක්ෂා කිරීම
+  const isPureMCQQuiz = selectedQuizDetails?.questions?.every((q: any) => q.type === 'mcq' || q.type === 'short');
+
   return (
     <div className={`p-4 sm:p-6 lg:p-8 min-h-screen transition-colors duration-300 ${darkMode ? "bg-slate-950 text-white" : "bg-slate-50 text-slate-900"}`}>
-
+      
       {/* Submissions Evaluation Modal */}
       {submissionsModalOpen && selectedQuizDetails && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 overflow-y-auto">
           <div className={`w-full max-w-4xl p-6 rounded-3xl shadow-2xl border max-h-[90vh] overflow-y-auto ${darkMode ? "bg-slate-900 border-slate-800 text-white" : "bg-white border-slate-200 text-slate-900"}`}>
+            
+            {/* Modal Header */}
             <div className="flex justify-between items-center mb-4 border-b pb-3">
               <div>
                 <h3 className="text-xl font-extrabold">{selectedQuizDetails.title} - Student Submissions</h3>
-                <p className="text-xs text-slate-400">Review student papers on the left and teacher keys on the right. Click 'Check MCQ only' to evaluate, and 'Send' to save marks to DB.</p>
+                <p className="text-xs text-slate-400">
+                  {selectedStudentSub ? "Reviewing individual student paper and answer key." : "Click on any student to review their submission."}
+                </p>
               </div>
-              <button onClick={() => setSubmissionsModalOpen(false)} className="p-2 rounded-xl text-slate-400 hover:bg-slate-500/10">
+              <button onClick={() => { setSubmissionsModalOpen(false); setSelectedStudentSub(null); }} className="p-2 rounded-xl text-slate-400 hover:bg-slate-500/10">
                 <X size={20} />
               </button>
             </div>
 
-            {selectedQuizSubmissions.length === 0 ? (
-              <p className="text-center py-10 text-slate-400 text-sm italic">No students have submitted this quiz yet.</p>
-            ) : (
+            {/* If a student is selected, show side-by-side paper view. Otherwise, show student list. */}
+            {selectedStudentSub ? (
               <div className="space-y-6">
-                {selectedQuizSubmissions.map((sub) => {
+                <button 
+                  onClick={() => setSelectedStudentSub(null)}
+                  className="flex items-center gap-1.5 text-xs font-bold text-blue-600 hover:underline mb-2"
+                >
+                  <ArrowLeft size={16} /> Back to Student List
+                </button>
+
+                {(() => {
+                  const sub = selectedStudentSub;
                   const student = sub.studentId;
                   if (!student) return null;
                   const isChecked = checkedPapers[sub._id] || false;
                   const studentAnswers = sub.answers instanceof Map ? Object.fromEntries(sub.answers) : (sub.answers || {});
 
                   return (
-                    <div key={sub._id} className={`p-5 rounded-2xl border ${darkMode ? "bg-slate-950 border-slate-800" : "bg-slate-50 border-slate-200"}`}>
+                    <div className={`p-5 rounded-2xl border ${darkMode ? "bg-slate-950 border-slate-800" : "bg-slate-50 border-slate-200"}`}>
                       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
                         <div className="flex items-center gap-3">
                           <div className="w-10 h-10 rounded-full overflow-hidden bg-slate-200 flex items-center justify-center border">
@@ -329,14 +367,14 @@ export default function TeacherMyQuizzesPage() {
                         </span>
                       </div>
 
-                      {/* Check MCQ only Button */}
+                      {/* Check MCQ Button */}
                       {!isChecked ? (
                         <div className="my-3">
-                          <button
-                            onClick={() => handleCheckMCQOnly(sub._id)}
+                          <button 
+                            onClick={() => handleCheckMCQ(sub._id)}
                             className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-sm flex items-center gap-1.5"
                           >
-                            <CheckSquare size={16} /> Check MCQ only
+                            <CheckSquare size={16} /> Check MCQ
                           </button>
                         </div>
                       ) : (
@@ -346,13 +384,9 @@ export default function TeacherMyQuizzesPage() {
                             const qId = q._id.toString();
                             const studentAns = String(studentAnswers[qId] || "No Answer Given").trim();
                             const correctAns = String(q.correctAnswer || "").trim();
+                            const cleanStudent = studentAns.toLowerCase().replace(/[^a-z0-9]/g, '');
+                            const cleanCorrect = correctAns.toLowerCase().replace(/[^a-z0-9]/g, '');
 
-                            // දැඩි හා නිවැරදි සංසන්දනය (Strict & Accurate Comparison)
-                            // උදාහරණයක් ලෙස: අකුරු සහ හිස්තැන් නොසලකා හැර හරියටම සමානදැයි බැලීම (case-insensitive & clean)
-                            const cleanStudent = studentAns.toLowerCase().replace(/\s+/g, '');
-                            const cleanCorrect = correctAns.toLowerCase().replace(/\s+/g, '');
-
-                            // සිසුවාගේ පිළිතුර සහ ගුරුවරයාගේ පිළිතුර හරියටම සමාන නම් පමණක් Correct ලෙස සැලකීම
                             const isCorrect = (q.type === 'mcq' || q.type === 'short') && (
                               cleanStudent === cleanCorrect
                             );
@@ -360,8 +394,7 @@ export default function TeacherMyQuizzesPage() {
                             return (
                               <div key={qId} className={`p-3 rounded-xl border text-xs space-y-1 ${darkMode ? "bg-slate-900 border-slate-800" : "bg-white border-slate-200"}`}>
                                 <p className="font-bold">{qIdx + 1}. {q.questionText} <span className="opacity-60 text-[10px]">({q.type.toUpperCase()})</span></p>
-
-                                {/* Left Side: Student Answer, Right Side: Teacher Answer Key */}
+                                
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">
                                   <div className="p-2.5 rounded-lg bg-slate-100 dark:bg-slate-800 border">
                                     <span className="text-[10px] text-slate-400 block font-bold mb-0.5">Student Answer (Left):</span>
@@ -386,7 +419,7 @@ export default function TeacherMyQuizzesPage() {
                                 {q.type === 'essay' && (
                                   <div className="mt-2 pt-2 border-t flex items-center gap-3">
                                     <span className="font-bold text-[11px]">Give Essay Marks (Max {q.marks || 5}):</span>
-                                    <input
+                                    <input 
                                       type="number"
                                       max={q.marks || 5}
                                       min={0}
@@ -404,7 +437,7 @@ export default function TeacherMyQuizzesPage() {
 
                       {/* Send Button to save marks to database */}
                       <div className="mt-4 flex justify-end">
-                        <button
+                        <button 
                           onClick={() => handleSendMarksToDB(sub._id)}
                           className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-md flex items-center gap-2"
                         >
@@ -413,9 +446,71 @@ export default function TeacherMyQuizzesPage() {
                       </div>
                     </div>
                   );
-                })}
+                })()}
               </div>
+            ) : (
+              /* Student List View */
+              selectedQuizSubmissions.length === 0 ? (
+                <p className="text-center py-10 text-slate-400 text-sm italic">No students have submitted this quiz yet.</p>
+              ) : (
+                <div className="space-y-3">
+                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-3">
+                    <p className="text-xs font-bold text-slate-400">Click on a student to review their paper:</p>
+                    
+                    {/* Check All Student MCQ Button (Appears only if the quiz is purely MCQ) */}
+                    {isPureMCQQuiz && (
+                      <button 
+                        onClick={handleCheckAllStudentMCQAndSend}
+                        className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-md flex items-center gap-2"
+                      >
+                        <CheckSquare size={16} /> Check All Student MCQ & Send Marks
+                      </button>
+                    )}
+                  </div>
+
+                  {selectedQuizSubmissions.map((sub) => {
+                    const student = sub.studentId;
+                    if (!student) return null;
+
+                    return (
+                      <div 
+                        key={sub._id}
+                        onClick={() => setSelectedStudentSub(sub)}
+                        className={`p-4 rounded-2xl border cursor-pointer flex items-center justify-between transition-all ${
+                          darkMode ? "bg-slate-950 border-slate-800 hover:border-blue-500/50" : "bg-slate-50 border-slate-200 hover:border-blue-300"
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-full overflow-hidden bg-slate-200 flex items-center justify-center border">
+                            {student.profileImage ? (
+                              <img src={getStudentProfileImageUrl(student.profileImage) || ""} alt="" className="w-full h-full object-cover" />
+                            ) : (
+                              <User size={18} className="text-slate-500" />
+                            )}
+                          </div>
+                          <div>
+                            <h4 className="font-bold text-sm">{student.name}</h4>
+                            <p className="text-[11px] text-slate-400">{student.email} • {sub.timeTaken}</p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-3">
+                          <span className={`px-3 py-1 rounded-full text-xs font-bold ${
+                            sub.isEvaluated ? "bg-emerald-500/10 text-emerald-500 border border-emerald-500/20" : "bg-amber-500/10 text-amber-500 border border-amber-500/20"
+                          }`}>
+                            {sub.isEvaluated ? `Score: ${sub.score}/${sub.maxScore}` : "Pending Evaluation"}
+                          </span>
+                          <span className="text-xs font-bold text-blue-600 hover:underline flex items-center gap-1">
+                            Review Paper <Eye size={14} />
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )
             )}
+
           </div>
         </div>
       )}
@@ -442,12 +537,13 @@ export default function TeacherMyQuizzesPage() {
                   const sched = classScheduleData[cls._id] || { startDate: "", startTime: "", endDate: "", endTime: "" };
 
                   return (
-                    <div
+                    <div 
                       key={cls._id}
-                      className={`p-4 rounded-2xl border transition-all ${isSelected
+                      className={`p-4 rounded-2xl border transition-all ${
+                        isSelected 
                           ? (darkMode ? "bg-indigo-500/10 border-indigo-500/50 text-white" : "bg-indigo-50 border-indigo-300 text-slate-900")
                           : (darkMode ? "bg-slate-800/50 border-slate-800 text-slate-400" : "bg-slate-50 border-slate-200 text-slate-600")
-                        }`}
+                      }`}
                     >
                       <div className="flex items-center justify-between cursor-pointer" onClick={() => toggleClassSelection(cls._id)}>
                         <div>
@@ -466,19 +562,19 @@ export default function TeacherMyQuizzesPage() {
                         <div className="mt-3 pt-3 border-t border-indigo-500/20 space-y-3">
                           <div className="flex items-center gap-4 text-xs font-bold">
                             <label className="flex items-center gap-1.5 cursor-pointer">
-                              <input
-                                type="radio"
-                                name={`pub-mode-${cls._id}`}
-                                checked={mode === "now"}
+                              <input 
+                                type="radio" 
+                                name={`pub-mode-${cls._id}`} 
+                                checked={mode === "now"} 
                                 onChange={() => setPublishModes({ ...publishModes, [cls._id]: "now" })}
                               />
                               Publish Now
                             </label>
                             <label className="flex items-center gap-1.5 cursor-pointer">
-                              <input
-                                type="radio"
-                                name={`pub-mode-${cls._id}`}
-                                checked={mode === "schedule"}
+                              <input 
+                                type="radio" 
+                                name={`pub-mode-${cls._id}`} 
+                                checked={mode === "schedule"} 
                                 onChange={() => setPublishModes({ ...publishModes, [cls._id]: "schedule" })}
                               />
                               Schedule Publication
@@ -490,8 +586,8 @@ export default function TeacherMyQuizzesPage() {
                               <div>
                                 <label className="block font-semibold mb-1 text-[11px] text-slate-300">Start Date & Time:</label>
                                 <div className="flex gap-2">
-                                  <input
-                                    type="date"
+                                  <input 
+                                    type="date" 
                                     value={sched.startDate}
                                     onChange={(e) => setClassScheduleData({
                                       ...classScheduleData,
@@ -499,8 +595,8 @@ export default function TeacherMyQuizzesPage() {
                                     })}
                                     className="p-1.5 rounded-lg border bg-slate-800 border-slate-700 text-white flex-1"
                                   />
-                                  <input
-                                    type="time"
+                                  <input 
+                                    type="time" 
                                     value={sched.startTime}
                                     onChange={(e) => setClassScheduleData({
                                       ...classScheduleData,
@@ -514,8 +610,8 @@ export default function TeacherMyQuizzesPage() {
                               <div>
                                 <label className="block font-semibold mb-1 text-[11px] text-slate-300">End Date & Time (Close):</label>
                                 <div className="flex gap-2">
-                                  <input
-                                    type="date"
+                                  <input 
+                                    type="date" 
                                     value={sched.endDate}
                                     onChange={(e) => setClassScheduleData({
                                       ...classScheduleData,
@@ -523,8 +619,8 @@ export default function TeacherMyQuizzesPage() {
                                     })}
                                     className="p-1.5 rounded-lg border bg-slate-800 border-slate-700 text-white flex-1"
                                   />
-                                  <input
-                                    type="time"
+                                  <input 
+                                    type="time" 
                                     value={sched.endTime}
                                     onChange={(e) => setClassScheduleData({
                                       ...classScheduleData,
@@ -548,7 +644,7 @@ export default function TeacherMyQuizzesPage() {
               <button onClick={() => setPublishModalOpen(false)} className={`px-5 py-2.5 rounded-xl text-xs font-bold ${darkMode ? "bg-slate-800 text-slate-300" : "bg-slate-100 text-slate-700"}`}>
                 Cancel
               </button>
-              <button
+              <button 
                 onClick={handleConfirmPublish}
                 disabled={selectedClassIds.length === 0}
                 className="px-6 py-2.5 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-white disabled:opacity-50 shadow-md"
@@ -611,10 +707,11 @@ export default function TeacherMyQuizzesPage() {
         ) : (
           <div className="space-y-4">
             {quizzes.map((quiz) => (
-              <div
-                key={quiz._id}
-                className={`p-6 rounded-2xl border shadow-sm transition-all space-y-4 ${darkMode ? "bg-slate-900 border-slate-800" : "bg-white border-slate-200"
-                  }`}
+              <div 
+                key={quiz._id} 
+                className={`p-6 rounded-2xl border shadow-sm transition-all space-y-4 ${
+                  darkMode ? "bg-slate-900 border-slate-800" : "bg-white border-slate-200"
+                }`}
               >
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
                   <div>
@@ -633,7 +730,7 @@ export default function TeacherMyQuizzesPage() {
 
                   <div className="flex flex-wrap items-center gap-2">
                     {quiz.isPublished && (
-                      <button
+                      <button 
                         onClick={() => openSubmissionsModal(quiz)}
                         className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-sm transition-all mr-2"
                       >
@@ -641,18 +738,20 @@ export default function TeacherMyQuizzesPage() {
                       </button>
                     )}
 
-                    <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide ${quiz.status === "approved" ? "bg-emerald-500/10 text-emerald-500 border border-emerald-500/20" :
-                        quiz.status === "rejected" ? "bg-rose-500/10 text-rose-500 border border-rose-500/20" :
-                          "bg-amber-500/10 text-amber-500 border border-amber-500/20"
-                      }`}>
+                    <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide ${
+                      quiz.status === "approved" ? "bg-emerald-500/10 text-emerald-500 border border-emerald-500/20" :
+                      quiz.status === "rejected" ? "bg-rose-500/10 text-rose-500 border border-rose-500/20" : 
+                      "bg-amber-500/10 text-amber-500 border border-amber-500/20"
+                    }`}>
                       Admin: {quiz.status}
                     </span>
 
                     {quiz.status === "approved" && (
-                      <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide ${quiz.isPublished
-                          ? "bg-indigo-500/10 text-indigo-400 border border-indigo-500/20"
+                      <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide ${
+                        quiz.isPublished 
+                          ? "bg-indigo-500/10 text-indigo-400 border border-indigo-500/20" 
                           : "bg-slate-500/10 text-slate-400 border border-slate-500/20"
-                        }`}>
+                      }`}>
                         {quiz.isPublished ? "Published" : "Draft (Unpublished)"}
                       </span>
                     )}
@@ -677,10 +776,10 @@ export default function TeacherMyQuizzesPage() {
                         let isCurrentlyOpen = true;
                         if (sch.publishType === 'schedule') {
                           const now = new Date();
-                          const startDateTime = sch.startDate && sch.startTime
+                          const startDateTime = sch.startDate && sch.startTime 
                             ? new Date(`${sch.startDate.split('T')[0]}T${sch.startTime}`)
                             : (sch.startDate ? new Date(sch.startDate) : null);
-                          const endDateTime = sch.endDate && sch.endTime
+                          const endDateTime = sch.endDate && sch.endTime 
                             ? new Date(`${sch.endDate.split('T')[0]}T${sch.endTime}`)
                             : (sch.endDate ? new Date(sch.endDate) : null);
 
@@ -702,10 +801,11 @@ export default function TeacherMyQuizzesPage() {
                               </div>
 
                               <div className="flex items-center gap-2">
-                                <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase ${isCurrentlyOpen
-                                    ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+                                <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase ${
+                                  isCurrentlyOpen 
+                                    ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" 
                                     : "bg-amber-500/10 text-amber-400 border border-amber-500/20"
-                                  }`}>
+                                }`}>
                                   {isCurrentlyOpen ? "Open" : "Scheduled"}
                                 </span>
 
@@ -755,10 +855,10 @@ export default function TeacherMyQuizzesPage() {
                             <span className="text-[10px] text-slate-400 flex items-center gap-1 mb-1">
                               <ImageIcon size={12} /> Attached Image:
                             </span>
-                            <img
-                              src={`http://localhost:5000${q.imageUrl}`}
-                              alt="Question Visual"
-                              className="max-h-32 rounded border border-slate-700 object-contain"
+                            <img 
+                              src={`http://localhost:5000${q.imageUrl}`} 
+                              alt="Question Visual" 
+                              className="max-h-32 rounded border border-slate-700 object-contain" 
                               onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
                             />
                           </div>
