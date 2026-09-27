@@ -193,7 +193,7 @@ export default function AdminSidebar() {
     { name: "Class view", path: "/admin/materials/class_view", icon: School },
     { name: "Create Add", path: "/admin/Add/create_add", icon: School },
     { name: "View Add", path: "/admin/Add/view_add", icon: School },
-    { name: "View Add", path: "/admin/swp", icon: School },
+    { name: "Dashboard Editor", path: "/admin/swp", icon: School },
   ];
 
   const notifDropdownRef = useRef<HTMLDivElement>(null);
