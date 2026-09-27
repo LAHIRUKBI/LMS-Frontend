@@ -28,16 +28,17 @@ export default function ReviewMaterialsPage() {
   const [loading, setLoading] = useState(true);
   const { darkMode } = useTheme();
 
-  // Search & Filters
+  // Search & Filters state
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
 
-  // Modals States
+  // Modals States for Rejection and Deletion
   const [rejectItem, setRejectItem] = useState<any>(null);
   const [rejectReason, setRejectReason] = useState("");
 
   const [deleteItem, setDeleteItem] = useState<any>(null);
 
+  // Fetch all review materials for admin
   const fetchMaterials = async () => {
     const token = localStorage.getItem("token");
     try {
@@ -52,7 +53,7 @@ export default function ReviewMaterialsPage() {
     }
   };
 
-  // The function to remove the dot
+  // Function to remove the new indicator dot
   const handleClearCardDot = async (materialId: string) => {
     try {
       const token = localStorage.getItem("token");
@@ -70,6 +71,7 @@ export default function ReviewMaterialsPage() {
     fetchMaterials();
   }, []);
 
+  // Handler to update the material approval status
   const handleStatusUpdate = async (id: string, newStatus: string, reason: string = "") => {
     try {
       const token = localStorage.getItem("token");
@@ -85,6 +87,7 @@ export default function ReviewMaterialsPage() {
     }
   };
 
+  // Handler to delete a specific material
   const handleDelete = async () => {
     if (!deleteItem) return;
     try {
@@ -99,7 +102,7 @@ export default function ReviewMaterialsPage() {
     }
   };
 
-  // 1. Data Filter
+  // 1. Data Filter based on search term and status
   const filteredMaterials = useMemo(() => {
     return materials.filter(m => {
       const matchesSearch = m.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -109,7 +112,7 @@ export default function ReviewMaterialsPage() {
     });
   }, [materials, searchTerm, filterStatus]);
 
-  // 2. Group by Teacher Object
+  // 2. Group materials by Teacher Object
   const groupedMaterials = useMemo(() => {
     return filteredMaterials.reduce((acc: any, material: any) => {
       const teacher = material.teacherId || { _id: 'unknown', name: "Unknown Teacher" };
@@ -174,7 +177,7 @@ export default function ReviewMaterialsPage() {
             </div>
           </div>
 
-          {/* Search & Filters */}
+          {/* Search & Filters Section */}
           <div className="flex flex-col sm:flex-row items-center gap-2 w-full md:w-auto">
             <div className="relative w-full md:w-64">
               <Search className={`absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 ${darkMode ? "text-slate-500" : "text-slate-400"}`} />
@@ -255,159 +258,161 @@ export default function ReviewMaterialsPage() {
                   </div>
                 </div>
 
-                {/* Compact Grid Cards */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3.5">
-                  {group.items.map((m: any) => (
-                    <div
-                      key={m._id}
-                      onClick={() => m.isNewForTable && handleClearCardDot(m._id)}
-                      className={`group flex flex-col justify-between rounded-xl border p-3.5 transition-all hover:shadow-md relative ${
-                        // If it is a new material, apply a red background.
-                        m.isNewForTable ? (darkMode ? "bg-red-950/20 border-red-900/50 cursor-pointer" : "bg-red-50/50 border-red-200 cursor-pointer") : ""
-                        } ${!m.isNewForTable && darkMode ? "bg-slate-950/60 border-slate-800 hover:border-slate-700" : ""
-                        } ${!m.isNewForTable && !darkMode ? "bg-slate-50/70 border-slate-200/80 hover:bg-white hover:border-slate-300" : ""
-                        }`}
-                    >
+                {/* Compact Grid Cards Container with vertical scroll only (horizontal scroll disabled) */}
+                <div className="max-h-[580px] overflow-y-auto overflow-x-hidden pr-2 scrollbar-thin">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3.5">
+                    {group.items.map((m: any) => (
+                      <div
+                        key={m._id}
+                        onClick={() => m.isNewForTable && handleClearCardDot(m._id)}
+                        className={`group flex flex-col justify-between rounded-xl border p-3.5 transition-all hover:shadow-md relative ${
+                          // If it is a new material, apply a red background.
+                          m.isNewForTable ? (darkMode ? "bg-red-950/20 border-red-900/50 cursor-pointer" : "bg-red-50/50 border-red-200 cursor-pointer") : ""
+                          } ${!m.isNewForTable && darkMode ? "bg-slate-950/60 border-slate-800 hover:border-slate-700" : ""
+                          } ${!m.isNewForTable && !darkMode ? "bg-slate-50/70 border-slate-200/80 hover:bg-white hover:border-slate-300" : ""
+                          }`}
+                      >
 
-                      {/* The red dot (with a pulse animation, located at the top right corner of the card) */}
-                      {m.isNewForTable && (
-                        <span className="absolute -top-1.5 -right-1.5 flex h-4 w-4 z-10" title="New Material">
-                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                          <span className="relative inline-flex rounded-full h-4 w-4 bg-red-500 shadow-sm border-2 border-white dark:border-slate-900"></span>
-                        </span>
-                      )}
-                      <div className="space-y-2">
-                        {/* Thumbnail / Media Preview with Cover Image Support */}
-                        <a
-                          href={`http://localhost:5000${m.fileUrl}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          title="Click to view full screen"
-                          className={`relative aspect-video w-full rounded-lg overflow-hidden border block transition-transform group-hover:scale-[1.01] shadow-sm ${darkMode ? "border-slate-800 bg-slate-900" : "border-slate-200 bg-slate-100"
-                            }`}
-                        >
-                          {m.type === 'video' ? (
-                            <>
-                              <video
-                                src={`http://localhost:5000${m.fileUrl}#t=0.1`}
-                                className="w-full h-full object-cover"
-                                preload="metadata"
-                                muted
-                                playsInline
-                              />
-                              <div className="absolute inset-0 bg-black/30 group-hover/thumb:bg-black/50 flex items-center justify-center transition-colors">
-                                <PlayCircle size={22} className="text-white drop-shadow" />
+                        {/* The red dot (with a pulse animation, located at the top right corner of the card) */}
+                        {m.isNewForTable && (
+                          <span className="absolute -top-1.5 -right-1.5 flex h-4 w-4 z-10" title="New Material">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-4 w-4 bg-red-500 shadow-sm border-2 border-white dark:border-slate-900"></span>
+                          </span>
+                        )}
+                        <div className="space-y-2">
+                          {/* Thumbnail / Media Preview with Cover Image Support */}
+                          <a
+                            href={`http://localhost:5000${m.fileUrl}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            title="Click to view full screen"
+                            className={`relative aspect-video w-full rounded-lg overflow-hidden border block transition-transform group-hover:scale-[1.01] shadow-sm ${darkMode ? "border-slate-800 bg-slate-900" : "border-slate-200 bg-slate-100"
+                              }`}
+                          >
+                            {m.type === 'video' ? (
+                              <>
+                                <video
+                                  src={`http://localhost:5000${m.fileUrl}#t=0.1`}
+                                  className="w-full h-full object-cover"
+                                  preload="metadata"
+                                  muted
+                                  playsInline
+                                />
+                                <div className="absolute inset-0 bg-black/30 group-hover/thumb:bg-black/50 flex items-center justify-center transition-colors">
+                                  <PlayCircle size={22} className="text-white drop-shadow" />
+                                </div>
+                                <span className="absolute top-1 right-1 bg-black/60 backdrop-blur-sm text-white text-[8px] px-1.5 py-0.5 rounded font-bold uppercase">
+                                  Video
+                                </span>
+                              </>
+                            ) : m.coverImage ? (
+                              <>
+                                <img
+                                  src={`http://localhost:5000${m.coverImage}`}
+                                  alt={m.title}
+                                  className="w-full h-full object-cover"
+                                />
+                                <span className="absolute top-1 right-1 bg-black/60 backdrop-blur-sm text-white text-[8px] px-1.5 py-0.5 rounded font-bold uppercase">
+                                  {m.type}
+                                </span>
+                              </>
+                            ) : (
+                              <div className="w-full h-full flex flex-col items-center justify-center">
+                                {m.type === 'pdf' ? (
+                                  <FileText size={22} className="text-emerald-500 mb-1" />
+                                ) : (
+                                  <BookOpen size={22} className="text-blue-500 mb-1" />
+                                )}
+                                <span className={`text-[9px] font-bold uppercase tracking-wider ${darkMode ? "text-slate-400" : "text-slate-600"}`}>
+                                  {m.type === 'paper' ? 'Paper' : 'PDF'}
+                                </span>
                               </div>
-                              <span className="absolute top-1 right-1 bg-black/60 backdrop-blur-sm text-white text-[8px] px-1.5 py-0.5 rounded font-bold uppercase">
-                                Video
-                              </span>
-                            </>
-                          ) : m.coverImage ? (
-                            <>
-                              <img
-                                src={`http://localhost:5000${m.coverImage}`}
-                                alt={m.title}
-                                className="w-full h-full object-cover"
-                              />
-                              <span className="absolute top-1 right-1 bg-black/60 backdrop-blur-sm text-white text-[8px] px-1.5 py-0.5 rounded font-bold uppercase">
-                                {m.type}
-                              </span>
-                            </>
-                          ) : (
-                            <div className="w-full h-full flex flex-col items-center justify-center">
-                              {m.type === 'pdf' ? (
-                                <FileText size={22} className="text-emerald-500 mb-1" />
-                              ) : (
-                                <BookOpen size={22} className="text-blue-500 mb-1" />
-                              )}
-                              <span className={`text-[9px] font-bold uppercase tracking-wider ${darkMode ? "text-slate-400" : "text-slate-600"}`}>
-                                {m.type === 'paper' ? 'Paper' : 'PDF'}
-                              </span>
-                            </div>
-                          )}
-                        </a>
+                            )}
+                          </a>
 
-                        {/* Title & Badges */}
-                        <h4 className={`text-xs font-bold line-clamp-2 ${darkMode ? "text-slate-100" : "text-slate-800"}`} title={m.title}>
-                          {m.title}
-                        </h4>
+                          {/* Title & Badges */}
+                          <h4 className={`text-xs font-bold line-clamp-2 ${darkMode ? "text-slate-100" : "text-slate-800"}`} title={m.title}>
+                            {m.title}
+                          </h4>
 
-                        <div className="flex flex-wrap items-center gap-1">
-                          <span className={`text-[9px] uppercase font-bold px-1.5 py-0.5 rounded border ${m.type === 'video' ? darkMode ? "bg-indigo-500/10 text-indigo-400 border-indigo-500/20" : "bg-indigo-50 text-indigo-700 border-indigo-200"
+                          <div className="flex flex-wrap items-center gap-1">
+                            <span className={`text-[9px] uppercase font-bold px-1.5 py-0.5 rounded border ${m.type === 'video' ? darkMode ? "bg-indigo-500/10 text-indigo-400 border-indigo-500/20" : "bg-indigo-50 text-indigo-700 border-indigo-200"
                               : m.type === 'pdf' ? darkMode ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" : "bg-emerald-50 text-emerald-700 border-emerald-200"
                                 : darkMode ? "bg-blue-500/10 text-blue-400 border-blue-500/20" : "bg-blue-50 text-blue-700 border-blue-200"
-                            }`}>
-                            {m.type}
-                          </span>
-                          <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded border ${darkMode ? "bg-slate-800 text-slate-300 border-slate-700" : "bg-white text-slate-600 border-slate-200"}`}>
-                            {m.subject}
-                          </span>
-                          {m.grade && (
+                              }`}>
+                              {m.type}
+                            </span>
                             <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded border ${darkMode ? "bg-slate-800 text-slate-300 border-slate-700" : "bg-white text-slate-600 border-slate-200"}`}>
-                              {m.grade}
+                              {m.subject}
                             </span>
-                          )}
-                        </div>
-
-                        {/* A scroll has been added along with the description. (Max Height: 24) */}
-                        {m.description && (
-                          <div className={`mt-2 p-2 rounded-lg border text-[11px] font-normal leading-relaxed max-h-24 overflow-y-auto scrollbar-thin ${darkMode ? "bg-slate-900/90 border-slate-800 text-slate-300 scrollbar-thumb-slate-700" : "bg-white border-slate-200/70 text-slate-700 scrollbar-thumb-slate-300"
-                            }`}>
-                            <p className="whitespace-pre-wrap break-words">{m.description}</p>
+                            {m.grade && (
+                              <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded border ${darkMode ? "bg-slate-800 text-slate-300 border-slate-700" : "bg-white text-slate-600 border-slate-200"}`}>
+                                {m.grade}
+                              </span>
+                            )}
                           </div>
-                        )}
 
-                        {/* Reject Reason Box */}
-                        {m.status === 'rejected' && m.rejectReason && (
-                          <div className="p-2 rounded-lg bg-red-500/10 border border-red-500/20 text-[10px] text-red-500 flex items-start gap-1.5">
-                            <AlertCircle size={12} className="mt-0.5 flex-shrink-0" />
-                            <span><strong>Reason:</strong> {m.rejectReason}</span>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Card Footer: Date, Time, Status & Action Buttons */}
-                      <div className="pt-3 mt-3 border-t border-slate-200/60 dark:border-slate-800 space-y-2">
-                        <div className="flex flex-col gap-1 text-[10px]">
-                          <div className="flex items-center justify-between">
-                            <span className={`flex items-center gap-1 font-medium ${darkMode ? "text-slate-400" : "text-slate-500"}`}>
-                              <Calendar size={11} /> {new Date(m.createdAt).toLocaleDateString()}
-                            </span>
-                            <span className={`flex items-center gap-1 font-medium ${darkMode ? "text-slate-400" : "text-slate-500"}`}>
-                              <Clock size={11} /> {new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                            </span>
-                          </div>
-                          <div className="mt-1">
-                            {m.status === 'pending' && <span className="px-2 py-0.5 rounded text-[9px] font-bold uppercase bg-amber-500/15 text-amber-500 border border-amber-500/30 block text-center">Pending</span>}
-                            {m.status === 'approved' && <span className="px-2 py-0.5 rounded text-[9px] font-bold uppercase bg-emerald-500/15 text-emerald-500 border border-emerald-500/30 block text-center">Approved</span>}
-                            {m.status === 'rejected' && <span className="px-2 py-0.5 rounded text-[9px] font-bold uppercase bg-red-500/15 text-red-500 border border-red-500/30 block text-center">Rejected</span>}
-                          </div>
-                        </div>
-
-                        {/* Action Buttons */}
-                        <div className="flex items-center justify-between gap-1.5 pt-1">
-                          {m.status === 'pending' ? (
-                            <div className="flex items-center gap-1.5 w-full">
-                              <button onClick={() => handleStatusUpdate(m._id, 'approved')} className="flex-1 flex items-center justify-center gap-1 py-1.5 px-2 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-500 text-xs font-bold transition-all shadow-sm" title="Approve">
-                                <CheckCircle size={14} /> Approve
-                              </button>
-                              <button onClick={() => setRejectItem(m)} className="flex-1 flex items-center justify-center gap-1 py-1.5 px-2 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-500 text-xs font-bold transition-all shadow-sm" title="Reject">
-                                <XCircle size={14} /> Reject
-                              </button>
-                            </div>
-                          ) : (
-                            <div className="text-[11px] font-bold italic text-slate-400 w-full text-center py-1 bg-slate-100 dark:bg-slate-900 rounded-lg">
-                              Processed
+                          {/* A scroll has been added along with the description. (Max Height: 24) */}
+                          {m.description && (
+                            <div className={`mt-2 p-2 rounded-lg border text-[11px] font-normal leading-relaxed max-h-24 overflow-y-auto scrollbar-thin ${darkMode ? "bg-slate-900/90 border-slate-800 text-slate-300 scrollbar-thumb-slate-700" : "bg-white border-slate-200/70 text-slate-700 scrollbar-thumb-slate-300"
+                              }`}>
+                              <p className="whitespace-pre-wrap break-words">{m.description}</p>
                             </div>
                           )}
-                          <button onClick={() => setDeleteItem(m)} className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-500/10 transition-colors flex-shrink-0 border border-slate-200 dark:border-slate-800" title="Delete Material">
-                            <Trash2 size={15} />
-                          </button>
-                        </div>
-                      </div>
 
-                    </div>
-                  ))}
+                          {/* Reject Reason Box */}
+                          {m.status === 'rejected' && m.rejectReason && (
+                            <div className="p-2 rounded-lg bg-red-500/10 border border-red-500/20 text-[10px] text-red-500 flex items-start gap-1.5">
+                              <AlertCircle size={12} className="mt-0.5 flex-shrink-0" />
+                              <span><strong>Reason:</strong> {m.rejectReason}</span>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Card Footer: Date, Time, Status & Action Buttons */}
+                        <div className="pt-3 mt-3 border-t border-slate-200/60 dark:border-slate-800 space-y-2">
+                          <div className="flex flex-col gap-1 text-[10px]">
+                            <div className="flex items-center justify-between">
+                              <span className={`flex items-center gap-1 font-medium ${darkMode ? "text-slate-400" : "text-slate-500"}`}>
+                                <Calendar size={11} /> {new Date(m.createdAt).toLocaleDateString()}
+                              </span>
+                              <span className={`flex items-center gap-1 font-medium ${darkMode ? "text-slate-400" : "text-slate-500"}`}>
+                                <Clock size={11} /> {new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                              </span>
+                            </div>
+                            <div className="mt-1">
+                              {m.status === 'pending' && <span className="px-2 py-0.5 rounded text-[9px] font-bold uppercase bg-amber-500/15 text-amber-500 border border-amber-500/30 block text-center">Pending</span>}
+                              {m.status === 'approved' && <span className="px-2 py-0.5 rounded text-[9px] font-bold uppercase bg-emerald-500/15 text-emerald-500 border border-emerald-500/30 block text-center">Approved</span>}
+                              {m.status === 'rejected' && <span className="px-2.5 py-0.5 rounded text-[9px] font-bold uppercase bg-red-500/15 text-red-500 border border-red-500/30 block text-center">Rejected</span>}
+                            </div>
+                          </div>
+
+                          {/* Action Buttons */}
+                          <div className="flex items-center justify-between gap-1.5 pt-1">
+                            {m.status === 'pending' ? (
+                              <div className="flex items-center gap-1.5 w-full">
+                                <button onClick={() => handleStatusUpdate(m._id, 'approved')} className="flex-1 flex items-center justify-center gap-1 py-1.5 px-2 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-500 text-xs font-bold transition-all shadow-sm" title="Approve">
+                                  <CheckCircle size={14} /> Approve
+                                </button>
+                                <button onClick={() => setRejectItem(m)} className="flex-1 flex items-center justify-center gap-1 py-1.5 px-2 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-500 text-xs font-bold transition-all shadow-sm" title="Reject">
+                                  <XCircle size={14} /> Reject
+                                </button>
+                              </div>
+                            ) : (
+                              <div className="text-[11px] font-bold italic text-slate-400 w-full text-center py-1 bg-slate-100 dark:bg-slate-900 rounded-lg">
+                                Processed
+                              </div>
+                            )}
+                            <button onClick={() => setDeleteItem(m)} className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-500/10 transition-colors flex-shrink-0 border border-slate-200 dark:border-slate-800" title="Delete Material">
+                              <Trash2 size={15} />
+                            </button>
+                          </div>
+                        </div>
+
+                      </div>
+                    ))}
+                  </div>
                 </div>
 
               </div>

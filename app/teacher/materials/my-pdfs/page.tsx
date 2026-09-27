@@ -46,6 +46,7 @@ export default function MyPDFsPage() {
     fetchTeacherClasses();
   }, []);
 
+  // Fetch materials created by the teacher
   const fetchPdfs = async () => {
     const token = localStorage.getItem("token");
     try {
@@ -61,6 +62,7 @@ export default function MyPDFsPage() {
     }
   };
 
+  // Fetch classes belonging to the teacher
   const fetchTeacherClasses = async () => {
     try {
       const token = localStorage.getItem("token");
@@ -73,6 +75,7 @@ export default function MyPDFsPage() {
     }
   };
 
+  // Handle material deletion
   const handleDeleteConfirm = async () => {
     if (!deleteItem) return;
     try {
@@ -87,12 +90,14 @@ export default function MyPDFsPage() {
     }
   };
 
+  // Open the class selection modal for publishing
   const openPublishModal = (pdf: any) => {
     setSelectedPdfForPublish(pdf);
     setSelectedClassIds(pdf.classIds ? pdf.classIds.map((c: any) => c._id || c) : []);
     setPublishModalOpen(true);
   };
 
+  // Confirm and publish the material to selected classes
   const handleConfirmPublish = async () => {
     if (!selectedPdfForPublish) return;
     try {
@@ -113,6 +118,7 @@ export default function MyPDFsPage() {
     }
   };
 
+  // Unpublish material from classes
   const handleUnpublish = async (id: string) => {
     try {
       const token = localStorage.getItem("token");
@@ -127,6 +133,7 @@ export default function MyPDFsPage() {
     }
   };
 
+  // Toggle class selection in the publish modal
   const toggleClassSelection = (classId: string) => {
     if (selectedClassIds.includes(classId)) {
       setSelectedClassIds(selectedClassIds.filter(id => id !== classId));
@@ -135,6 +142,7 @@ export default function MyPDFsPage() {
     }
   };
 
+  // Filter PDFs based on search query and active tab
   const filteredPdfs = useMemo(() => {
     return pdfs.filter((pdf) => {
       const matchesSearch = 
@@ -151,6 +159,7 @@ export default function MyPDFsPage() {
     });
   }, [pdfs, searchTerm, activeTab]);
 
+  // Tab configurations
   const tabs = [
     { id: "all", label: "All Files" },
     { id: "published", label: "Published" },
@@ -351,6 +360,17 @@ export default function MyPDFsPage() {
                     </button>
                   </div>
                 </div>
+
+                {/* Rejection Reason Display Box for Teacher */}
+                {pdf.status === 'rejected' && (pdf.rejectReason || pdf.adminRejectReason || pdf.reason) && (
+                  <div className={`mt-2 p-3 rounded-xl border text-xs flex items-start gap-2 ${darkMode ? "bg-red-500/10 border-red-500/20 text-red-300" : "bg-red-50 border-red-200 text-red-700"}`}>
+                    <AlertCircle size={15} className="mt-0.5 flex-shrink-0" />
+                    <div>
+                      <span className="font-bold block mb-0.5">Rejection Reason:</span>
+                      <span>{pdf.rejectReason || pdf.adminRejectReason || pdf.reason}</span>
+                    </div>
+                  </div>
+                )}
 
                 {/* Published Classes List Display under the item */}
                 {pdf.isPublished && pdf.classIds && pdf.classIds.length > 0 && (

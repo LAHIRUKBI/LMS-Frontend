@@ -41,40 +41,40 @@ export default function AdminRegisterPage() {
     setLoading(true);
 
     try {
-      // LocalStorage එකෙන් කලින් ලොග් වුන Admin ගේ Token එක ගන්නවා
+      // Get the logged-in admin's token from localStorage
       const token = localStorage.getItem("token");
 
       if (!token) {
-        setError("කරුණාකර පළමුව ලොග් වී සිටින්න.");
+        setError("Please log in first.");
         setLoading(false);
         return;
       }
 
-      // Backend එකට Register Request එක යැවීම
+      // Send Register request to the backend
       const response = await axios.post(
         "http://localhost:5000/api/auth/admin-register",
         formData,
         {
           headers: {
-            Authorization: `Bearer ${token}`, // ආරක්‍ෂාව සඳහා Token එක යවනවා
+            Authorization: `Bearer ${token}`, // Send token for security
           },
         }
       );
 
       setSuccess(
-        response.data.message || "නව Admin ගිණුම සාර්ථකව නිර්මාණය කරන ලදී!"
+        response.data.message || "New Admin account created successfully!"
       );
 
-      // තත්පර 2කින් පසුව අලුත් Admin ට ලොග් වෙන්න Login පිටුවට යවනවා
+      // Redirect to Login page after 2 seconds for the new admin to log in
       setTimeout(() => {
-        // අලුතින් හැදුව කෙනාගෙන් ලොග් වෙන්න ඕන නිසා පරණ token එක අයින් කරනවා
+        // Remove old token since the new user needs to log in
         localStorage.removeItem("token");
         localStorage.removeItem("user");
         router.push("/login");
       }, 2000);
     } catch (err: any) {
       setError(
-        err.response?.data?.message || "ගිණුම සෑදීමේදී දෝෂයක් මතු විය."
+        err.response?.data?.message || "An error occurred while creating the account."
       );
     } finally {
       setLoading(false);
@@ -112,14 +112,14 @@ export default function AdminRegisterPage() {
                 darkMode ? "text-white" : "text-slate-900"
               }`}
             >
-              නව Admin ගිණුමක් සෑදීම
+              Create New Admin Account
             </h1>
             <p
               className={`mt-1 text-sm ${
                 darkMode ? "text-slate-400" : "text-slate-500"
               }`}
             >
-              පද්ධතියට නව පරිපාලකයෙකු එක් කරන්න
+              Add a new administrator to the system
             </p>
           </div>
         </div>
@@ -172,7 +172,7 @@ export default function AdminRegisterPage() {
               name="adminId"
               value={formData.adminId}
               onChange={handleChange}
-              placeholder="උදා: ADM-002"
+              placeholder="e.g. ADM-002"
               className={inputClass}
               required
             />
@@ -190,13 +190,12 @@ export default function AdminRegisterPage() {
               name="name"
               value={formData.name}
               onChange={handleChange}
-              placeholder="උදා: Nimal Silva"
+              placeholder="e.g. Nimal Silva"
               className={inputClass}
               required
             />
           </div>
 
-          {/* Email */}
           <div>
             <label htmlFor="email" className={labelClass}>
               <Mail size={14} />
@@ -298,7 +297,7 @@ export default function AdminRegisterPage() {
           darkMode ? "text-slate-500" : "text-slate-400"
         }`}
       >
-        ගිණුම සාදා තත්පර 2කින් Login පිටුවට යවනු ලැබේ.
+        You will be redirected to the login page 2 seconds after account creation.
       </p>
     </div>
   );

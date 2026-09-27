@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import axios from "axios";
-import { Trash2 } from "lucide-react"; // අලුතින් Delete අයිකනය import කරගත්තා
+import { Trash2 } from "lucide-react";
+import DeleteConfirmationModal from "@/app/components/AdminDeleteConfirmationModal"; // අලුතින් සාදාගත් Component එක import කිරීම
 
 interface AdminUser {
   _id: string;
@@ -17,6 +18,10 @@ export default function AdminListPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+
+  // States required to control the modal
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedAdmin, setSelectedAdmin] = useState<{ id: string; name: string } | null>(null);
 
   const fetchAdmins = async () => {
     const token = localStorage.getItem("token");
@@ -36,30 +41,34 @@ export default function AdminListPage() {
     fetchAdmins();
   }, []);
 
-  // Admin කෙනෙක්ව Delete කිරීමේ Function එක
-  const handleDelete = async (id: string, name: string) => {
-    // මකා දැමීමට පෙර තහවුරු කරගැනීම (Confirmation)
-    const isConfirmed = window.confirm(`ඔබට විශ්වාසද "${name}" ගේ Admin ගිණුම ඉවත් කළ යුතුයි කියා?`);
-    if (!isConfirmed) return;
+  // Opening the modal when the Delete button is clicked
+  const openDeleteModal = (id: string, name: string) => {
+    setSelectedAdmin({ id, name });
+    setIsModalOpen(true);
+  };
+
+  // The function that performs the actual deletion.
+  const handleDeleteConfirm = async () => {
+    if (!selectedAdmin) return;
 
     setError("");
     setSuccess("");
 
     try {
       const token = localStorage.getItem("token");
-      const res = await axios.delete(`http://localhost:5000/api/admin/admins/${id}`, {
+      const res = await axios.delete(`http://localhost:5000/api/admin/admins/${selectedAdmin.id}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      setSuccess(res.data.message || "ගිණුම සාර්ථකව ඉවත් කරන ලදී.");
+      setSuccess(res.data.message || "Account successfully removed.");
       
-      // ඉවත් කළ පසු Table එක රීලෝඩ් නොකර අදාළ Admin ව පමණක් State එකෙන් අයින් කිරීම
-      setAdmins(admins.filter((admin) => admin._id !== id));
+      // Remove only the relevant admin from the state without reloading the table
+      setAdmins(admins.filter((admin) => admin._id !== selectedAdmin.id));
 
-      // තත්පර 3කින් success මැසේජ් එක මකා දැමීම
+      // Clear the success message after 3 seconds
       setTimeout(() => setSuccess(""), 3000);
     } catch (err: any) {
-      setError(err.response?.data?.message || "ඉවත් කිරීමේදී දෝෂයක් මතු විය.");
+      setError(err.response?.data?.message || "An error occurred while removing.");
       setTimeout(() => setError(""), 3000);
     }
   };
@@ -68,17 +77,17 @@ export default function AdminListPage() {
     <div className="p-8">
       <div className="bg-white p-8 rounded-lg shadow-sm border border-gray-100 dark:bg-slate-900 dark:border-slate-800">
         <h2 className="text-2xl font-bold text-gray-800 dark:text-white mb-6">
-          ලියාපදිංචි Admin ලැයිස්තුව
+          Registered Admin List
         </h2>
 
-        {/* Error සහ Success පණිවිඩ */}
+        {/* Error and Success messages */}
         {error && <div className="p-4 mb-4 text-sm text-red-700 bg-red-100 rounded-md">{error}</div>}
         {success && <div className="p-4 mb-4 text-sm text-green-700 bg-green-100 rounded-md">{success}</div>}
 
         {loading ? (
           <p className="text-gray-500 dark:text-slate-400">Loading...</p>
         ) : admins.length === 0 ? (
-          <p className="text-gray-500 dark:text-slate-400">පද්ධතියේ Admin වරුන් නොමැත.</p>
+          <p className="text-gray-500 dark:text-slate-400">No admins found in the system.</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left text-sm text-gray-600 dark:text-slate-300 border-collapse">
@@ -109,10 +118,10 @@ export default function AdminListPage() {
                       )}
                     </td>
                     <td className="px-4 py-3 text-center">
-                      {/* Default Admin නෙවෙයි නම් විතරක් Delete Button එක පෙන්වනවා */}
+                      {/* Show Delete Button only if it's not the Default Admin */}
                       {!admin.isDefault ? (
                         <button
-                          onClick={() => handleDelete(admin._id, admin.name)}
+                          onClick={() => openDeleteModal(admin._id, admin.name)}
                           className="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 transition-colors p-2 rounded-md hover:bg-red-50 dark:hover:bg-red-500/10"
                           title="Delete Admin"
                         >
@@ -129,6 +138,15 @@ export default function AdminListPage() {
           </div>
         )}
       </div>
+
+      {/* The delete confirmation modal is included here. */}
+      <DeleteConfirmationModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onConfirm={handleDeleteConfirm}
+        title="Remove Admin Account"
+        message={`Are you sure you want to remove "${selectedAdmin?.name}"'s Admin account? This action cannot be undone.`}
+      />
     </div>
   );
 }
