@@ -1,13 +1,16 @@
 // src/app/admin/tickets/page.tsx
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import axios from "axios";
+import { useSearchParams } from "next/navigation";
 import { useTheme } from "@/app/context/ThemeContext";
 import { MessageSquare, CheckCircle, Trash2, X, Send, Search, Loader2, User, Clock, CheckCircle2 } from "lucide-react";
 
 export default function AdminTicketsPage() {
   const { darkMode } = useTheme();
+  const searchParams = useSearchParams();
+  const ticketIdParam = searchParams.get("ticketId");
   const [tickets, setTickets] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -33,6 +36,16 @@ export default function AdminTicketsPage() {
   useEffect(() => {
     fetchTickets();
   }, []);
+
+  // Notification එකෙන් URL එකට ticketId එක ආවම අදාළ Ticket එක ස්වයංක්‍රීයව Open කිරීම
+  useEffect(() => {
+    if (ticketIdParam && tickets.length > 0) {
+      const foundTicket = tickets.find(t => t._id === ticketIdParam);
+      if (foundTicket) {
+        setSelectedTicket(foundTicket);
+      }
+    }
+  }, [ticketIdParam, tickets]);
 
   const handleReply = async (e: React.FormEvent) => {
     e.preventDefault();

@@ -312,6 +312,23 @@ export default function MyPDFsPage() {
               >
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                   <div className="flex items-start sm:items-center gap-4 flex-1 min-w-0">
+                    
+                    {/* PDF Cover Image Display Section */}
+                    <div className={`relative w-16 h-20 sm:w-20 sm:h-24 rounded-xl overflow-hidden flex-shrink-0 border flex items-center justify-center ${darkMode ? "bg-slate-800 border-slate-700" : "bg-slate-100 border-slate-200"}`}>
+                      {pdf.coverImage || pdf.thumbnail ? (
+                        <img 
+                          src={pdf.coverImage ? (pdf.coverImage.startsWith('http') ? pdf.coverImage : `http://localhost:5000${pdf.coverImage}`) : (pdf.thumbnail.startsWith('http') ? pdf.thumbnail : `http://localhost:5000${pdf.thumbnail}`)} 
+                          alt={pdf.title} 
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        />
+                      ) : (
+                        <div className="flex flex-col items-center justify-center text-orange-500">
+                          <FileText size={24} />
+                          <span className="text-[10px] font-bold mt-1 uppercase">PDF</span>
+                        </div>
+                      )}
+                    </div>
+
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2 mb-1.5 flex-wrap">
                         <h3 className={`font-bold text-sm sm:text-base truncate ${darkMode ? "text-slate-200" : "text-slate-800"}`}>{pdf.title}</h3>

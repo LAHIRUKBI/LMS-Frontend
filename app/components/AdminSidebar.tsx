@@ -431,16 +431,18 @@ export default function AdminSidebar() {
                   </div>
                 ) : (
                   adminNotifications.map((notif, index) => {
-                    let targetUrl = "/admin/dashboard";
-                    if (notif.title.toLowerCase().includes("ticket")) {
-                      targetUrl = "/admin/tickets";
-                    } else if (
-                      notif.title.toLowerCase().includes("material") || 
-                      notif.title.toLowerCase().includes("video") || 
-                      notif.title.toLowerCase().includes("pdf")
-                    ) {
-                      targetUrl = "/admin/materials/review";
-                    }
+  let targetUrl = "/admin/dashboard";
+  
+  // Ticket එකක් සම්බන්ධ නොටිෆිකේෂන් එකක් නම් ticketId එක සමඟ Admin Tickets page එකට යොමු කිරීම
+  if (notif.title.toLowerCase().includes("ticket") || notif.ticketId) {
+    targetUrl = notif.ticketId ? `/admin/tickets?ticketId=${notif.ticketId}` : "/admin/tickets";
+  } else if (
+    notif.title.toLowerCase().includes("material") || 
+    notif.title.toLowerCase().includes("video") || 
+    notif.title.toLowerCase().includes("pdf")
+  ) {
+    targetUrl = "/admin/materials/review";
+  }
 
                     return (
                       <Link
