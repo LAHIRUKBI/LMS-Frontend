@@ -1,4 +1,3 @@
-// src/app/teacher/components/TeacherSidebar.tsx
 "use client";
 
 import { useEffect, useState, useRef } from "react";
@@ -100,10 +99,11 @@ export default function TeacherSidebar() {
 
         const socket = io("http://localhost:5000");
 
-        if (parsedUser.id) {
-          socket.emit("join_user_room", parsedUser.id);
+        if (parsedUser.id || parsedUser._id) {
+          socket.emit("join_user_room", parsedUser.id || parsedUser._id);
         }
 
+        // ගුරුවරයාට අලුත් නොටිෆිකේෂන් එකක් (හෝ Notice එකක්) ලැබෙන විට
         socket.on("receive_notification", (newNotif) => {
           setNotifications((prev) => [newNotif, ...prev]);
         });
@@ -437,6 +437,12 @@ export default function TeacherSidebar() {
                       targetUrl = notif.ticketId
                         ? `/teacher/tickets?ticketId=${notif.ticketId}`
                         : "/teacher/tickets";
+                    } else if (
+                      notif.title.toLowerCase().includes("notice") ||
+                      notif.targetType?.includes("teacher") ||
+                      notif.targetType === "everyone"
+                    ) {
+                      targetUrl = "/teacher/dashboard"; // අවශ්‍ය නම් notice පිටුවකට හෝ dashboard එකට යොමු කළ හැක
                     }
 
                     return (
