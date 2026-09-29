@@ -23,6 +23,11 @@ import {
   User,
   LogOut,
   ClipboardList ,
+  FileQuestion  , 
+  BookOpenCheck, 
+  PlusCircle, 
+  Eye, 
+  Award  
 } from "lucide-react";
 import { useTheme } from "@/app/context/ThemeContext";
 
@@ -193,10 +198,11 @@ export default function TeacherSidebar() {
     { name: "My Videos", path: "/teacher/materials/my-videos", icon: Film },
     { name: "My PDFs & Paper", path: "/teacher/materials/my-pdfs", icon: FileStack },
     { name: "Ticket", path: "/teacher/tickets", icon: FileStack },
-    { name: "Quize", path: "/teacher/materials/quize", icon: ClipboardList  },
-    { name: "My Quize", path: "/teacher/materials/my-quize", icon: ClipboardList  },
-    { name: "create class", path: "/teacher/class/create_class", icon: ClipboardList  },
-    { name: "Marks", path: "/teacher/materials/quize_marks", icon: Settings },
+    { name: "Quize", path: "/teacher/materials/quize", icon: FileQuestion    },
+    { name: "My Quize", path: "/teacher/materials/my-quize", icon: BookOpenCheck  },
+    { name: "Create Class", path: "/teacher/class/create_class", icon: PlusCircle  },
+    { name: "View Class", path: "/teacher/class/view_class", icon: Eye },
+    { name: "Student Marks", path: "/teacher/materials/quize_marks", icon: Award },
   ];
 
   const notifDropdownRef = useRef<HTMLDivElement>(null);
