@@ -17,7 +17,8 @@ import {
   Clock, 
   Users, 
   Trash2, 
-  Download 
+  Download,
+  MapPin 
 } from "lucide-react";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -133,6 +134,7 @@ export default function AdminStudentView() {
       ["Full Name", student.name || "N/A"],
       ["Email Address", student.email || "N/A"],
       ["Phone Number", student.phone || "N/A"],
+      ["Home Address", student.address || "N/A"],
       ["Grade", student.grade || "N/A"],
       ["School", student.school || "N/A"],
       ["Medium", student.medium || "N/A"],
@@ -165,11 +167,12 @@ export default function AdminStudentView() {
     doc.setTextColor(100);
     doc.text(`Generated on: ${new Date().toLocaleDateString()} | Total Students: ${students.length}`, 14, 28);
 
-    const tableColumns = ["Name", "Email", "Phone", "Grade", "School", "Joined Date"];
+    const tableColumns = ["Name", "Email", "Phone", "Address", "Grade", "School", "Joined Date"];
     const tableRows = students.map(s => [
       s.name,
       s.email,
       s.phone || "N/A",
+      s.address || "N/A",
       s.grade || "N/A",
       s.school || "N/A",
       new Date(s.createdAt).toLocaleDateString()
@@ -343,7 +346,7 @@ export default function AdminStudentView() {
                         </div>
                       </td>
 
-                      {/* Academic Info & Medium */}
+                      {/* Academic Info, Medium & Home Address */}
                       <td className="px-4 py-4">
                         <div className="space-y-1 text-xs">
                           <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-300">
@@ -353,6 +356,10 @@ export default function AdminStudentView() {
                           <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-300 truncate max-w-[130px]" title={student.school}>
                             <Building size={13} className="text-indigo-400 flex-shrink-0" />
                             <span className="truncate">{student.school || <span className="text-slate-400 italic">N/A</span>}</span>
+                          </div>
+                          <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-300 truncate max-w-[150px]" title={student.address}>
+                            <MapPin size={13} className="text-red-500 flex-shrink-0" />
+                            <span className="truncate">{student.address || <span className="text-slate-400 italic">No address</span>}</span>
                           </div>
                           {student.medium && (
                             <span className="inline-block text-[9px] px-1.5 py-0.2 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-500/20 rounded-full font-medium">
