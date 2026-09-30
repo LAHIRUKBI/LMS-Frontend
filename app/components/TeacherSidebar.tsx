@@ -22,8 +22,8 @@ import {
   Settings,
   User,
   LogOut,
-  ClipboardList ,
-  FileQuestion  , 
+  ClipboardList,
+  FileQuestion, 
   BookOpenCheck, 
   PlusCircle, 
   Eye, 
@@ -43,8 +43,40 @@ export default function TeacherSidebar() {
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const unreadCount = notifications.filter((n) => !n.isRead).length;
 
+  // --- Notice State ---
+  const [unreadNoticeCount, setUnreadNoticeCount] = useState(0);
+
   // --- Collapsible State ---
   const [isCollapsed, setIsCollapsed] = useState(false);
+
+  // Function to fetch notifications manually
+  const fetchNotifications = async () => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
+    try {
+      const res = await axios.get("http://localhost:5000/api/notifications", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setNotifications(res.data);
+    } catch (error) {
+      console.error("Error fetching notifications:", error);
+    }
+  };
+
+  // Function to fetch teacher notices count for the red dot indicator
+  const fetchTeacherNoticesCount = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) return;
+      const res = await axios.get("http://localhost:5000/api/teacher/notices", {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const unread = res.data.filter((n: any) => !n.isRead).length;
+      setUnreadNoticeCount(unread);
+    } catch (err) {
+      // Prevent console error if endpoint differs
+    }
+  };
 
   useEffect(() => {
     const loadUserDataLocally = () => {
@@ -86,48 +118,53 @@ export default function TeacherSidebar() {
       }
     };
 
-    const setupNotifications = async () => {
+    const setupSocket = () => {
       const token = localStorage.getItem("token");
       const userData = localStorage.getItem("user");
 
       if (token && userData) {
         const parsedUser = JSON.parse(userData);
-
-        try {
-          const res = await axios.get("http://localhost:5000/api/notifications", {
-            headers: { Authorization: `Bearer ${token}` },
-          });
-          setNotifications(res.data);
-        } catch (error) {
-          console.error("Error fetching notifications:", error);
-        }
-
         const socket = io("http://localhost:5000");
 
         if (parsedUser.id || parsedUser._id) {
           socket.emit("join_user_room", parsedUser.id || parsedUser._id);
         }
 
-        // ගුරුවරයාට අලුත් නොටිෆිකේෂන් එකක් (හෝ Notice එකක්) ලැබෙන විට
         socket.on("receive_notification", (newNotif) => {
-          setNotifications((prev) => [newNotif, ...prev]);
+          setNotifications((prev) => {
+            if (prev.some((n) => n._id === newNotif._id)) return prev;
+            return [newNotif, ...prev];
+          });
         });
 
         return () => {
           socket.disconnect();
         };
       }
+      return () => {};
     };
 
     loadUserDataLocally();
     fetchLatestProfile();
-    const cleanupSocket = setupNotifications();
+    
+    // Initial fetch
+    fetchNotifications();
+    fetchTeacherNoticesCount();
+
+    const cleanupSocket = setupSocket();
+
+    // Polling for updates
+    const interval = setInterval(() => {
+      fetchNotifications();
+      fetchTeacherNoticesCount();
+    }, 10000);
 
     window.addEventListener("profileUpdated", loadUserDataLocally);
 
     return () => {
       window.removeEventListener("profileUpdated", loadUserDataLocally);
-      cleanupSocket.then((cleanup) => cleanup && cleanup());
+      cleanupSocket();
+      clearInterval(interval);
     };
   }, []);
 
@@ -193,14 +230,15 @@ export default function TeacherSidebar() {
 
   const navItems = [
     { name: "Dashboard", path: "/teacher/dashboard", icon: Home },
+    { name: "Notices", path: "/teacher/notice_view", icon: ClipboardList }, // නව ටැබ් එක
     { name: "Upload Video", path: "/teacher/materials/video", icon: Video },
     { name: "Upload PDF & Paper", path: "/teacher/materials/pdf", icon: FileText },
     { name: "My Videos", path: "/teacher/materials/my-videos", icon: Film },
     { name: "My PDFs & Paper", path: "/teacher/materials/my-pdfs", icon: FileStack },
     { name: "Ticket", path: "/teacher/tickets", icon: FileStack },
-    { name: "Quize", path: "/teacher/materials/quize", icon: FileQuestion    },
-    { name: "My Quize", path: "/teacher/materials/my-quize", icon: BookOpenCheck  },
-    { name: "Create Class", path: "/teacher/class/create_class", icon: PlusCircle  },
+    { name: "Quize", path: "/teacher/materials/quize", icon: FileQuestion },
+    { name: "My Quize", path: "/teacher/materials/my-quize", icon: BookOpenCheck },
+    { name: "Create Class", path: "/teacher/class/create_class", icon: PlusCircle },
     { name: "View Class", path: "/teacher/class/view_class", icon: Eye },
     { name: "Student Marks", path: "/teacher/materials/quize_marks", icon: Award },
   ];
@@ -300,10 +338,12 @@ export default function TeacherSidebar() {
         {navItems.map((item) => {
           const isActive = pathname === item.path;
           const Icon = item.icon;
+          const isNoticeTab = item.name === "Notices";
+
           return (
             <Link href={item.path} key={item.path} title={item.name}>
               <div
-                className={`group flex items-center rounded-2xl px-3 py-2.5 text-sm font-medium transition-all duration-300 ease-in-out border backdrop-blur-sm ${
+                className={`relative group flex items-center rounded-2xl px-3 py-2.5 text-sm font-medium transition-all duration-300 ease-in-out border backdrop-blur-sm ${
                   isCollapsed ? "justify-center px-0" : "gap-3"
                 } ${
                   isActive
@@ -315,30 +355,46 @@ export default function TeacherSidebar() {
                     : "text-slate-600 bg-white/30 border-slate-200/30 hover:bg-white/60 hover:text-slate-900 hover:-translate-y-0.5"
                 }`}
               >
-                <Icon
-                  size={18}
-                  className={`transition-transform duration-300 shrink-0 ${
-                    isActive ? "scale-110" : "group-hover:scale-110"
-                  } ${
-                    isActive
-                      ? darkMode
-                        ? "text-indigo-400"
-                        : "text-indigo-600"
-                      : darkMode
-                      ? "text-slate-500"
-                      : "text-slate-400"
-                  }`}
-                />
+                <div className="relative">
+                  <Icon
+                    size={18}
+                    className={`transition-transform duration-300 shrink-0 ${
+                      isActive ? "scale-110" : "group-hover:scale-110"
+                    } ${
+                      isActive
+                        ? darkMode
+                          ? "text-indigo-400"
+                          : "text-indigo-600"
+                        : darkMode
+                        ? "text-slate-500"
+                        : "text-slate-400"
+                    }`}
+                  />
+                  {/* Indicator for collapsed state */}
+                  {isNoticeTab && unreadNoticeCount > 0 && isCollapsed && (
+                    <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500"></span>
+                    </span>
+                  )}
+                </div>
 
                 <span
-                  className={`truncate transition-all duration-300 ${
+                  className={`truncate flex-1 transition-all duration-300 ${
                     isCollapsed ? "w-0 opacity-0 overflow-hidden hidden" : "w-auto opacity-100"
                   }`}
                 >
                   {item.name}
                 </span>
 
-                {isActive && !isCollapsed && (
+                {/* Indicator for expanded state */}
+                {isNoticeTab && unreadNoticeCount > 0 && !isCollapsed && (
+                  <span className="bg-red-500 text-white text-[10px] px-2 py-0.5 rounded-full font-bold animate-pulse">
+                    {unreadNoticeCount}
+                  </span>
+                )}
+
+                {isActive && !isCollapsed && !isNoticeTab && (
                   <span
                     className={`ml-auto h-1.5 w-1.5 rounded-full transition-all duration-300 ${
                       darkMode ? "bg-indigo-400" : "bg-indigo-600"
@@ -448,7 +504,7 @@ export default function TeacherSidebar() {
                       notif.targetType?.includes("teacher") ||
                       notif.targetType === "everyone"
                     ) {
-                      targetUrl = "/teacher/dashboard"; // අවශ්‍ය නම් notice පිටුවකට හෝ dashboard එකට යොමු කළ හැක
+                      targetUrl = "/teacher/notice_view";
                     }
 
                     return (
