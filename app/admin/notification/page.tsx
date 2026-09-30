@@ -17,6 +17,7 @@ import {
   UserX,
   Download // Download අයිකනය
 } from "lucide-react";
+import { useTheme } from "@/app/context/ThemeContext";
 
 interface NotificationData {
   _id: string;
@@ -44,6 +45,8 @@ export default function AdminNotificationManager() {
   const [autoDeleteDays, setAutoDeleteDays] = useState<number>(30);
   const [savingSettings, setSavingSettings] = useState(false);
   const [message, setMessage] = useState("");
+
+  const { darkMode } = useTheme();
 
   useEffect(() => {
     fetchData();
@@ -182,7 +185,7 @@ export default function AdminNotificationManager() {
     
     if (typeof userId === 'object' && userId.name) {
       return (
-        <span className="flex items-center gap-1.5 text-xs font-semibold text-slate-700 dark:text-slate-300 mt-1.5">
+        <span className={`flex items-center gap-1.5 text-xs font-semibold mt-1.5 ${darkMode ? 'text-slate-300' : 'text-slate-700'}`}>
           <User size={12} className="text-slate-400" /> {userId.name}
         </span>
       );
@@ -202,7 +205,6 @@ export default function AdminNotificationManager() {
       return;
     }
 
-    // 1. Data එක Excel වලට ගැළපෙන Format එකට හැරවීම
     const excelData = filteredNotifications.map(notif => {
       let userName = "User Deleted";
       if (notif.userId && typeof notif.userId === 'object' && notif.userId.name) {
@@ -220,28 +222,26 @@ export default function AdminNotificationManager() {
       };
     });
 
-    // 2. Worksheet සහ Workbook එක සෑදීම
     const worksheet = XLSX.utils.json_to_sheet(excelData);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Notifications");
 
-    // 3. File එක Download කිරීම
     const fileName = `System_Notifications_${new Date().toISOString().split('T')[0]}.xlsx`;
     XLSX.writeFile(workbook, fileName);
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 p-6 font-sans">
+    <div className={`min-h-screen p-6 font-sans transition-colors duration-200 ${darkMode ? 'bg-gray-950 text-gray-100' : 'bg-slate-50 text-slate-900'}`}>
       <div className="max-w-7xl mx-auto space-y-8">
         
         {/* Header */}
         <div>
-          <h1 className="text-3xl font-extrabold text-slate-800 dark:text-white">System Notifications Manager</h1>
-          <p className="text-slate-500 mt-1">View, filter, export, and manage all notifications across the platform.</p>
+          <h1 className={`text-3xl font-extrabold ${darkMode ? 'text-white' : 'text-slate-800'}`}>System Notifications Manager</h1>
+          <p className={`mt-1 ${darkMode ? 'text-gray-400' : 'text-slate-500'}`}>View, filter, export, and manage all notifications across the platform.</p>
         </div>
 
         {message && (
-          <div className="p-4 bg-teal-500/10 border border-teal-500/30 text-teal-600 dark:text-teal-400 rounded-xl font-medium">
+          <div className="p-4 bg-teal-500/15 border border-teal-500/30 text-teal-600 dark:text-teal-400 rounded-xl font-medium shadow-sm">
             {message}
           </div>
         )}
@@ -252,12 +252,12 @@ export default function AdminNotificationManager() {
           <div className="lg:col-span-1 space-y-6">
             
             {/* Auto Delete Settings */}
-            <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800">
+            <div className={`p-6 rounded-2xl shadow-sm border transition-colors duration-200 ${darkMode ? 'bg-gray-900 border-gray-800' : 'bg-white border-slate-200'}`}>
               <div className="flex items-center gap-2 mb-4 text-orange-500">
                 <Settings size={20} />
-                <h2 className="text-lg font-bold">Auto-Delete Settings</h2>
+                <h2 className={`text-lg font-bold ${darkMode ? 'text-gray-100' : 'text-slate-800'}`}>Auto-Delete Settings</h2>
               </div>
-              <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
+              <p className={`text-sm mb-4 ${darkMode ? 'text-gray-400' : 'text-slate-500'}`}>
                 Automatically remove notifications older than a specific number of days to save database storage.
               </p>
               <div className="flex items-center gap-3">
@@ -266,13 +266,13 @@ export default function AdminNotificationManager() {
                   min="1"
                   value={autoDeleteDays}
                   onChange={(e) => setAutoDeleteDays(Number(e.target.value))}
-                  className="w-24 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 outline-none focus:border-teal-500"
+                  className={`w-24 border rounded-lg px-3 py-2 outline-none focus:border-teal-500 transition-all ${darkMode ? 'bg-gray-800 border-gray-700 text-gray-100' : 'bg-slate-50 border-slate-200 text-slate-900'}`}
                 />
-                <span className="text-sm font-medium">Days</span>
+                <span className={`text-sm font-medium ${darkMode ? 'text-gray-300' : 'text-slate-700'}`}>Days</span>
                 <button 
                   onClick={handleSaveSettings}
                   disabled={savingSettings}
-                  className="ml-auto bg-teal-500 hover:bg-teal-600 text-white px-4 py-2 rounded-lg text-sm font-bold transition-all flex items-center gap-2"
+                  className="ml-auto bg-teal-500 hover:bg-teal-600 text-white px-4 py-2 rounded-lg text-sm font-bold transition-all flex items-center gap-2 shadow-sm cursor-pointer disabled:opacity-50"
                 >
                   {savingSettings ? <Loader2 className="animate-spin" size={16} /> : <Save size={16} />}
                   Save
@@ -281,34 +281,34 @@ export default function AdminNotificationManager() {
             </div>
 
             {/* Calendar & Date Filter */}
-            <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800">
+            <div className={`p-6 rounded-2xl shadow-sm border transition-colors duration-200 ${darkMode ? 'bg-gray-900 border-gray-800' : 'bg-white border-slate-200'}`}>
               <div className="flex items-center gap-2 mb-4 text-blue-500">
                 <Calendar size={20} />
-                <h2 className="text-lg font-bold">Filter by Date</h2>
+                <h2 className={`text-lg font-bold ${darkMode ? 'text-gray-100' : 'text-slate-800'}`}>Filter by Date</h2>
               </div>
               <div className="space-y-4">
                 <div>
-                  <label className="block text-xs font-bold text-slate-400 mb-1">Start Date</label>
+                  <label className={`block text-xs font-bold mb-1 ${darkMode ? 'text-gray-400' : 'text-slate-400'}`}>Start Date</label>
                   <input 
                     type="date" 
                     value={startDate}
                     onChange={(e) => setStartDate(e.target.value)}
-                    className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 outline-none focus:border-blue-500 text-sm"
+                    className={`w-full border rounded-lg px-3 py-2 outline-none focus:border-blue-500 text-sm transition-all ${darkMode ? 'bg-gray-800 border-gray-700 text-gray-100' : 'bg-slate-50 border-slate-200 text-slate-900'}`}
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-bold text-slate-400 mb-1">End Date</label>
+                  <label className={`block text-xs font-bold mb-1 ${darkMode ? 'text-gray-400' : 'text-slate-400'}`}>End Date</label>
                   <input 
                     type="date" 
                     value={endDate}
                     onChange={(e) => setEndDate(e.target.value)}
-                    className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 outline-none focus:border-blue-500 text-sm"
+                    className={`w-full border rounded-lg px-3 py-2 outline-none focus:border-blue-500 text-sm transition-all ${darkMode ? 'bg-gray-800 border-gray-700 text-gray-100' : 'bg-slate-50 border-slate-200 text-slate-900'}`}
                   />
                 </div>
                 <div className="flex justify-end pt-2">
                   <button 
                     onClick={() => { setStartDate(""); setEndDate(""); }}
-                    className="text-xs text-rose-500 hover:underline font-medium"
+                    className="text-xs text-rose-500 hover:underline font-medium cursor-pointer"
                   >
                     Clear Dates
                   </button>
@@ -319,10 +319,10 @@ export default function AdminNotificationManager() {
           </div>
 
           {/* Main Table Panel */}
-          <div className="lg:col-span-2 bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col h-[750px]">
+          <div className={`lg:col-span-2 rounded-2xl shadow-sm border overflow-hidden flex flex-col h-[750px] transition-colors duration-200 ${darkMode ? 'bg-gray-900 border-gray-800' : 'bg-white border-slate-200'}`}>
             
             {/* Table Toolbar */}
-            <div className="p-4 border-b border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-4 bg-slate-50/50 dark:bg-slate-800/20">
+            <div className={`p-4 border-b flex flex-wrap items-center justify-between gap-4 transition-colors duration-200 ${darkMode ? 'border-gray-800 bg-gray-800/20' : 'border-slate-200 bg-slate-50/50'}`}>
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
                 <input 
@@ -330,19 +330,19 @@ export default function AdminNotificationManager() {
                   placeholder="Search notifications or user..." 
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-9 pr-4 py-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm outline-none focus:border-teal-500 w-64"
+                  className={`pl-9 pr-4 py-2 border rounded-lg text-sm outline-none focus:border-teal-500 w-64 transition-all ${darkMode ? 'bg-gray-800 border-gray-700 text-gray-100 placeholder-gray-500' : 'bg-white border-slate-200 text-slate-900 placeholder-slate-400'}`}
                 />
               </div>
 
               <div className="flex items-center gap-3">
-                <span className="text-sm text-slate-500 font-medium hidden sm:block">
+                <span className={`text-sm font-medium hidden sm:block ${darkMode ? 'text-gray-400' : 'text-slate-500'}`}>
                   {selectedIds.length} selected
                 </span>
                 
                 {/* Excel Export Button */}
                 <button
                   onClick={handleExportExcel}
-                  className="bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2 rounded-lg text-sm font-bold transition-all flex items-center gap-2"
+                  className="bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2 rounded-lg text-sm font-bold transition-all flex items-center gap-2 shadow-sm cursor-pointer"
                 >
                   <Download size={16} /> Export
                 </button>
@@ -351,7 +351,7 @@ export default function AdminNotificationManager() {
                 <button
                   onClick={handleBulkDelete}
                   disabled={selectedIds.length === 0}
-                  className="bg-rose-500 hover:bg-rose-600 disabled:bg-slate-300 dark:disabled:bg-slate-700 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg text-sm font-bold transition-all flex items-center gap-2"
+                  className="bg-rose-500 hover:bg-rose-600 disabled:bg-slate-300 dark:disabled:bg-gray-800 disabled:text-gray-500 dark:disabled:text-gray-600 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg text-sm font-bold transition-all flex items-center gap-2 shadow-sm cursor-pointer"
                 >
                   <Trash2 size={16} /> Delete Selected
                 </button>
@@ -361,22 +361,22 @@ export default function AdminNotificationManager() {
             {/* Table Content */}
             <div className="flex-1 overflow-auto">
               {loading ? (
-                <div className="flex flex-col items-center justify-center h-full text-slate-400">
+                <div className={`flex flex-col items-center justify-center h-full ${darkMode ? 'text-gray-500' : 'text-slate-400'}`}>
                   <Loader2 className="animate-spin mb-2" size={32} />
                   <p>Loading notifications...</p>
                 </div>
               ) : filteredNotifications.length === 0 ? (
-                <div className="flex flex-col items-center justify-center h-full text-slate-400 p-8 text-center">
+                <div className={`flex flex-col items-center justify-center h-full p-8 text-center ${darkMode ? 'text-gray-500' : 'text-slate-400'}`}>
                   <AlertCircle size={48} className="mb-4 opacity-50" />
-                  <p className="text-lg font-semibold">No notifications found.</p>
+                  <p className={`text-lg font-semibold ${darkMode ? 'text-gray-300' : 'text-slate-700'}`}>No notifications found.</p>
                   <p className="text-sm">Try adjusting your date filters or search query.</p>
                 </div>
               ) : (
                 <table className="w-full text-left border-collapse">
-                  <thead className="bg-slate-100 dark:bg-slate-800 sticky top-0 z-10 shadow-sm">
+                  <thead className={`sticky top-0 z-10 shadow-sm transition-colors duration-200 ${darkMode ? 'bg-gray-800/90 backdrop-blur-sm' : 'bg-slate-100'}`}>
                     <tr>
                       <th className="p-4 w-12 text-center">
-                        <button onClick={handleSelectAll} className="text-slate-400 hover:text-teal-500 transition-colors">
+                        <button onClick={handleSelectAll} className="text-slate-400 hover:text-teal-500 transition-colors cursor-pointer">
                           {selectedIds.length === filteredNotifications.length && filteredNotifications.length > 0 ? (
                             <CheckSquare size={18} className="text-teal-500" />
                           ) : (
@@ -384,21 +384,21 @@ export default function AdminNotificationManager() {
                           )}
                         </button>
                       </th>
-                      <th className="p-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Date & Time</th>
-                      <th className="p-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Recipient / User</th>
-                      <th className="p-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Status</th>
-                      <th className="p-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Title & Message</th>
-                      <th className="p-4 text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 text-right">Action</th>
+                      <th className={`p-4 text-xs font-bold uppercase tracking-wider ${darkMode ? 'text-gray-400' : 'text-slate-500'}`}>Date & Time</th>
+                      <th className={`p-4 text-xs font-bold uppercase tracking-wider ${darkMode ? 'text-gray-400' : 'text-slate-500'}`}>Recipient / User</th>
+                      <th className={`p-4 text-xs font-bold uppercase tracking-wider ${darkMode ? 'text-gray-400' : 'text-slate-500'}`}>Status</th>
+                      <th className={`p-4 text-xs font-bold uppercase tracking-wider ${darkMode ? 'text-gray-400' : 'text-slate-500'}`}>Title & Message</th>
+                      <th className={`p-4 text-xs font-bold uppercase tracking-wider text-right ${darkMode ? 'text-gray-400' : 'text-slate-500'}`}>Action</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                  <tbody className={`divide-y ${darkMode ? 'divide-gray-800' : 'divide-slate-100'}`}>
                     {filteredNotifications.map((notif) => (
                       <tr 
                         key={notif._id} 
-                        className={`hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors ${selectedIds.includes(notif._id) ? 'bg-teal-50/50 dark:bg-teal-500/5' : ''}`}
+                        className={`transition-colors ${darkMode ? 'hover:bg-gray-800/40' : 'hover:bg-slate-50'} ${selectedIds.includes(notif._id) ? (darkMode ? 'bg-teal-500/10' : 'bg-teal-50/50') : ''}`}
                       >
                         <td className="p-4 text-center align-top">
-                          <button onClick={() => handleSelectOne(notif._id)} className="text-slate-400 hover:text-teal-500 transition-colors mt-1">
+                          <button onClick={() => handleSelectOne(notif._id)} className="text-slate-400 hover:text-teal-500 transition-colors mt-1 cursor-pointer">
                             {selectedIds.includes(notif._id) ? (
                               <CheckSquare size={18} className="text-teal-500" />
                             ) : (
@@ -406,7 +406,7 @@ export default function AdminNotificationManager() {
                             )}
                           </button>
                         </td>
-                        <td className="p-4 text-sm text-slate-600 dark:text-slate-300 whitespace-nowrap align-top pt-5">
+                        <td className={`p-4 text-sm whitespace-nowrap align-top pt-5 ${darkMode ? 'text-gray-300' : 'text-slate-600'}`}>
                           {new Date(notif.createdAt).toLocaleDateString()}<br/>
                           <span className="text-xs text-slate-400">{new Date(notif.createdAt).toLocaleTimeString()}</span>
                         </td>
@@ -425,7 +425,7 @@ export default function AdminNotificationManager() {
                         <td className="p-4 align-top pt-5">
                           <span className={`px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5 w-fit ${
                             notif.isRead 
-                              ? 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400' 
+                              ? (darkMode ? 'bg-gray-800 text-gray-400' : 'bg-slate-100 text-slate-500') 
                               : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400'
                           }`}>
                             {!notif.isRead && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block"></span>}
@@ -433,13 +433,13 @@ export default function AdminNotificationManager() {
                           </span>
                         </td>
                         <td className="p-4 align-top pt-4">
-                          <p className="font-bold text-sm text-slate-800 dark:text-white mb-1">{notif.title}</p>
-                          <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed max-w-sm">{notif.message}</p>
+                          <p className={`font-bold text-sm mb-1 ${darkMode ? 'text-white' : 'text-slate-800'}`}>{notif.title}</p>
+                          <p className={`text-xs leading-relaxed max-w-sm ${darkMode ? 'text-gray-400' : 'text-slate-500'}`}>{notif.message}</p>
                         </td>
                         <td className="p-4 text-right align-top pt-4">
                           <button 
                             onClick={() => handleDeleteOne(notif._id)}
-                            className="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded-lg transition-colors inline-block mt-0.5"
+                            className="p-2 text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded-lg transition-colors inline-block mt-0.5 cursor-pointer"
                             title="Delete"
                           >
                             <Trash2 size={16} />
@@ -452,7 +452,7 @@ export default function AdminNotificationManager() {
               )}
             </div>
             
-            <div className="p-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/20 text-xs text-slate-500 text-center">
+            <div className={`p-4 border-t text-xs text-center transition-colors duration-200 ${darkMode ? 'border-gray-800 bg-gray-800/20 text-gray-400' : 'border-slate-200 bg-slate-50/50 text-slate-500'}`}>
               Showing {filteredNotifications.length} of {notifications.length} total notifications
             </div>
           </div>

@@ -2,18 +2,22 @@
 
 import { useEffect, useState } from "react";
 import axios from "axios";
-import { Trash2 } from "lucide-react";
-import DeleteConfirmationModal from "@/app/components/AdminDeleteConfirmationModal"; // අලුතින් සාදාගත් Component එක import කිරීම
+import { Trash2, User, Phone } from "lucide-react";
+import DeleteConfirmationModal from "@/app/components/AdminDeleteConfirmationModal";
+import { useTheme } from "@/app/context/ThemeContext"; // ThemeContext එක import කිරීම
 
 interface AdminUser {
   _id: string;
   adminId: string;
   name: string;
   email: string;
+  phoneNumber?: string;
+  profilePhoto?: string;
   isDefault: boolean;
 }
 
 export default function AdminListPage() {
+  const { darkMode } = useTheme(); // darkMode තත්ත්වය ලබා ගැනීම
   const [admins, setAdmins] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -22,6 +26,13 @@ export default function AdminListPage() {
   // States required to control the modal
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedAdmin, setSelectedAdmin] = useState<{ id: string; name: string } | null>(null);
+
+  // Helper function to format image URL correctly
+  const formatImageUrl = (path: string) => {
+    if (!path) return "";
+    const cleanPath = path.replace(/\\/g, '/');
+    return `http://localhost:5000/${cleanPath.startsWith('/') ? cleanPath.substring(1) : cleanPath}`;
+  };
 
   const fetchAdmins = async () => {
     const token = localStorage.getItem("token");
@@ -74,45 +85,75 @@ export default function AdminListPage() {
   };
 
   return (
-    <div className="p-8">
-      <div className="bg-white p-8 rounded-lg shadow-sm border border-gray-100 dark:bg-slate-900 dark:border-slate-800">
-        <h2 className="text-2xl font-bold text-gray-800 dark:text-white mb-6">
+    <div className={`p-8 min-h-screen transition-colors duration-300 ${darkMode ? "bg-slate-950 text-white" : "bg-slate-50 text-slate-900"}`}>
+      <div className={`p-8 rounded-2xl shadow-sm border transition-colors duration-300 ${
+        darkMode ? "bg-slate-900 border-slate-800 text-white" : "bg-white border-slate-200 text-slate-900"
+      }`}>
+        <h2 className={`text-2xl font-bold mb-6 ${darkMode ? "text-white" : "text-slate-900"}`}>
           Registered Admin List
         </h2>
 
         {/* Error and Success messages */}
-        {error && <div className="p-4 mb-4 text-sm text-red-700 bg-red-100 rounded-md">{error}</div>}
-        {success && <div className="p-4 mb-4 text-sm text-green-700 bg-green-100 rounded-md">{success}</div>}
+        {error && <div className="p-4 mb-4 text-sm text-red-700 bg-red-100 dark:bg-red-500/10 dark:text-red-300 rounded-md">{error}</div>}
+        {success && <div className="p-4 mb-4 text-sm text-green-700 bg-green-100 dark:bg-green-500/10 dark:text-green-300 rounded-md">{success}</div>}
 
         {loading ? (
-          <p className="text-gray-500 dark:text-slate-400">Loading...</p>
+          <p className={darkMode ? "text-slate-400" : "text-slate-500"}>Loading...</p>
         ) : admins.length === 0 ? (
-          <p className="text-gray-500 dark:text-slate-400">No admins found in the system.</p>
+          <p className={darkMode ? "text-slate-400" : "text-slate-500"}>No admins found in the system.</p>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm text-gray-600 dark:text-slate-300 border-collapse">
-              <thead className="bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-slate-200 uppercase font-medium">
+            <table className={`w-full text-left text-sm border-collapse ${darkMode ? "text-slate-300" : "text-slate-600"}`}>
+              <thead className={`uppercase font-medium ${darkMode ? "bg-slate-800 text-slate-200" : "bg-slate-100 text-slate-700"}`}>
                 <tr>
-                  <th className="px-4 py-3 border-b dark:border-slate-700">Admin ID</th>
-                  <th className="px-4 py-3 border-b dark:border-slate-700">Name</th>
-                  <th className="px-4 py-3 border-b dark:border-slate-700">Email</th>
-                  <th className="px-4 py-3 border-b dark:border-slate-700">Role Type</th>
-                  <th className="px-4 py-3 border-b dark:border-slate-700 text-center">Action</th>
+                  <th className={`px-4 py-3 border-b ${darkMode ? "border-slate-700" : "border-slate-200"}`}>Profile</th>
+                  <th className={`px-4 py-3 border-b ${darkMode ? "border-slate-700" : "border-slate-200"}`}>Admin ID</th>
+                  <th className={`px-4 py-3 border-b ${darkMode ? "border-slate-700" : "border-slate-200"}`}>Name</th>
+                  <th className={`px-4 py-3 border-b ${darkMode ? "border-slate-700" : "border-slate-200"}`}>Email</th>
+                  <th className={`px-4 py-3 border-b ${darkMode ? "border-slate-700" : "border-slate-200"}`}>Phone Number</th>
+                  <th className={`px-4 py-3 border-b ${darkMode ? "border-slate-700" : "border-slate-200"}`}>Role Type</th>
+                  <th className={`px-4 py-3 border-b text-center ${darkMode ? "border-slate-700" : "border-slate-200"}`}>Action</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-200 dark:divide-slate-700">
+              <tbody className={`divide-y ${darkMode ? "divide-slate-700" : "divide-slate-200"}`}>
                 {admins.map((admin) => (
-                  <tr key={admin._id} className="hover:bg-gray-50 dark:hover:bg-slate-800/50 transition-colors">
-                    <td className="px-4 py-3 font-semibold text-gray-800 dark:text-white">{admin.adminId}</td>
-                    <td className="px-4 py-3">{admin.name}</td>
+                  <tr key={admin._id} className={`transition-colors ${darkMode ? "hover:bg-slate-800/50" : "hover:bg-slate-50"}`}>
+                    {/* Profile Picture Column */}
+                    <td className="px-4 py-3">
+                      <div className={`h-10 w-10 rounded-full overflow-hidden flex items-center justify-center border ${
+                        darkMode ? "bg-slate-800 border-slate-700" : "bg-slate-100 border-slate-300"
+                      }`}>
+                        {admin.profilePhoto ? (
+                          <img
+                            src={formatImageUrl(admin.profilePhoto)}
+                            alt={admin.name}
+                            className="h-full w-full object-cover"
+                          />
+                        ) : (
+                          <User size={20} className={darkMode ? "text-slate-500" : "text-slate-400"} />
+                        )}
+                      </div>
+                    </td>
+                    <td className={`px-4 py-3 font-semibold ${darkMode ? "text-white" : "text-slate-800"}`}>{admin.adminId}</td>
+                    <td className={`px-4 py-3 font-medium ${darkMode ? "text-white" : "text-slate-800"}`}>{admin.name}</td>
                     <td className="px-4 py-3">{admin.email}</td>
                     <td className="px-4 py-3">
+                      {admin.phoneNumber ? (
+                        <span className="flex items-center gap-1.5">
+                          <Phone size={14} className={darkMode ? "text-slate-400" : "text-slate-400"} />
+                          {admin.phoneNumber}
+                        </span>
+                      ) : (
+                        <span className="text-slate-400 italic text-xs">Not provided</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3">
                       {admin.isDefault ? (
-                        <span className="bg-purple-100 text-purple-700 dark:bg-purple-500/20 dark:text-purple-400 px-2 py-1 rounded text-xs font-semibold">
+                        <span className="bg-purple-100 text-purple-700 dark:bg-purple-500/20 dark:text-purple-400 px-2.5 py-1 rounded-full text-xs font-semibold">
                           Super Admin
                         </span>
                       ) : (
-                        <span className="bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400 px-2 py-1 rounded text-xs font-semibold">
+                        <span className="bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-400 px-2.5 py-1 rounded-full text-xs font-semibold">
                           Admin
                         </span>
                       )}
@@ -128,7 +169,7 @@ export default function AdminListPage() {
                           <Trash2 size={18} />
                         </button>
                       ) : (
-                        <span className="text-gray-400 text-xs italic">Protected</span>
+                        <span className="text-slate-400 text-xs italic">Protected</span>
                       )}
                     </td>
                   </tr>
