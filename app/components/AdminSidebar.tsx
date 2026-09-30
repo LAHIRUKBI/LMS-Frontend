@@ -195,6 +195,7 @@ export default function AdminSidebar() {
     { name: "View Add", path: "/admin/Add/view_add", icon: School },
     { name: "Notice", path: "/admin/notice", icon: School },
     { name: "Dashboard Editor", path: "/admin/swp", icon: School },
+    { name: "Notification Handler", path: "/admin/notification", icon: School },
   ];
 
   const notifDropdownRef = useRef<HTMLDivElement>(null);
