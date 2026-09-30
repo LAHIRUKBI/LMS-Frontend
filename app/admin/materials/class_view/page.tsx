@@ -5,7 +5,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import axios from "axios";
-import { Calendar, Clock, BookOpen, User, Loader2, ShieldAlert, Monitor, UserCheck, UserX, Trash2, Search, GraduationCap, Image as ImageIcon, Edit3, X, Check, FileText, CreditCard, ExternalLink } from "lucide-react";
+import { Calendar, Clock, BookOpen, User, Loader2, ShieldAlert, Monitor, UserCheck, UserX, Trash2, Search, GraduationCap, Image as ImageIcon, Edit3, X, Check, FileText, CreditCard, ExternalLink, Briefcase, Phone, Users } from "lucide-react";
 
 export default function AdminClassViewPage() {
   const router = useRouter();
@@ -310,27 +310,72 @@ export default function AdminClassViewPage() {
                     <CreditCard size={16} /> Free Card Request Details
                   </div>
 
-                  <div className="grid grid-cols-2 gap-2 p-3 rounded-xl bg-amber-50/50 dark:bg-amber-500/10 border border-amber-200/50 dark:border-amber-500/20">
-                    <div>
-                      <span className="text-slate-400 font-bold uppercase text-[10px]">Father's Name:</span>
-                      <p className="font-semibold text-slate-800 dark:text-slate-200">{freeCardData.fatherName || "N/A"} ({freeCardData.fatherOccupation || "No occupation"})</p>
-                    </div>
-                    <div>
-                      <span className="text-slate-400 font-bold uppercase text-[10px]">Mother's Name:</span>
-                      <p className="font-semibold text-slate-800 dark:text-slate-200">{freeCardData.motherName || "N/A"} ({freeCardData.motherOccupation || "No occupation"})</p>
-                    </div>
-                    {freeCardData.hasGuardian && (
-                      <div className="col-span-2 mt-1">
-                        <span className="text-slate-400 font-bold uppercase text-[10px]">Guardian Details:</span>
-                        <p className="font-semibold text-slate-800 dark:text-slate-200">{freeCardData.guardianName} ({freeCardData.guardianRelation}) - {freeCardData.guardianPhone}</p>
+                  {/* Father's Details */}
+                  <div className="p-3 rounded-xl bg-amber-50/50 dark:bg-amber-500/10 border border-amber-200/50 dark:border-amber-500/20 space-y-1">
+                    <span className="text-amber-700 dark:text-amber-400 font-bold uppercase text-[10px]">Father's Details</span>
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      <div>
+                        <span className="text-slate-400 font-semibold text-[9px]">Name:</span>
+                        <p className="font-semibold text-slate-800 dark:text-slate-200">{freeCardData.fatherName || "N/A"}</p>
                       </div>
-                    )}
-                    <div className="col-span-2 mt-1">
-                      <span className="text-slate-400 font-bold uppercase text-[10px]">Family Background Reason:</span>
-                      <p className="font-medium text-slate-700 dark:text-slate-300 italic mt-0.5 bg-white dark:bg-slate-900 p-2 rounded-lg border">{freeCardData.familyBackground}</p>
+                      <div>
+                        <span className="text-slate-400 font-semibold text-[9px]">Occupation:</span>
+                        <p className="font-semibold text-slate-800 dark:text-slate-200">{freeCardData.fatherOccupation || "N/A"}</p>
+                      </div>
+                      <div className="col-span-2">
+                        <span className="text-slate-400 font-semibold text-[9px]">Phone:</span>
+                        <p className="font-semibold text-slate-800 dark:text-slate-200">{freeCardData.fatherPhone || "N/A"}</p>
+                      </div>
                     </div>
                   </div>
 
+                  {/* Mother's Details */}
+                  <div className="p-3 rounded-xl bg-amber-50/50 dark:bg-amber-500/10 border border-amber-200/50 dark:border-amber-500/20 space-y-1">
+                    <span className="text-amber-700 dark:text-amber-400 font-bold uppercase text-[10px]">Mother's Details</span>
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      <div>
+                        <span className="text-slate-400 font-semibold text-[9px]">Name:</span>
+                        <p className="font-semibold text-slate-800 dark:text-slate-200">{freeCardData.motherName || "N/A"}</p>
+                      </div>
+                      <div>
+                        <span className="text-slate-400 font-semibold text-[9px]">Occupation:</span>
+                        <p className="font-semibold text-slate-800 dark:text-slate-200">{freeCardData.motherOccupation || "N/A"}</p>
+                      </div>
+                      <div className="col-span-2">
+                        <span className="text-slate-400 font-semibold text-[9px]">Phone:</span>
+                        <p className="font-semibold text-slate-800 dark:text-slate-200">{freeCardData.motherPhone || "N/A"}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Guardian Details (If applicable) */}
+                  {freeCardData.hasGuardian && (
+                    <div className="p-3 rounded-xl bg-purple-50/50 dark:bg-purple-500/10 border border-purple-200/50 dark:border-purple-500/20 space-y-1">
+                      <span className="text-purple-700 dark:text-purple-400 font-bold uppercase text-[10px]">Guardian Details</span>
+                      <div className="grid grid-cols-2 gap-2 text-xs">
+                        <div>
+                          <span className="text-slate-400 font-semibold text-[9px]">Name:</span>
+                          <p className="font-semibold text-slate-800 dark:text-slate-200">{freeCardData.guardianName || "N/A"}</p>
+                        </div>
+                        <div>
+                          <span className="text-slate-400 font-semibold text-[9px]">Relationship:</span>
+                          <p className="font-semibold text-slate-800 dark:text-slate-200">{freeCardData.guardianRelation || "N/A"}</p>
+                        </div>
+                        <div className="col-span-2">
+                          <span className="text-slate-400 font-semibold text-[9px]">Phone:</span>
+                          <p className="font-semibold text-slate-800 dark:text-slate-200">{freeCardData.guardianPhone || "N/A"}</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Family Background Reason */}
+                  <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/50 dark:border-slate-700">
+                    <span className="text-slate-400 font-bold uppercase text-[10px]">Family Background / Reason:</span>
+                    <p className="font-medium text-slate-700 dark:text-slate-300 italic mt-1 bg-white dark:bg-slate-900 p-2.5 rounded-lg border">{freeCardData.familyBackground || "N/A"}</p>
+                  </div>
+
+                  {/* Uploaded Documents */}
                   {freeCardData.files && freeCardData.files.length > 0 && (
                     <div className="space-y-1.5">
                       <span className="text-slate-400 font-bold uppercase text-[10px]">Uploaded Documents ({freeCardData.files.length}):</span>
