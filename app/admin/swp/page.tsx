@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import axios from "axios";
-import { Loader2, Save, CheckCircle, Plus, Trash2, Upload, Image as ImageIcon, AlertCircle, Share2, MessageSquare, Palette, Sun, Moon } from "lucide-react";
+import { Loader2, Save, CheckCircle, Plus, Trash2, Upload, Image as ImageIcon, AlertCircle, Share2, MessageSquare, Palette, Sun, Moon, LayoutDashboard, Star, Image as ImgIcon } from "lucide-react";
 
 const POPULAR_SOCIAL_PLATFORMS = [
   "Facebook", "YouTube", "Instagram", "TikTok", "WhatsApp", 
@@ -14,6 +14,9 @@ export default function AdminDashboardSettings() {
   const [saving, setSaving] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
+
+  // Tabs for compact UI
+  const [activeTab, setActiveTab] = useState("hero"); 
 
   const [settings, setSettings] = useState({
     heroBadge: "",
@@ -35,16 +38,25 @@ export default function AdminDashboardSettings() {
     galleryItems: [] as { image: string; text: string }[],
     socialLinks: [] as { platform: string; url: string }[],
     testimonials: [] as { image: string; name: string; title: string; idea: string; rating: number }[],
+    
+    // Feature Section Settings
+    featureBadge: "",
+    featureTitleLine1: "",
+    featureTitleHighlight: "",
+    featureDescription: "",
+    featureItems: [] as { title: string; description: string; iconType: string; iconImage: string }[]
   });
 
   const [heroFiles, setHeroFiles] = useState<Record<number, File>>({});
   const [galleryFiles, setGalleryFiles] = useState<Record<number, File>>({});
   const [testimonialFiles, setTestimonialFiles] = useState<Record<number, File>>({});
   const [badgeAvatarFiles, setBadgeAvatarFiles] = useState<Record<number, File>>({});
+  const [featureIconFiles, setFeatureIconFiles] = useState<Record<number, File>>({});
 
   const MAX_HERO_IMAGES = 3;
   const MAX_GALLERY_ITEMS = 5;
   const MAX_BADGE_AVATARS = 4;
+  const MAX_FEATURE_ITEMS = 6;
 
   useEffect(() => {
     fetchSettings();
@@ -73,32 +85,35 @@ export default function AdminDashboardSettings() {
     setSettings(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleBadgeAvatarChange = (index: number, value: string) => {
-    const updated = [...settings.badgeAvatars];
-    updated[index] = { image: value };
-    setSettings(prev => ({ ...prev, badgeAvatars: updated }));
-  };
-
+  // Badge Avatars
   const handleBadgeAvatarFileSelect = (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
       setBadgeAvatarFiles(prev => ({ ...prev, [index]: file }));
-      const previewUrl = URL.createObjectURL(file);
-      handleBadgeAvatarChange(index, previewUrl);
+      const updated = [...settings.badgeAvatars];
+      updated[index] = { image: URL.createObjectURL(file) };
+      setSettings(prev => ({ ...prev, badgeAvatars: updated }));
     }
   };
 
   const addBadgeAvatar = () => {
-    if (settings.badgeAvatars.length >= MAX_BADGE_AVATARS) {
-      setErrorMessage(`Badge එක සදහා ඇතුළත් කළ හැකි උපරිම පින්තූර සංඛ්‍යාව ${MAX_BADGE_AVATARS} කි.`);
-      setTimeout(() => setErrorMessage(""), 4000);
-      return;
-    }
+    if (settings.badgeAvatars.length >= MAX_BADGE_AVATARS) return;
     setSettings(prev => ({ ...prev, badgeAvatars: [...prev.badgeAvatars, { image: "" }] }));
   };
 
   const removeBadgeAvatar = (index: number) => {
     setSettings(prev => ({ ...prev, badgeAvatars: settings.badgeAvatars.filter((_, idx) => idx !== index) }));
+  };
+
+  // Hero Images
+  const handleHeroFileSelect = (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      setHeroFiles(prev => ({ ...prev, [index]: file }));
+      const updated = [...settings.heroImages];
+      updated[index] = { ...updated[index], image: URL.createObjectURL(file) };
+      setSettings(prev => ({ ...prev, heroImages: updated }));
+    }
   };
 
   const handleHeroImageChange = (index: number, field: string, value: any) => {
@@ -107,25 +122,24 @@ export default function AdminDashboardSettings() {
     setSettings(prev => ({ ...prev, heroImages: updatedImages }));
   };
 
-  const handleHeroFileSelect = (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      setHeroFiles(prev => ({ ...prev, [index]: file }));
-      handleHeroImageChange(index, "image", URL.createObjectURL(file));
-    }
-  };
-
   const addHeroImage = () => {
-    if (settings.heroImages.length >= MAX_HERO_IMAGES) {
-      setErrorMessage(`Hero Carousel සඳහා ඇතුළත් කළ හැකි උපරිම පින්තූර සංඛ්‍යාව ${MAX_HERO_IMAGES} කි.`);
-      setTimeout(() => setErrorMessage(""), 4000);
-      return;
-    }
+    if (settings.heroImages.length >= MAX_HERO_IMAGES) return;
     setSettings(prev => ({ ...prev, heroImages: [...prev.heroImages, { id: Date.now(), image: "", title: "" }] }));
   };
 
   const removeHeroImage = (index: number) => {
     setSettings(prev => ({ ...prev, heroImages: settings.heroImages.filter((_, idx) => idx !== index) }));
+  };
+
+  // Gallery
+  const handleGalleryFileSelect = (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      setGalleryFiles(prev => ({ ...prev, [index]: file }));
+      const updated = [...settings.galleryItems];
+      updated[index] = { ...updated[index], image: URL.createObjectURL(file) };
+      setSettings(prev => ({ ...prev, galleryItems: updated }));
+    }
   };
 
   const handleGalleryChange = (index: number, field: string, value: any) => {
@@ -134,20 +148,8 @@ export default function AdminDashboardSettings() {
     setSettings(prev => ({ ...prev, galleryItems: updatedGallery }));
   };
 
-  const handleGalleryFileSelect = (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      setGalleryFiles(prev => ({ ...prev, [index]: file }));
-      handleGalleryChange(index, "image", URL.createObjectURL(file));
-    }
-  };
-
   const addGalleryItem = () => {
-    if (settings.galleryItems.length >= MAX_GALLERY_ITEMS) {
-      setErrorMessage(`Gallery සඳහා ඇතුළත් කළ හැකි උපරිම පින්තූර සංඛ්‍යාව ${MAX_GALLERY_ITEMS} කි.`);
-      setTimeout(() => setErrorMessage(""), 4000);
-      return;
-    }
+    if (settings.galleryItems.length >= MAX_GALLERY_ITEMS) return;
     setSettings(prev => ({ ...prev, galleryItems: [...prev.galleryItems, { image: "", text: "" }] }));
   };
 
@@ -155,46 +157,57 @@ export default function AdminDashboardSettings() {
     setSettings(prev => ({ ...prev, galleryItems: settings.galleryItems.filter((_, idx) => idx !== index) }));
   };
 
+  // Features
+  const handleFeatureItemChange = (index: number, field: string, value: any) => {
+    const updatedFeatures = [...settings.featureItems];
+    updatedFeatures[index] = { ...updatedFeatures[index], [field]: value };
+    setSettings(prev => ({ ...prev, featureItems: updatedFeatures }));
+  };
+
+  const handleFeatureIconFileSelect = (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      setFeatureIconFiles(prev => ({ ...prev, [index]: file }));
+      const previewUrl = URL.createObjectURL(file);
+      handleFeatureItemChange(index, "iconImage", previewUrl);
+    }
+  };
+
+  const addFeatureItem = () => {
+    if (settings.featureItems?.length >= MAX_FEATURE_ITEMS) return;
+    setSettings(prev => ({
+      ...prev,
+      featureItems: [...(prev.featureItems || []), { title: "", description: "", iconType: "image", iconImage: "" }]
+    }));
+  };
+
+  const removeFeatureItem = (index: number) => {
+    setSettings(prev => ({ ...prev, featureItems: settings.featureItems.filter((_, idx) => idx !== index) }));
+  };
+
+  // Social & Testimonials (Same as before but organized)
   const handleSocialChange = (index: number, field: string, value: string) => {
     const updatedSocial = [...settings.socialLinks];
     updatedSocial[index] = { ...updatedSocial[index], [field]: value };
     setSettings(prev => ({ ...prev, socialLinks: updatedSocial }));
   };
-
-  const addSocialLink = () => {
-    setSettings(prev => ({ ...prev, socialLinks: [...prev.socialLinks, { platform: POPULAR_SOCIAL_PLATFORMS[0], url: "" }] }));
-  };
-
-  const removeSocialLink = (index: number) => {
-    setSettings(prev => ({ ...prev, socialLinks: settings.socialLinks.filter((_, idx) => idx !== index) }));
-  };
+  const addSocialLink = () => setSettings(prev => ({ ...prev, socialLinks: [...prev.socialLinks, { platform: POPULAR_SOCIAL_PLATFORMS[0], url: "" }] }));
+  const removeSocialLink = (index: number) => setSettings(prev => ({ ...prev, socialLinks: settings.socialLinks.filter((_, idx) => idx !== index) }));
 
   const handleTestimonialChange = (index: number, field: string, value: any) => {
     const updatedTestimonials = [...settings.testimonials];
     updatedTestimonials[index] = { ...updatedTestimonials[index], [field]: value };
     setSettings(prev => ({ ...prev, testimonials: updatedTestimonials }));
   };
-
   const handleTestimonialFileSelect = (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
       setTestimonialFiles(prev => ({ ...prev, [index]: file }));
-      const previewUrl = URL.createObjectURL(file);
-      handleTestimonialChange(index, "image", previewUrl);
+      handleTestimonialChange(index, "image", URL.createObjectURL(file));
     }
   };
-
-  const addTestimonial = () => {
-    setSettings(prev => ({
-      ...prev,
-      testimonials: [...prev.testimonials, { image: "", name: "", title: "", idea: "", rating: 5 }]
-    }));
-  };
-
-  const removeTestimonial = (index: number) => {
-    const updatedTestimonials = settings.testimonials.filter((_, idx) => idx !== index);
-    setSettings(prev => ({ ...prev, testimonials: updatedTestimonials }));
-  };
+  const addTestimonial = () => setSettings(prev => ({ ...prev, testimonials: [...prev.testimonials, { image: "", name: "", title: "", idea: "", rating: 5 }] }));
+  const removeTestimonial = (index: number) => setSettings(prev => ({ ...prev, testimonials: settings.testimonials.filter((_, idx) => idx !== index) }));
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -207,23 +220,11 @@ export default function AdminDashboardSettings() {
 
       formData.append("settingsData", JSON.stringify(settings));
 
-      // Hero files append කිරීම (අනුපිළිවෙලට)
-      Object.keys(heroFiles).forEach((key) => {
-        formData.append("heroImagesFiles", heroFiles[Number(key)]);
-      });
-
-      // Gallery files append කිරීම (අනුපිළිවෙලට)
-      Object.keys(galleryFiles).forEach((key) => {
-        formData.append("galleryImagesFiles", galleryFiles[Number(key)]);
-      });
-
-      Object.keys(testimonialFiles).forEach((key) => {
-        formData.append(`testimonialFile_${key}`, testimonialFiles[Number(key)]);
-      });
-
-      Object.keys(badgeAvatarFiles).forEach((key) => {
-        formData.append("badgeAvatarFiles", badgeAvatarFiles[Number(key)]);
-      });
+      Object.keys(heroFiles).forEach((key) => formData.append("heroImagesFiles", heroFiles[Number(key)]));
+      Object.keys(galleryFiles).forEach((key) => formData.append("galleryImagesFiles", galleryFiles[Number(key)]));
+      Object.keys(testimonialFiles).forEach((key) => formData.append(`testimonialFile_${key}`, testimonialFiles[Number(key)]));
+      Object.keys(badgeAvatarFiles).forEach((key) => formData.append("badgeAvatarFiles", badgeAvatarFiles[Number(key)]));
+      Object.keys(featureIconFiles).forEach((key) => formData.append(`featureIconFile_${key}`, featureIconFiles[Number(key)]));
 
       const res = await axios.put("http://localhost:5000/api/dashboard/settings", formData, {
         headers: { 
@@ -237,6 +238,7 @@ export default function AdminDashboardSettings() {
       setGalleryFiles({});
       setTestimonialFiles({});
       setBadgeAvatarFiles({});
+      setFeatureIconFiles({});
       setSuccessMessage("Dashboard settings and items updated successfully!");
       setTimeout(() => setSuccessMessage(""), 4000);
     } catch (err) {
@@ -256,21 +258,36 @@ export default function AdminDashboardSettings() {
     );
   }
 
+  const TabButton = ({ id, icon: Icon, label }: { id: string, icon: any, label: string }) => (
+    <button
+      type="button"
+      onClick={() => setActiveTab(id)}
+      className={`flex items-center gap-2 px-4 py-3 text-sm font-bold rounded-xl transition-all ${
+        activeTab === id 
+        ? "bg-orange-500 text-white shadow-lg shadow-orange-500/30" 
+        : "bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-white"
+      }`}
+    >
+      <Icon size={18} />
+      {label}
+    </button>
+  );
+
   return (
     <div className="min-h-screen bg-slate-900 text-white p-6 lg:p-12 font-sans">
-      <div className="max-w-4xl mx-auto">
-        <div className="flex justify-between items-center mb-8 pb-4 border-b border-slate-800">
+      <div className="max-w-5xl mx-auto">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 pb-6 border-b border-slate-800 gap-4">
           <div>
-            <h1 className="text-3xl font-extrabold tracking-tight">Student Dashboard Customizer</h1>
-            <p className="text-slate-400 text-sm mt-1">Manage texts, headings, and images with accurate UI limits.</p>
+            <h1 className="text-3xl font-extrabold tracking-tight">Dashboard Settings</h1>
+            <p className="text-slate-400 text-sm mt-1">Manage texts, features, gallery and hero sections easily.</p>
           </div>
           <button 
             onClick={handleSubmit}
             disabled={saving}
-            className="bg-orange-500 hover:bg-orange-600 text-white px-6 py-3 rounded-xl font-bold flex items-center gap-2 transition-all shadow-lg shadow-orange-500/20 disabled:opacity-50 cursor-pointer"
+            className="bg-teal-500 hover:bg-teal-600 text-white px-8 py-3 rounded-xl font-bold flex items-center gap-2 transition-all shadow-lg shadow-teal-500/20 disabled:opacity-50 cursor-pointer whitespace-nowrap"
           >
             {saving ? <Loader2 className="animate-spin" size={18} /> : <Save size={18} />}
-            Save Changes
+            Save All Changes
           </button>
         </div>
 
@@ -288,312 +305,294 @@ export default function AdminDashboardSettings() {
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-8">
-          {/* Text Settings */}
-          <div className="bg-slate-800/50 p-6 rounded-3xl border border-slate-700/50 space-y-6">
-            <h2 className="text-xl font-bold text-orange-400">Hero Section Texts & Light/Dark Colors</h2>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Badge Text</label>
-                <input 
-                  type="text" 
-                  name="heroBadge" 
-                  value={settings.heroBadge} 
-                  onChange={handleChange}
-                  className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-sm focus:border-orange-500 outline-none"
-                />
-              </div>
-            </div>
+        {/* Tab Navigation Menu */}
+        <div className="flex flex-wrap gap-3 mb-8">
+          <TabButton id="hero" icon={LayoutDashboard} label="Hero Section" />
+          <TabButton id="features" icon={Star} label="Features Section" />
+          <TabButton id="gallery" icon={ImgIcon} label="Gallery & Hero Images" />
+          <TabButton id="reviews" icon={MessageSquare} label="Testimonials" />
+          <TabButton id="social" icon={Share2} label="Social Links" />
+        </div>
 
-            {/* Light Mode Colors */}
-            <div className="p-4 bg-slate-900/60 rounded-2xl border border-slate-700/60 space-y-4">
-              <h3 className="text-sm font-bold text-teal-400 flex items-center gap-2"><Sun size={16} /> Light Mode Title Colors</h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-xs text-slate-400 mb-1">Title Line 1</label>
-                  <div className="flex items-center gap-2">
-                    <input type="text" name="heroTitleLine1" value={settings.heroTitleLine1} onChange={handleChange} className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs outline-none" />
-                    <input type="color" name="titleColor1" value={settings.titleColor1 || "#0f172a"} onChange={handleChange} className="w-8 h-8 bg-transparent cursor-pointer" />
+        <form onSubmit={handleSubmit} className="bg-slate-800/40 p-6 md:p-8 rounded-[2rem] border border-slate-700/50">
+          
+          {/* ================= TAB: HERO SECTION ================= */}
+          {activeTab === "hero" && (
+            <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-300">
+              <div className="space-y-6">
+                <h2 className="text-xl font-bold text-teal-400">Hero Texts & Colors</h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Badge Text</label>
+                    <input type="text" name="heroBadge" value={settings.heroBadge} onChange={handleChange} className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-sm focus:border-orange-500 outline-none" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Primary Button Text</label>
+                    <input type="text" name="primaryBtnText" value={settings.primaryBtnText} onChange={handleChange} className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-sm focus:border-orange-500 outline-none" />
                   </div>
                 </div>
-                <div>
-                  <label className="block text-xs text-slate-400 mb-1">Title Line 2</label>
-                  <div className="flex items-center gap-2">
-                    <input type="text" name="heroTitleLine2" value={settings.heroTitleLine2} onChange={handleChange} className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs outline-none" />
-                    <input type="color" name="titleColor2" value={settings.titleColor2 || "#0f172a"} onChange={handleChange} className="w-8 h-8 bg-transparent cursor-pointer" />
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-xs text-slate-400 mb-1">Highlight (-Amazing)</label>
-                  <div className="flex items-center gap-2">
-                    <input type="text" name="heroTitleHighlight" value={settings.heroTitleHighlight} onChange={handleChange} className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs outline-none" />
-                    <input type="color" name="highlightColor" value={settings.highlightColor || "#f97316"} onChange={handleChange} className="w-8 h-8 bg-transparent cursor-pointer" />
-                  </div>
-                </div>
-              </div>
-            </div>
 
-            {/* Dark Mode Colors */}
-            <div className="p-4 bg-slate-900/60 rounded-2xl border border-slate-700/60 space-y-4">
-              <h3 className="text-sm font-bold text-orange-400 flex items-center gap-2"><Moon size={16} /> Dark Mode Title Colors</h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                  <label className="block text-xs text-slate-400 mb-1">Title Line 1 (Dark)</label>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-slate-500 truncate">{settings.heroTitleLine1}</span>
-                    <input type="color" name="darkTitleColor1" value={settings.darkTitleColor1 || "#ffffff"} onChange={handleChange} className="w-8 h-8 bg-transparent cursor-pointer ml-auto" />
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-xs text-slate-400 mb-1">Title Line 2 (Dark)</label>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-slate-500 truncate">{settings.heroTitleLine2}</span>
-                    <input type="color" name="darkTitleColor2" value={settings.darkTitleColor2 || "#ffffff"} onChange={handleChange} className="w-8 h-8 bg-transparent cursor-pointer ml-auto" />
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-xs text-slate-400 mb-1">Highlight (Dark)</label>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-slate-500 truncate">{settings.heroTitleHighlight}</span>
-                    <input type="color" name="darkHighlightColor" value={settings.darkHighlightColor || "#fb923c"} onChange={handleChange} className="w-8 h-8 bg-transparent cursor-pointer ml-auto" />
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Primary Button Text</label>
-                <input type="text" name="primaryBtnText" value={settings.primaryBtnText} onChange={handleChange} className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-sm focus:border-orange-500 outline-none" />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Description Paragraph</label>
-              <textarea name="heroDescription" rows={3} value={settings.heroDescription} onChange={handleChange} className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-sm focus:border-orange-500 outline-none resize-none" />
-            </div>
-          </div>
-
-          {/* Badge Avatars & Text Settings */}
-          <div className="bg-slate-800/50 p-6 rounded-3xl border border-slate-700/50 space-y-6">
-            <div className="flex justify-between items-center">
-              <div>
-                <h2 className="text-xl font-bold text-orange-400">Badge Avatars & Text (Next to Hero Badge)</h2>
-                <p className="text-xs text-slate-400 mt-0.5">Add up to 4 avatars and custom text (max 20 characters)</p>
-              </div>
-              <button type="button" onClick={addBadgeAvatar} disabled={settings.badgeAvatars?.length >= 4} className="bg-teal-500/20 text-teal-400 hover:bg-teal-500 hover:text-white px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-40">
-                <Plus size={16} /> Add Avatar (Max 4)
-              </button>
-            </div>
-
-            <div>
-              <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Badge Subtitle Text (Max 20 chars)</label>
-              <input type="text" name="badgeText" maxLength={20} value={settings.badgeText} onChange={handleChange} placeholder="+3000 students worldwide" className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-sm focus:border-orange-500 outline-none" />
-            </div>
-
-            {settings.badgeAvatars?.length === 0 ? (
-              <p className="text-slate-500 text-sm italic">No badge avatars added yet.</p>
-            ) : (
-              settings.badgeAvatars.map((item, idx) => (
-                <div key={idx} className="grid grid-cols-1 md:grid-cols-12 gap-4 p-4 bg-slate-900 rounded-2xl border border-slate-700 items-center">
-                  <div className="md:col-span-2 flex justify-center">
-                    <div className="w-12 h-12 rounded-full bg-slate-800 border border-slate-700 overflow-hidden flex items-center justify-center relative">
-                      {item.image ? <img src={getMediaUrl(item.image)} alt="Avatar" className="w-full h-full object-cover" /> : <ImageIcon className="text-slate-600" size={20} />}
-                    </div>
-                  </div>
-                  <div className="md:col-span-9">
-                    <label className="block text-xs text-slate-400 mb-1">Avatar Image (/swp)</label>
-                    <label className="flex items-center justify-center gap-2 px-3 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded-xl text-xs font-semibold cursor-pointer text-teal-400">
-                      <Upload size={14} /> Select File
-                      <input type="file" accept="image/*" onChange={(e) => handleBadgeAvatarFileSelect(idx, e)} className="hidden" />
-                    </label>
-                  </div>
-                  <div className="md:col-span-1 flex justify-end">
-                    <button type="button" onClick={() => removeBadgeAvatar(idx)} className="bg-rose-500/20 text-rose-400 hover:bg-rose-500 hover:text-white p-2.5 rounded-xl transition-all cursor-pointer"><Trash2 size={16} /></button>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-
-          {/* Social Media Links Settings */}
-          <div className="bg-slate-800/50 p-6 rounded-3xl border border-slate-700/50 space-y-6">
-            <div className="flex justify-between items-center">
-              <div>
-                <h2 className="text-xl font-bold text-orange-400 flex items-center gap-2">
-                  <Share2 size={20} /> Social Media Links
-                </h2>
-                <p className="text-xs text-slate-400 mt-0.5">Add social media accounts to display under the hero left content</p>
-              </div>
-              <button type="button" onClick={addSocialLink} className="bg-teal-500/20 text-teal-400 hover:bg-teal-500 hover:text-white px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer">
-                <Plus size={16} /> Add Social Link
-              </button>
-            </div>
-
-            {settings.socialLinks?.length === 0 ? (
-              <p className="text-slate-500 text-sm italic">No social media links added yet.</p>
-            ) : (
-              settings.socialLinks.map((social, idx) => (
-                <div key={idx} className="grid grid-cols-1 md:grid-cols-12 gap-4 p-4 bg-slate-900 rounded-2xl border border-slate-700 items-center">
-                  <div className="md:col-span-5">
-                    <label className="block text-xs text-slate-400 mb-1">Platform</label>
-                    <select value={social.platform} onChange={(e) => handleSocialChange(idx, "platform", e.target.value)} className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs outline-none focus:border-teal-500 text-white">
-                      {POPULAR_SOCIAL_PLATFORMS.map((plat) => <option key={plat} value={plat}>{plat}</option>)}
-                    </select>
-                  </div>
-                  <div className="md:col-span-6">
-                    <label className="block text-xs text-slate-400 mb-1">Profile / Page URL</label>
-                    <input type="text" value={social.url} onChange={(e) => handleSocialChange(idx, "url", e.target.value)} placeholder="https://facebook.com/yourprofile" className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs outline-none focus:border-teal-500" />
-                  </div>
-                  <div className="md:col-span-1 flex justify-end">
-                    <button type="button" onClick={() => removeSocialLink(idx)} className="bg-rose-500/20 text-rose-400 hover:bg-rose-500 hover:text-white p-2.5 rounded-xl transition-all cursor-pointer"><Trash2 size={16} /></button>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-
-          {/* What Our Clients Say (Testimonials) Settings */}
-          <div className="bg-slate-800/50 p-6 rounded-3xl border border-slate-700/50 space-y-6">
-            <div className="flex justify-between items-center">
-              <div>
-                <h2 className="text-xl font-bold text-orange-400 flex items-center gap-2">
-                  <MessageSquare size={20} /> What Our Clients Say (Testimonials)
-                </h2>
-                <p className="text-xs text-slate-400 mt-0.5">Add unlimited client feedback cards with images and ratings</p>
-              </div>
-              <button type="button" onClick={addTestimonial} className="bg-teal-500/20 text-teal-400 hover:bg-teal-500 hover:text-white px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer">
-                <Plus size={16} /> Add Testimonial
-              </button>
-            </div>
-
-            {settings.testimonials?.length === 0 ? (
-              <p className="text-slate-500 text-sm italic">No testimonials added yet.</p>
-            ) : (
-              settings.testimonials.map((test, idx) => (
-                <div key={idx} className="p-4 bg-slate-900 rounded-2xl border border-slate-700 space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-center">
-                    <div className="md:col-span-2 flex justify-center">
-                      <div className="w-16 h-16 rounded-full bg-slate-800 border border-slate-700 overflow-hidden flex items-center justify-center relative">
-                        {test.image ? <img src={getMediaUrl(test.image)} alt="Client" className="w-full h-full object-cover" /> : <ImageIcon className="text-slate-600" size={24} />}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Light Mode Colors */}
+                  <div className="p-4 bg-slate-900/60 rounded-2xl border border-slate-700/60 space-y-4">
+                    <h3 className="text-sm font-bold text-slate-300 flex items-center gap-2"><Sun size={16} /> Light Mode Colors</h3>
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-2">
+                        <input type="text" name="heroTitleLine1" value={settings.heroTitleLine1} onChange={handleChange} className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs outline-none" placeholder="Title Line 1" />
+                        <input type="color" name="titleColor1" value={settings.titleColor1 || "#0f172a"} onChange={handleChange} className="w-8 h-8 bg-transparent cursor-pointer" />
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <input type="text" name="heroTitleLine2" value={settings.heroTitleLine2} onChange={handleChange} className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs outline-none" placeholder="Title Line 2" />
+                        <input type="color" name="titleColor2" value={settings.titleColor2 || "#0f172a"} onChange={handleChange} className="w-8 h-8 bg-transparent cursor-pointer" />
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <input type="text" name="heroTitleHighlight" value={settings.heroTitleHighlight} onChange={handleChange} className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs outline-none" placeholder="Highlight Text" />
+                        <input type="color" name="highlightColor" value={settings.highlightColor || "#f97316"} onChange={handleChange} className="w-8 h-8 bg-transparent cursor-pointer" />
                       </div>
                     </div>
-                    <div className="md:col-span-4">
-                      <label className="block text-xs text-slate-400 mb-1">Client Image (/swp)</label>
-                      <label className="flex items-center justify-center gap-2 px-3 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded-xl text-xs font-semibold cursor-pointer text-teal-400">
-                        <Upload size={14} /> Select File
+                  </div>
+
+                  {/* Dark Mode Colors */}
+                  <div className="p-4 bg-slate-900/60 rounded-2xl border border-slate-700/60 space-y-4">
+                    <h3 className="text-sm font-bold text-slate-300 flex items-center gap-2"><Moon size={16} /> Dark Mode Colors</h3>
+                    <div className="space-y-3">
+                      <div className="flex justify-between items-center bg-slate-800 border border-slate-700 rounded-lg px-3 py-2">
+                        <span className="text-xs text-slate-400">Line 1 (Dark)</span>
+                        <input type="color" name="darkTitleColor1" value={settings.darkTitleColor1 || "#ffffff"} onChange={handleChange} className="w-8 h-8 bg-transparent cursor-pointer" />
+                      </div>
+                      <div className="flex justify-between items-center bg-slate-800 border border-slate-700 rounded-lg px-3 py-2">
+                        <span className="text-xs text-slate-400">Line 2 (Dark)</span>
+                        <input type="color" name="darkTitleColor2" value={settings.darkTitleColor2 || "#ffffff"} onChange={handleChange} className="w-8 h-8 bg-transparent cursor-pointer" />
+                      </div>
+                      <div className="flex justify-between items-center bg-slate-800 border border-slate-700 rounded-lg px-3 py-2">
+                        <span className="text-xs text-slate-400">Highlight (Dark)</span>
+                        <input type="color" name="darkHighlightColor" value={settings.darkHighlightColor || "#fb923c"} onChange={handleChange} className="w-8 h-8 bg-transparent cursor-pointer" />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Hero Description</label>
+                  <textarea name="heroDescription" rows={3} value={settings.heroDescription} onChange={handleChange} className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-sm focus:border-orange-500 outline-none resize-none" />
+                </div>
+              </div>
+
+              {/* Badge Avatars */}
+              <div className="pt-6 border-t border-slate-700/50">
+                <div className="flex justify-between items-center mb-4">
+                  <h2 className="text-xl font-bold text-teal-400">Badge Avatars (Next to Hero Badge)</h2>
+                  <button type="button" onClick={addBadgeAvatar} disabled={settings.badgeAvatars?.length >= MAX_BADGE_AVATARS} className="bg-slate-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 disabled:opacity-40"><Plus size={14} /> Add Avatar</button>
+                </div>
+                <div>
+                  <input type="text" name="badgeText" maxLength={20} value={settings.badgeText} onChange={handleChange} placeholder="+3000 students worldwide" className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-sm focus:border-orange-500 outline-none mb-4" />
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {settings.badgeAvatars?.map((item, idx) => (
+                    <div key={idx} className="flex gap-4 p-3 bg-slate-900 rounded-xl border border-slate-700 items-center">
+                      <div className="w-10 h-10 rounded-full bg-slate-800 border border-slate-700 overflow-hidden flex-shrink-0">
+                        {item.image ? <img src={getMediaUrl(item.image)} alt="Avatar" className="w-full h-full object-cover" /> : <ImageIcon className="text-slate-600 m-auto mt-2" size={20} />}
+                      </div>
+                      <label className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded-lg text-xs cursor-pointer text-teal-400">
+                        <Upload size={14} /> Select
+                        <input type="file" accept="image/*" onChange={(e) => handleBadgeAvatarFileSelect(idx, e)} className="hidden" />
+                      </label>
+                      <button type="button" onClick={() => removeBadgeAvatar(idx)} className="text-rose-400 p-2"><Trash2 size={16} /></button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ================= TAB: FEATURES SECTION ================= */}
+          {activeTab === "features" && (
+            <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-300">
+              <div className="space-y-6">
+                <h2 className="text-xl font-bold text-orange-400">Why Choose Us (Second Section)</h2>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Section Badge</label>
+                    <input type="text" name="featureBadge" value={settings.featureBadge || "Why Choose Us"} onChange={handleChange} className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-sm outline-none" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Title Highlight Word</label>
+                    <input type="text" name="featureTitleHighlight" value={settings.featureTitleHighlight || "excel"} onChange={handleChange} className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-sm outline-none" />
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Main Title Text</label>
+                    <input type="text" name="featureTitleLine1" value={settings.featureTitleLine1 || "Everything you need to"} onChange={handleChange} className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-sm outline-none" />
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Section Description</label>
+                    <textarea name="featureDescription" rows={2} value={settings.featureDescription || ""} onChange={handleChange} className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 text-sm outline-none resize-none" />
+                  </div>
+                </div>
+
+                <div className="pt-6 border-t border-slate-700/50">
+                  <div className="flex justify-between items-center mb-4">
+                    <div>
+                      <h2 className="text-xl font-bold text-teal-400">Feature Carousel Items</h2>
+                      <p className="text-xs text-slate-400">Add custom features with your own images (Max {MAX_FEATURE_ITEMS})</p>
+                    </div>
+                    <button type="button" onClick={addFeatureItem} disabled={settings.featureItems?.length >= MAX_FEATURE_ITEMS} className="bg-slate-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5"><Plus size={14} /> Add Feature</button>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 gap-4">
+                    {settings.featureItems?.map((item, idx) => (
+                      <div key={idx} className="flex flex-col md:flex-row gap-4 p-4 bg-slate-900 rounded-2xl border border-slate-700">
+                        <div className="w-20 h-20 rounded-xl bg-slate-800 border border-slate-700 overflow-hidden flex-shrink-0 flex items-center justify-center relative">
+                          {item.iconImage ? <img src={getMediaUrl(item.iconImage)} alt="Icon" className="w-full h-full object-cover" /> : <ImageIcon className="text-slate-500" size={24} />}
+                        </div>
+                        <div className="flex-1 space-y-3">
+                          <input type="text" value={item.title} onChange={(e) => handleFeatureItemChange(idx, "title", e.target.value)} placeholder="Feature Title" className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm outline-none" />
+                          <textarea rows={2} value={item.description} onChange={(e) => handleFeatureItemChange(idx, "description", e.target.value)} placeholder="Feature Description..." className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs outline-none resize-none" />
+                          <div className="flex items-center gap-3">
+                             <label className="flex items-center gap-2 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded-lg text-xs cursor-pointer text-teal-400 transition-colors">
+                              <Upload size={14} /> Upload Custom Image Icon
+                              <input type="file" accept="image/*" onChange={(e) => handleFeatureIconFileSelect(idx, e)} className="hidden" />
+                            </label>
+                          </div>
+                        </div>
+                        <button type="button" onClick={() => removeFeatureItem(idx)} className="text-rose-400 p-2 md:self-start"><Trash2 size={18} /></button>
+                      </div>
+                    ))}
+                    {(!settings.featureItems || settings.featureItems.length === 0) && (
+                      <p className="text-slate-500 text-sm italic py-4">No custom feature items added. (Will show default ones in the UI)</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ================= TAB: GALLERY & HERO IMAGES ================= */}
+          {activeTab === "gallery" && (
+            <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-300">
+              
+              {/* Hero Images */}
+              <div>
+                <div className="flex justify-between items-center mb-4">
+                  <h2 className="text-xl font-bold text-teal-400">Hero Carousel Images</h2>
+                  <button type="button" onClick={addHeroImage} disabled={settings.heroImages?.length >= MAX_HERO_IMAGES} className="bg-slate-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5"><Plus size={14} /> Add Image</button>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {settings.heroImages?.map((img, idx) => (
+                    <div key={idx} className="flex gap-4 p-3 bg-slate-900 rounded-xl border border-slate-700 items-center">
+                      <div className="w-14 h-14 rounded-lg bg-slate-800 border border-slate-700 overflow-hidden flex-shrink-0">
+                        {img.image ? <img src={getMediaUrl(img.image)} alt="Hero" className="w-full h-full object-cover" /> : <ImageIcon className="text-slate-600 m-auto mt-4" size={24} />}
+                      </div>
+                      <div className="flex-1 space-y-2">
+                        <input type="text" value={img.title} onChange={(e) => handleHeroImageChange(idx, "title", e.target.value)} placeholder="Title / Alt Text" className="w-full bg-slate-800 border border-slate-700 rounded-lg px-2 py-1.5 text-xs outline-none" />
+                        <label className="flex items-center justify-center gap-2 px-2 py-1.5 bg-slate-800 border border-slate-600 rounded-lg text-xs cursor-pointer text-teal-400">
+                          <Upload size={12} /> Upload
+                          <input type="file" accept="image/*" onChange={(e) => handleHeroFileSelect(idx, e)} className="hidden" />
+                        </label>
+                      </div>
+                      <button type="button" onClick={() => removeHeroImage(idx)} className="text-rose-400 p-2"><Trash2 size={16} /></button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Gallery Images */}
+              <div className="pt-6 border-t border-slate-700/50">
+                <div className="flex justify-between items-center mb-4">
+                  <h2 className="text-xl font-bold text-teal-400">Our Gallery Section</h2>
+                  <button type="button" onClick={addGalleryItem} disabled={settings.galleryItems?.length >= MAX_GALLERY_ITEMS} className="bg-slate-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5"><Plus size={14} /> Add Gallery Image</button>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {settings.galleryItems?.map((item, idx) => (
+                    <div key={idx} className="flex gap-4 p-3 bg-slate-900 rounded-xl border border-slate-700 items-center">
+                      <div className="w-14 h-14 rounded-lg bg-slate-800 border border-slate-700 overflow-hidden flex-shrink-0">
+                        {item.image ? <img src={getMediaUrl(item.image)} alt="Gallery" className="w-full h-full object-cover" /> : <ImageIcon className="text-slate-600 m-auto mt-4" size={24} />}
+                      </div>
+                      <div className="flex-1 space-y-2">
+                        <input type="text" value={item.text} onChange={(e) => handleGalleryChange(idx, "text", e.target.value)} placeholder="Label Text" className="w-full bg-slate-800 border border-slate-700 rounded-lg px-2 py-1.5 text-xs outline-none" />
+                        <label className="flex items-center justify-center gap-2 px-2 py-1.5 bg-slate-800 border border-slate-600 rounded-lg text-xs cursor-pointer text-teal-400">
+                          <Upload size={12} /> Upload
+                          <input type="file" accept="image/*" onChange={(e) => handleGalleryFileSelect(idx, e)} className="hidden" />
+                        </label>
+                      </div>
+                      <button type="button" onClick={() => removeGalleryItem(idx)} className="text-rose-400 p-2"><Trash2 size={16} /></button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ================= TAB: TESTIMONIALS ================= */}
+          {activeTab === "reviews" && (
+            <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-300">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-xl font-bold text-teal-400">Client Testimonials</h2>
+                <button type="button" onClick={addTestimonial} className="bg-slate-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5"><Plus size={14} /> Add Review</button>
+              </div>
+              <div className="grid grid-cols-1 gap-6">
+                {settings.testimonials?.map((test, idx) => (
+                  <div key={idx} className="p-4 bg-slate-900 rounded-2xl border border-slate-700 grid md:grid-cols-12 gap-4">
+                    <div className="md:col-span-3 flex flex-col items-center gap-3 border-b md:border-b-0 md:border-r border-slate-700 pb-4 md:pb-0 md:pr-4">
+                       <div className="w-16 h-16 rounded-full bg-slate-800 border border-slate-700 overflow-hidden flex-shrink-0">
+                        {test.image ? <img src={getMediaUrl(test.image)} alt="Client" className="w-full h-full object-cover" /> : <ImageIcon className="text-slate-600 m-auto mt-5" size={24} />}
+                      </div>
+                      <label className="flex items-center justify-center gap-2 px-2 py-1.5 bg-slate-800 border border-slate-600 rounded-lg text-[11px] cursor-pointer text-teal-400 w-full">
+                        <Upload size={12} /> Upload Image
                         <input type="file" accept="image/*" onChange={(e) => handleTestimonialFileSelect(idx, e)} className="hidden" />
                       </label>
                     </div>
-                    <div className="md:col-span-5">
-                      <label className="block text-xs text-slate-400 mb-1">Client Name</label>
-                      <input type="text" value={test.name} onChange={(e) => handleTestimonialChange(idx, "name", e.target.value)} placeholder="Tadhg Gunnigle" className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs outline-none focus:border-teal-500" />
+                    <div className="md:col-span-8 space-y-3">
+                      <div className="grid grid-cols-2 gap-3">
+                        <input type="text" value={test.name} onChange={(e) => handleTestimonialChange(idx, "name", e.target.value)} placeholder="Client Name" className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs outline-none" />
+                        <input type="text" value={test.title} onChange={(e) => handleTestimonialChange(idx, "title", e.target.value)} placeholder="Company / Role" className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs outline-none" />
+                      </div>
+                      <textarea rows={2} value={test.idea} onChange={(e) => handleTestimonialChange(idx, "idea", e.target.value)} placeholder="Review feedback..." className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs outline-none resize-none" />
+                      <div>
+                         <label className="text-xs text-slate-400 mr-3">Rating (1-5 Stars)</label>
+                         <input type="number" min="1" max="5" value={test.rating} onChange={(e) => handleTestimonialChange(idx, "rating", Number(e.target.value))} className="w-16 bg-slate-800 border border-slate-700 rounded-lg px-2 py-1 text-xs outline-none text-center" />
+                      </div>
                     </div>
-                    <div className="md:col-span-1 flex justify-end">
-                      <button type="button" onClick={() => removeTestimonial(idx)} className="bg-rose-500/20 text-rose-400 hover:bg-rose-500 hover:text-white p-2.5 rounded-xl transition-all cursor-pointer"><Trash2 size={16} /></button>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-xs text-slate-400 mb-1">Client Title / Company</label>
-                      <input type="text" value={test.title} onChange={(e) => handleTestimonialChange(idx, "title", e.target.value)} placeholder="CEO, Miles Ahead Hosting, Canada" className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs outline-none focus:border-teal-500" />
-                    </div>
-                    <div>
-                      <label className="block text-xs text-slate-400 mb-1">Rating (1 to 5 Stars)</label>
-                      <input type="number" min="1" max="5" value={test.rating} onChange={(e) => handleTestimonialChange(idx, "rating", Number(e.target.value))} className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs outline-none focus:border-teal-500 text-white" />
+                    <div className="md:col-span-1 flex items-start justify-end">
+                      <button type="button" onClick={() => removeTestimonial(idx)} className="text-rose-400 p-2"><Trash2 size={18} /></button>
                     </div>
                   </div>
-                  <div>
-                    <label className="block text-xs text-slate-400 mb-1">Client Idea / Feedback (~50 words)</label>
-                    <textarea rows={3} value={test.idea} onChange={(e) => handleTestimonialChange(idx, "idea", e.target.value)} placeholder="Write client feedback here..." className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs outline-none focus:border-teal-500 resize-none text-white" />
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-
-          {/* Hero Images Settings (Max 3) */}
-          <div className="bg-slate-800/50 p-6 rounded-3xl border border-slate-700/50 space-y-6">
-            <div className="flex justify-between items-center">
-              <div>
-                <h2 className="text-xl font-bold text-orange-400">Hero Carousel Images</h2>
-                <p className="text-xs text-slate-400 mt-0.5">{settings.heroImages.length} / {MAX_HERO_IMAGES} images added (Max 3)</p>
+                ))}
+                {(!settings.testimonials || settings.testimonials.length === 0) && (
+                  <p className="text-slate-500 text-sm italic">No testimonials added yet.</p>
+                )}
               </div>
-              <button type="button" onClick={addHeroImage} disabled={settings.heroImages.length >= MAX_HERO_IMAGES} className="bg-teal-500/20 text-teal-400 hover:bg-teal-500 hover:text-white px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed">
-                <Plus size={16} /> Add New Hero Image
-              </button>
             </div>
+          )}
 
-            {settings.heroImages.length === 0 ? (
-              <p className="text-slate-500 text-sm italic">No hero images added yet.</p>
-            ) : (
-              settings.heroImages.map((img, idx) => (
-                <div key={idx} className="grid grid-cols-1 md:grid-cols-12 gap-4 p-4 bg-slate-900 rounded-2xl border border-slate-700 items-center">
-                  <div className="md:col-span-2 flex justify-center">
-                    <div className="w-16 h-16 rounded-xl bg-slate-800 border border-slate-700 overflow-hidden flex items-center justify-center relative">
-                      {img.image ? <img src={getMediaUrl(img.image)} alt="Hero preview" className="w-full h-full object-cover" /> : <ImageIcon className="text-slate-600" size={24} />}
-                    </div>
-                  </div>
-                  <div className="md:col-span-4">
-                    <label className="block text-xs text-slate-400 mb-1">Upload from Computer</label>
-                    <label className="flex items-center justify-center gap-2 px-3 py-2.5 bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded-xl text-xs font-semibold cursor-pointer transition-all text-teal-400">
-                      <Upload size={14} /> Select File
-                      <input type="file" accept="image/*" onChange={(e) => handleHeroFileSelect(idx, e)} className="hidden" />
-                    </label>
-                  </div>
-                  <div className="md:col-span-5">
-                    <label className="block text-xs text-slate-400 mb-1">Title / Caption</label>
-                    <input type="text" value={img.title} onChange={(e) => handleHeroImageChange(idx, "title", e.target.value)} placeholder="Student 1" className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs outline-none focus:border-teal-500" />
-                  </div>
-                  <div className="md:col-span-1 flex justify-end">
-                    <button type="button" onClick={() => removeHeroImage(idx)} className="bg-rose-500/20 text-rose-400 hover:bg-rose-500 hover:text-white p-2.5 rounded-xl transition-all cursor-pointer"><Trash2 size={16} /></button>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-
-          {/* Gallery Images Settings (Max 5) */}
-          <div className="bg-slate-800/50 p-6 rounded-3xl border border-slate-700/50 space-y-6">
-            <div className="flex justify-between items-center">
-              <div>
-                <h2 className="text-xl font-bold text-orange-400">Our Gallery Items</h2>
-                <p className="text-xs text-slate-400 mt-0.5">{settings.galleryItems.length} / {MAX_GALLERY_ITEMS} items added (Max 5)</p>
+          {/* ================= TAB: SOCIAL LINKS ================= */}
+          {activeTab === "social" && (
+            <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-300">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-xl font-bold text-teal-400">Social Media Links</h2>
+                <button type="button" onClick={addSocialLink} className="bg-slate-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5"><Plus size={14} /> Add Link</button>
               </div>
-              <button type="button" onClick={addGalleryItem} disabled={settings.galleryItems.length >= MAX_GALLERY_ITEMS} className="bg-teal-500/20 text-teal-400 hover:bg-teal-500 hover:text-white px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed">
-                <Plus size={16} /> Add New Gallery Item
-              </button>
-            </div>
-
-            {settings.galleryItems.length === 0 ? (
-              <p className="text-slate-500 text-sm italic">No gallery items added yet.</p>
-            ) : (
-              settings.galleryItems.map((item, idx) => (
-                <div key={idx} className="grid grid-cols-1 md:grid-cols-12 gap-4 p-4 bg-slate-900 rounded-2xl border border-slate-700 items-center">
-                  <div className="md:col-span-2 flex justify-center">
-                    <div className="w-16 h-16 rounded-xl bg-slate-800 border border-slate-700 overflow-hidden flex items-center justify-center relative">
-                      {item.image ? <img src={getMediaUrl(item.image)} alt="Gallery preview" className="w-full h-full object-cover" /> : <ImageIcon className="text-slate-600" size={24} />}
+              <div className="grid grid-cols-1 gap-4">
+                {settings.socialLinks?.map((social, idx) => (
+                  <div key={idx} className="flex gap-4 p-4 bg-slate-900 rounded-2xl border border-slate-700 items-center">
+                    <div className="w-40">
+                      <select value={social.platform} onChange={(e) => handleSocialChange(idx, "platform", e.target.value)} className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 text-sm outline-none">
+                        {POPULAR_SOCIAL_PLATFORMS.map((plat) => <option key={plat} value={plat}>{plat}</option>)}
+                      </select>
                     </div>
+                    <div className="flex-1">
+                      <input type="text" value={social.url} onChange={(e) => handleSocialChange(idx, "url", e.target.value)} placeholder="Profile URL" className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2.5 text-sm outline-none" />
+                    </div>
+                    <button type="button" onClick={() => removeSocialLink(idx)} className="text-rose-400 p-2"><Trash2 size={18} /></button>
                   </div>
-                  <div className="md:col-span-4">
-                    <label className="block text-xs text-slate-400 mb-1">Upload from Computer</label>
-                    <label className="flex items-center justify-center gap-2 px-3 py-2.5 bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded-xl text-xs font-semibold cursor-pointer transition-all text-teal-400">
-                      <Upload size={14} /> Select File
-                      <input type="file" accept="image/*" onChange={(e) => handleGalleryFileSelect(idx, e)} className="hidden" />
-                    </label>
-                  </div>
-                  <div className="md:col-span-5">
-                    <label className="block text-xs text-slate-400 mb-1">Label Text</label>
-                    <input type="text" value={item.text} onChange={(e) => handleGalleryChange(idx, "text", e.target.value)} placeholder="Student 1" className="w-full bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-xs outline-none focus:border-teal-500" />
-                  </div>
-                  <div className="md:col-span-1 flex justify-end">
-                    <button type="button" onClick={() => removeGalleryItem(idx)} className="bg-rose-500/20 text-rose-400 hover:bg-rose-500 hover:text-white p-2.5 rounded-xl transition-all cursor-pointer"><Trash2 size={16} /></button>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
+                ))}
+                {(!settings.socialLinks || settings.socialLinks.length === 0) && (
+                   <p className="text-slate-500 text-sm italic">No social media links added yet.</p>
+                )}
+              </div>
+            </div>
+          )}
+
         </form>
       </div>
     </div>
