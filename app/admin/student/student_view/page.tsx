@@ -18,7 +18,9 @@ import {
   Users, 
   Trash2, 
   Download,
-  MapPin 
+  MapPin,
+  Eye,
+  X
 } from "lucide-react";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -39,8 +41,16 @@ interface Student {
   country?: string;
   timeZone?: string;
   medium?: string;
-  parentName?: string;
-  parentPhone?: string;
+  fatherName?: string;
+  fatherOccupation?: string;
+  fatherPhone?: string;
+  motherName?: string;
+  motherOccupation?: string;
+  motherPhone?: string;
+  hasGuardian?: boolean;
+  guardianName?: string;
+  guardianRelation?: string;
+  guardianPhone?: string;
   isNewForTable?: boolean;
 }
 
@@ -50,9 +60,10 @@ export default function AdminStudentView() {
   const [error, setError] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
 
-  // Popup States for Deletion
+  // Popup States for Deletion & Detailed View Modal
   const [singleDeleteStudent, setSingleDeleteStudent] = useState<Student | null>(null);
   const [isDeleteAllModalOpen, setIsDeleteAllModalOpen] = useState(false);
+  const [viewingStudent, setViewingStudent] = useState<Student | null>(null); // 👈 සිසුවාගේ සියලු විස්තර එකවර පෙන්වන Modal එක සඳහා
 
   useEffect(() => {
     fetchStudents();
@@ -138,8 +149,16 @@ export default function AdminStudentView() {
       ["Grade", student.grade || "N/A"],
       ["School", student.school || "N/A"],
       ["Medium", student.medium || "N/A"],
-      ["Parent Name", student.parentName || "N/A"],
-      ["Parent Phone", student.parentPhone || "N/A"],
+      ["Father's Name", student.fatherName || "N/A"],
+      ["Father's Occupation", student.fatherOccupation || "N/A"],
+      ["Father's Phone", student.fatherPhone || "N/A"],
+      ["Mother's Name", student.motherName || "N/A"],
+      ["Mother's Occupation", student.motherOccupation || "N/A"],
+      ["Mother's Phone", student.motherPhone || "N/A"],
+      ["Has Guardian", student.hasGuardian ? "Yes" : "No"],
+      ["Guardian Name", student.guardianName || "N/A"],
+      ["Guardian Relationship", student.guardianRelation || "N/A"],
+      ["Guardian Phone", student.guardianPhone || "N/A"],
       ["Country", student.country || "N/A"],
       ["Timezone", student.timeZone || "N/A"],
       ["Auth Provider", student.authProvider || "N/A"],
@@ -167,14 +186,15 @@ export default function AdminStudentView() {
     doc.setTextColor(100);
     doc.text(`Generated on: ${new Date().toLocaleDateString()} | Total Students: ${students.length}`, 14, 28);
 
-    const tableColumns = ["Name", "Email", "Phone", "Address", "Grade", "School", "Joined Date"];
+    const tableColumns = ["Name", "Email", "Phone", "Grade", "School", "Father", "Mother", "Joined Date"];
     const tableRows = students.map(s => [
       s.name,
       s.email,
       s.phone || "N/A",
-      s.address || "N/A",
       s.grade || "N/A",
       s.school || "N/A",
+      s.fatherName || "N/A",
+      s.motherName || "N/A",
       new Date(s.createdAt).toLocaleDateString()
     ]);
 
@@ -231,6 +251,130 @@ export default function AdminStudentView() {
         message="Are you sure you want to delete all student records permanently? This action is irreversible."
       />
 
+      {/* 🌟 Full Student Details View Modal (සියලුම විස්තර එකවර කියවා බලා ගැනීමට) */}
+      {viewingStudent && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
+          <div className="w-full max-w-2xl bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border dark:border-slate-800 p-6 space-y-5 my-8 max-h-[90vh] overflow-y-auto custom-scrollbar">
+            
+            {/* Modal Header */}
+            <div className="flex justify-between items-center border-b pb-3 dark:border-slate-800">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-full overflow-hidden bg-slate-100 dark:bg-slate-800 border flex items-center justify-center shrink-0">
+                  {viewingStudent.profileImage ? (
+                    <img src={getProfileImageUrl(viewingStudent.profileImage) || ""} alt="" className="w-full h-full object-cover" />
+                  ) : (
+                    <User size={24} className="text-slate-400" />
+                  )}
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-slate-900 dark:text-white">{viewingStudent.name}</h3>
+                  <p className="text-xs text-slate-400">{viewingStudent.email}</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setViewingStudent(null)}
+                className="p-1.5 rounded-xl text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Modal Body Contents */}
+            <div className="space-y-4 text-xs">
+              
+              {/* Personal & Contact Info */}
+              <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border dark:border-slate-800 space-y-2">
+                <h4 className="font-bold text-slate-500 uppercase text-[11px] tracking-wider">Personal & Contact Information</h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  <div>
+                    <span className="text-slate-400 font-semibold text-[10px]">Phone Number:</span>
+                    <p className="font-semibold text-slate-800 dark:text-slate-200">{viewingStudent.phone || "N/A"}</p>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 font-semibold text-[10px]">Home Address:</span>
+                    <p className="font-semibold text-slate-800 dark:text-slate-200">{viewingStudent.address || "N/A"}</p>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 font-semibold text-[10px]">Country / Timezone:</span>
+                    <p className="font-semibold text-slate-800 dark:text-slate-200">{viewingStudent.country || "N/A"} ({viewingStudent.timeZone || "N/A"})</p>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 font-semibold text-[10px]">Auth Provider:</span>
+                    <p className="font-semibold text-slate-800 dark:text-slate-200 capitalize">{viewingStudent.authProvider || "Local"}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Academic Info */}
+              <div className="p-3.5 rounded-2xl bg-indigo-50/50 dark:bg-indigo-500/10 border border-indigo-100 dark:border-indigo-500/20 space-y-2">
+                <h4 className="font-bold text-indigo-600 dark:text-indigo-400 uppercase text-[11px] tracking-wider">Academic Information</h4>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                  <div>
+                    <span className="text-slate-400 font-semibold text-[10px]">Grade / Class:</span>
+                    <p className="font-semibold text-slate-800 dark:text-slate-200">{viewingStudent.grade || "N/A"}</p>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 font-semibold text-[10px]">School:</span>
+                    <p className="font-semibold text-slate-800 dark:text-slate-200">{viewingStudent.school || "N/A"}</p>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 font-semibold text-[10px]">Medium:</span>
+                    <p className="font-semibold text-slate-800 dark:text-slate-200">{viewingStudent.medium || "N/A"}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Father's & Mother's Details */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="p-3.5 rounded-2xl bg-amber-50/50 dark:bg-amber-500/10 border border-amber-200/50 dark:border-amber-500/20 space-y-1.5">
+                  <h4 className="font-bold text-amber-700 dark:text-amber-400 uppercase text-[11px]">Father's Details</h4>
+                  <p className="font-semibold text-slate-800 dark:text-slate-200">Name: {viewingStudent.fatherName || "N/A"}</p>
+                  <p className="text-slate-600 dark:text-slate-400 text-[11px]">Occupation: {viewingStudent.fatherOccupation || "N/A"}</p>
+                  <p className="text-slate-600 dark:text-slate-400 text-[11px]">Phone: {viewingStudent.fatherPhone || "N/A"}</p>
+                </div>
+
+                <div className="p-3.5 rounded-2xl bg-pink-50/50 dark:bg-pink-500/10 border border-pink-200/50 dark:border-pink-500/20 space-y-1.5">
+                  <h4 className="font-bold text-pink-700 dark:text-pink-400 uppercase text-[11px]">Mother's Details</h4>
+                  <p className="font-semibold text-slate-800 dark:text-slate-200">Name: {viewingStudent.motherName || "N/A"}</p>
+                  <p className="text-slate-600 dark:text-slate-400 text-[11px]">Occupation: {viewingStudent.motherOccupation || "N/A"}</p>
+                  <p className="text-slate-600 dark:text-slate-400 text-[11px]">Phone: {viewingStudent.motherPhone || "N/A"}</p>
+                </div>
+              </div>
+
+              {/* Guardian Details (If applicable) */}
+              {viewingStudent.hasGuardian && (
+                <div className="p-3.5 rounded-2xl bg-purple-50/50 dark:bg-purple-500/10 border border-purple-200/50 dark:border-purple-500/20 space-y-1.5">
+                  <h4 className="font-bold text-purple-700 dark:text-purple-400 uppercase text-[11px]">Guardian Details</h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    <p className="font-semibold text-slate-800 dark:text-slate-200">Name: {viewingStudent.guardianName || "N/A"}</p>
+                    <p className="text-slate-600 dark:text-slate-400">Relation: {viewingStudent.guardianRelation || "N/A"}</p>
+                    <p className="text-slate-600 dark:text-slate-400">Phone: {viewingStudent.guardianPhone || "N/A"}</p>
+                  </div>
+                </div>
+              )}
+
+            </div>
+
+            {/* Modal Footer */}
+            <div className="flex justify-end gap-2 pt-3 border-t dark:border-slate-800">
+              <button
+                onClick={() => handleDownloadStudentPDF(viewingStudent)}
+                className="flex items-center gap-1.5 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs transition-all shadow-sm"
+              >
+                <Download size={14} /> Download PDF Report
+              </button>
+              <button
+                onClick={() => setViewingStudent(null)}
+                className="px-5 py-2 bg-slate-900 dark:bg-slate-800 text-white rounded-xl text-xs font-bold transition-all"
+              >
+                Close
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
+
       <div className="max-w-7xl mx-auto space-y-6 w-full">
         
         {/* Header Section */}
@@ -283,7 +427,7 @@ export default function AdminStudentView() {
               <thead>
                 <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800 transition-colors">
                   <th className="px-4 py-4 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Student</th>
-                  <th className="px-4 py-4 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Contact & Parent</th>
+                  <th className="px-4 py-4 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Contact & Parents</th>
                   <th className="px-4 py-4 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Academic & Medium</th>
                   <th className="px-4 py-4 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Location & Timezone</th>
                   <th className="px-4 py-4 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Joined Date</th>
@@ -326,7 +470,7 @@ export default function AdminStudentView() {
                         </div>
                       </td>
 
-                      {/* Contact Info & Parent Details */}
+                      {/* Contact Info & Parents / Guardian Details */}
                       <td className="px-4 py-4">
                         <div className="space-y-1 text-xs">
                           <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-300 truncate max-w-[150px] sm:max-w-[200px]" title={student.email}>
@@ -337,10 +481,22 @@ export default function AdminStudentView() {
                             <Phone size={13} className="text-slate-400 flex-shrink-0" />
                             <span>{student.phone || <span className="text-slate-400 italic">No phone</span>}</span>
                           </div>
-                          {student.parentName && (
-                            <div className="flex items-center gap-1 text-[11px] text-purple-600 dark:text-purple-400 font-medium truncate max-w-[150px]">
+                          {student.fatherName && (
+                            <div className="flex items-center gap-1 text-[11px] text-amber-600 dark:text-amber-400 font-medium truncate max-w-[160px]" title={`Father: ${student.fatherName}`}>
                               <Users size={12} className="flex-shrink-0" />
-                              <span className="truncate">Parent: {student.parentName}</span>
+                              <span className="truncate">Father: {student.fatherName}</span>
+                            </div>
+                          )}
+                          {student.motherName && (
+                            <div className="flex items-center gap-1 text-[11px] text-pink-600 dark:text-pink-400 font-medium truncate max-w-[160px]" title={`Mother: ${student.motherName}`}>
+                              <Users size={12} className="flex-shrink-0" />
+                              <span className="truncate">Mother: {student.motherName}</span>
+                            </div>
+                          )}
+                          {student.hasGuardian && student.guardianName && (
+                            <div className="flex items-center gap-1 text-[11px] text-purple-600 dark:text-purple-400 font-medium truncate max-w-[160px]" title={`Guardian: ${student.guardianName}`}>
+                              <Users size={12} className="flex-shrink-0" />
+                              <span className="truncate">Guardian: {student.guardianName}</span>
                             </div>
                           )}
                         </div>
@@ -393,9 +549,17 @@ export default function AdminStudentView() {
                         </div>
                       </td>
 
-                      {/* Actions (Download Info & Delete Button) */}
+                      {/* Actions (View Full Details, Download Info & Delete Button) */}
                       <td className="px-4 py-4 text-right whitespace-nowrap">
                         <div className="flex items-center justify-end gap-1.5">
+                          {/* 🌟 View Details Button */}
+                          <button
+                            onClick={() => setViewingStudent(student)}
+                            title="View Full Details"
+                            className="flex items-center gap-1 px-2.5 py-1.5 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-500/20 rounded-lg text-[11px] font-semibold transition-colors"
+                          >
+                            <Eye size={13} /> View
+                          </button>
                           <button
                             onClick={() => handleDownloadStudentPDF(student)}
                             title="Download Student Info"
