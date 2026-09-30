@@ -24,7 +24,12 @@ import {
   ClipboardList,
   UserRound,
   School,
-  Ticket, 
+  Ticket,
+  Megaphone,
+  FileText,
+  LayoutDashboard,
+  BellRing,
+  CircleHelp, 
 } from "lucide-react";
 import { useTheme } from "@/app/context/ThemeContext";
 import axios from "axios";
@@ -37,6 +42,9 @@ export default function AdminSidebar() {
   const [newStudentCount, setNewStudentCount] = useState(0);
   const [newMaterialCount, setNewMaterialCount] = useState(0);
   const [newQuizCount, setNewQuizCount] = useState(0);
+  
+  // Admin Profile Photo State එක අලුතින් එකතු කරන ලදී
+  const [adminProfilePhoto, setAdminProfilePhoto] = useState<string>("");
   
   // Notifications States
   const [adminNotifications, setAdminNotifications] = useState<any[]>([]);
@@ -91,7 +99,7 @@ export default function AdminSidebar() {
   }
 };
 
-  // Socket.io සහ Notifications Logic
+  // Socket.io සහ Notifications Logic සමඟ Admin Profile Photo එක ලබා ගැනීම
   useEffect(() => {
     const token = localStorage.getItem("token");
     
@@ -115,6 +123,17 @@ export default function AdminSidebar() {
     axios.get("http://localhost:5000/api/quiz/admin/new-count", {
       headers: { Authorization: `Bearer ${token}` }
     }).then(res => setNewQuizCount(res.data.count)).catch(console.error);
+
+      // Admin Profile Photo එක ලබා ගැනීම
+      axios.get("http://localhost:5000/api/admin/profile", {
+        headers: { Authorization: `Bearer ${token}` }
+      }).then(res => {
+        if (res.data.profilePhoto) {
+          const cleanPath = res.data.profilePhoto.replace(/\\/g, '/');
+          const baseUrl = `http://localhost:5000/${cleanPath.startsWith('/') ? cleanPath.substring(1) : cleanPath}`;
+          setAdminProfilePhoto(`${baseUrl}?t=${new Date().getTime()}`);
+        }
+      }).catch(console.error);
 
       // 4. Socket Connect කිරීම සහ admin_room එකට එක් වීම
       const socket = io("http://localhost:5000");
@@ -191,11 +210,12 @@ export default function AdminSidebar() {
     { name: "Tickets", path: "/admin/tickets", icon: Ticket },
     { name: "Students", path: "/admin/student/student_view", icon: GraduationCap },
     { name: "Class view", path: "/admin/materials/class_view", icon: School },
-    { name: "Create Add", path: "/admin/Add/create_add", icon: School },
-    { name: "View Add", path: "/admin/Add/view_add", icon: School },
-    { name: "Notice", path: "/admin/notice", icon: School },
-    { name: "Dashboard Editor", path: "/admin/swp", icon: School },
-    { name: "Notification Handler", path: "/admin/notification", icon: School },
+    { name: "Create Add", path: "/admin/Add/create_add", icon: Megaphone },
+    { name: "View Add", path: "/admin/Add/view_add", icon: FileText },
+    { name: "Notice", path: "/admin/notice", icon: BellRing },
+    { name: "Dashboard Editor", path: "/admin/swp", icon: LayoutDashboard },
+    { name: "Notification Handler", path: "/admin/notification", icon: BellRing },
+    { name: "FAQ", path: "/admin/faq/add_faq", icon: CircleHelp },
   ];
 
   const notifDropdownRef = useRef<HTMLDivElement>(null);
@@ -223,130 +243,132 @@ export default function AdminSidebar() {
 
       {/* Header / Brand Profile Style */}
       <div className={`p-3.5 pt-4 transition-all duration-300 ${isCollapsed ? "px-2.5" : "px-3.5"}`}>
-        <div
-          className={`flex items-center gap-3 rounded-2xl cursor-pointer group transition-all duration-300 border backdrop-blur-md shadow-sm ${
-            isCollapsed ? "p-2 justify-center" : "p-3"
-          } ${
-            darkMode
-              ? "bg-slate-800/30 border-slate-700/40 hover:bg-slate-800/60 hover:border-blue-500/40"
-              : "bg-white/40 border-slate-200/40 hover:bg-white/70 hover:border-blue-200"
-          }`}
-          title="LMS Admin"
-        >
+        <Link href="/admin/profile">
           <div
-            className={`relative flex items-center justify-center rounded-full shadow-inner transition-transform group-hover:scale-105 overflow-hidden shrink-0 ${
-              isCollapsed ? "h-10 w-10" : "h-11 w-11"
-            } ${darkMode ? "bg-slate-800 border border-slate-700" : "bg-blue-50 border border-blue-100"}`}
+            className={`flex items-center gap-3 rounded-2xl cursor-pointer group transition-all duration-300 border backdrop-blur-md shadow-sm ${
+              isCollapsed ? "p-2 justify-center" : "p-3"
+            } ${
+              darkMode
+                ? "bg-slate-800/30 border-slate-700/40 hover:bg-slate-800/60 hover:border-blue-500/40"
+                : "bg-white/40 border-slate-200/40 hover:bg-white/70 hover:border-blue-200"
+            }`}
+            title="Go to Profile"
           >
             <div
-              className={`flex items-center justify-center ${
-                darkMode ? "text-blue-400" : "text-blue-600"
-              }`}
+              className={`relative flex items-center justify-center rounded-full shadow-inner transition-transform group-hover:scale-105 overflow-hidden shrink-0 ${
+                isCollapsed ? "h-10 w-10" : "h-11 w-11"
+              } ${darkMode ? "bg-slate-800 border border-slate-700" : "bg-blue-50 border border-blue-100"}`}
             >
-              <GraduationCap size={isCollapsed ? 20 : 22} />
+              {adminProfilePhoto ? (
+                <img src={adminProfilePhoto} alt="Admin Profile" className="h-full w-full object-cover" />
+              ) : (
+                <div
+                  className={`flex items-center justify-center ${
+                    darkMode ? "text-blue-400" : "text-blue-600"
+                  }`}
+                >
+                  <GraduationCap size={isCollapsed ? 20 : 22} />
+                </div>
+              )}
+              <div className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-white bg-green-500 dark:border-slate-800"></div>
             </div>
-            <div className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-white bg-green-500 dark:border-slate-800"></div>
-          </div>
 
-          <div
-            className={`flex flex-col overflow-hidden transition-all duration-300 ${
-              isCollapsed ? "w-0 opacity-0 hidden" : "w-auto opacity-100"
-            }`}
-          >
-            <h2
-              className={`text-sm font-bold tracking-tight truncate ${
-                darkMode ? "text-white" : "text-slate-900"
+            <div
+              className={`flex flex-col overflow-hidden transition-all duration-300 ${
+                isCollapsed ? "w-0 opacity-0 hidden" : "w-auto opacity-100"
               }`}
             >
-              LMS Admin
-            </h2>
-            <p
-              className={`text-[10px] font-medium mt-0.5 opacity-70 ${
-                darkMode ? "text-slate-400" : "text-slate-500"
-              }`}
-            >
-              Control Panel
-            </p>
+              <h2
+                className={`text-sm font-bold tracking-tight truncate ${
+                  darkMode ? "text-white" : "text-slate-900"
+                }`}
+              >
+                LMS Admin
+              </h2>
+              <p
+                className={`text-[10px] font-medium mt-0.5 opacity-70 ${
+                  darkMode ? "text-slate-400" : "text-slate-500"
+                }`}
+              >
+                Control Panel
+              </p>
+            </div>
           </div>
-        </div>
+        </Link>
       </div>
 
       {/* Nav Items */}
       <nav className="flex-1 space-y-1.0 overflow-y-auto px-2.5 pt-1 scrollbar-thin">
         {navItems.map((item) => {
-  const isActive = pathname === item.path;
-  const Icon = item.icon;
-  return (
-    <Link 
-      href={item.path} 
-      key={item.path} 
-      title={item.name}
-      onClick={() => handleNavClick(item.path)}
-    >
-      <div
-        className={`group flex items-center rounded-2xl px-3 py-2.5 text-sm font-medium transition-all duration-300 ease-in-out border backdrop-blur-sm relative ${ // relative එකතු කලා
-          isCollapsed ? "justify-center px-0" : "gap-3"
-        } ${
-          isActive
-            ? darkMode
-              ? "bg-blue-600/30 text-blue-300 border-blue-500/40 shadow-md shadow-blue-500/10 -translate-y-0.5"
-              : "bg-blue-50/80 text-blue-700 border-blue-200/70 shadow-md shadow-blue-100/60 -translate-y-0.5"
-            : darkMode
-            ? "text-slate-400 bg-slate-900/10 border-slate-800/30 hover:bg-slate-800/40 hover:text-white hover:-translate-y-0.5"
-            : "text-slate-600 bg-white/30 border-slate-200/30 hover:bg-white/60 hover:text-slate-900 hover:-translate-y-0.5"
-        }`}
-      >
-        {/* Displaying the icon and name */}
-        <Icon size={18} className="shrink-0" />
-        <span 
-          className={`transition-all duration-300 whitespace-nowrap overflow-hidden ${
-            isCollapsed ? "w-0 opacity-0 hidden" : "w-auto opacity-100"
-          }`}
-        >
-          {item.name}
-        </span>
-        
-        {/* Newly added element: Badge for the 'Review Materials' tab (when expanded) */}
-        {item.name === "Review Materials" && newMaterialCount > 0 && !isCollapsed && (
-          <span className="ml-auto flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white shadow-sm">
-            {newMaterialCount}
-        </span>
-        )}
+          const isActive = pathname === item.path;
+          const Icon = item.icon;
+          return (
+            <Link 
+              href={item.path} 
+              key={item.path} 
+              title={item.name}
+              onClick={() => handleNavClick(item.path)}
+            >
+              <div
+                className={`group flex items-center rounded-2xl px-3 py-2.5 text-sm font-medium transition-all duration-300 ease-in-out border backdrop-blur-sm relative ${
+                  isCollapsed ? "justify-center px-0" : "gap-3"
+                } ${
+                  isActive
+                    ? darkMode
+                      ? "bg-blue-600/30 text-blue-300 border-blue-500/40 shadow-md shadow-blue-500/10 -translate-y-0.5"
+                      : "bg-blue-50/80 text-blue-700 border-blue-200/70 shadow-md shadow-blue-100/60 -translate-y-0.5"
+                    : darkMode
+                    ? "text-slate-400 bg-slate-900/10 border-slate-800/30 hover:bg-slate-800/40 hover:text-white hover:-translate-y-0.5"
+                    : "text-slate-600 bg-white/30 border-slate-200/30 hover:bg-white/60 hover:text-slate-900 hover:-translate-y-0.5"
+                }`}
+              >
+                {/* Displaying the icon and name */}
+                <Icon size={18} className="shrink-0" />
+                <span 
+                  className={`transition-all duration-300 whitespace-nowrap overflow-hidden ${
+                    isCollapsed ? "w-0 opacity-0 hidden" : "w-auto opacity-100"
+                  }`}
+                >
+                  {item.name}
+                </span>
+                
+                {item.name === "Review Materials" && newMaterialCount > 0 && !isCollapsed && (
+                  <span className="ml-auto flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white shadow-sm">
+                    {newMaterialCount}
+                </span>
+                )}
 
-        {item.name === "Review Quiz" && newQuizCount > 0 && !isCollapsed && (
-  <span className="ml-auto flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white shadow-sm">
-    {newQuizCount}
-  </span>
-)}
+                {item.name === "Review Quiz" && newQuizCount > 0 && !isCollapsed && (
+              <span className="ml-auto flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white shadow-sm">
+                {newQuizCount}
+              </span>
+            )}
 
-        {/* Newly added element: The dot for the 'Review Materials' tab (when collapsed) */}
-        {item.name === "Review Materials" && newMaterialCount > 0 && isCollapsed && (
-          <span className="absolute top-2 right-2 h-2.5 w-2.5 rounded-full bg-red-500 border-2 border-white dark:border-slate-900" />
-        )}
+                {item.name === "Review Materials" && newMaterialCount > 0 && isCollapsed && (
+                  <span className="absolute top-2 right-2 h-2.5 w-2.5 rounded-full bg-red-500 border-2 border-white dark:border-slate-900" />
+                )}
 
-        {item.name === "Review Quiz" && newQuizCount > 0 && isCollapsed && (
-  <span className="absolute top-2 right-2 h-2.5 w-2.5 rounded-full bg-red-500 border-2 border-white dark:border-slate-900" />
-)}
+                {item.name === "Review Quiz" && newQuizCount > 0 && isCollapsed && (
+              <span className="absolute top-2 right-2 h-2.5 w-2.5 rounded-full bg-red-500 border-2 border-white dark:border-slate-900" />
+            )}
 
-        {item.name === "Students" && newStudentCount > 0 && !isCollapsed && (
-          <span className="ml-auto flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white shadow-sm">
-            {newStudentCount}
-          </span>
-        )}
+                {item.name === "Students" && newStudentCount > 0 && !isCollapsed && (
+                  <span className="ml-auto flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white shadow-sm">
+                    {newStudentCount}
+                  </span>
+                )}
 
-        {/* Red dot for the 'Students' tab (when the sidebar is collapsed) */}
-        {item.name === "Students" && newStudentCount > 0 && isCollapsed && (
-          <span className="absolute top-2 right-2 h-2.5 w-2.5 rounded-full bg-red-500 border-2 border-white dark:border-slate-900" />
-        )}
+                {item.name === "Students" && newStudentCount > 0 && isCollapsed && (
+                  <span className="absolute top-2 right-2 h-2.5 w-2.5 rounded-full bg-red-500 border-2 border-white dark:border-slate-900" />
+                )}
 
-        {/* Active dot */}
-        {isActive && !isCollapsed && item.name !== "Students" && (
-          <span className={`ml-auto h-1.5 w-1.5 rounded-full transition-all duration-300 ${darkMode ? "bg-blue-400" : "bg-blue-600"}`} />
-        )}
-      </div>
-    </Link>
-  );
-})}
+                {isActive && !isCollapsed && item.name !== "Students" && (
+                  <span className={`ml-auto h-1.5 w-1.5 rounded-full transition-all duration-300 ${darkMode ? "bg-blue-400" : "bg-blue-600"}`} />
+                )}
+              </div>
+            </Link>
+          );
+        })}
       </nav>
 
       {/* Footer: Notifications, Theme Toggle & Logout */}
@@ -435,7 +457,6 @@ export default function AdminSidebar() {
                   adminNotifications.map((notif, index) => {
   let targetUrl = "/admin/dashboard";
   
-  // Ticket එකක් සම්බන්ධ නොටිෆිකේෂන් එකක් නම් ticketId එක සමඟ Admin Tickets page එකට යොමු කිරීම
   if (notif.title.toLowerCase().includes("ticket") || notif.ticketId) {
     targetUrl = notif.ticketId ? `/admin/tickets?ticketId=${notif.ticketId}` : "/admin/tickets";
   } else if (
