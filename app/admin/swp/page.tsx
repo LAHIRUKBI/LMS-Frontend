@@ -36,7 +36,8 @@ export default function AdminDashboardSettings() {
     badgeText: "",
     badgeAvatars: [] as { image: string }[],
     heroImages: [] as { id: number; image: string; title: string }[],
-    galleryItems: [] as { image: string; text: string }[],
+    galleryDescription: "",
+    galleryItems: [] as { image: string; text: string; description: string }[],
     socialLinks: [] as { platform: string; url: string }[],
     testimonialBgImage: "", 
     testimonials: [] as { image: string; name: string; title: string; idea: string; rating: number }[],
@@ -149,7 +150,7 @@ export default function AdminDashboardSettings() {
 
   const addGalleryItem = () => {
     if (settings.galleryItems.length >= MAX_GALLERY_ITEMS) return;
-    setSettings(prev => ({ ...prev, galleryItems: [...prev.galleryItems, { image: "", text: "" }] }));
+    setSettings(prev => ({ ...prev, galleryItems: [...prev.galleryItems, { image: "", text: "", description: "" }] }));
   };
 
   const removeGalleryItem = (index: number) => {
@@ -503,25 +504,39 @@ export default function AdminDashboardSettings() {
                 </div>
               </div>
 
+              {/* --- Our Gallery Section --- */}
               <div className={`pt-6 border-t ${darkMode ? "border-slate-700/50" : "border-slate-200"}`}>
                 <div className="flex justify-between items-center mb-4">
                   <h2 className="text-xl font-bold text-teal-400">Our Gallery Section</h2>
                   <button type="button" onClick={addGalleryItem} disabled={settings.galleryItems?.length >= MAX_GALLERY_ITEMS} className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 ${darkMode ? "bg-slate-700 text-white" : "bg-slate-200 text-slate-800 hover:bg-slate-300"}`}><Plus size={14} /> Add Gallery Image</button>
                 </div>
+
+                {/* Gallery Section Description */}
+                <div className="mb-6">
+                  <label className={`block text-xs font-bold uppercase tracking-wider mb-2 ${darkMode ? "text-slate-400" : "text-slate-600"}`}>Gallery Section Description</label>
+                  <textarea name="galleryDescription" rows={2} value={settings.galleryDescription || ""} onChange={handleChange} placeholder="Enter a short description for the gallery section..." className={`w-full border rounded-xl px-4 py-3 text-sm outline-none resize-none ${darkMode ? "bg-slate-900 border-slate-700 text-white" : "bg-white border-slate-300 text-slate-900"}`} />
+                </div>
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {settings.galleryItems?.map((item, idx) => (
-                    <div key={idx} className={`flex gap-4 p-3 rounded-xl border items-center ${darkMode ? "bg-slate-900 border-slate-700" : "bg-white border-slate-200 shadow-sm"}`}>
-                      <div className={`w-14 h-14 rounded-lg border overflow-hidden flex-shrink-0 ${darkMode ? "bg-slate-800 border-slate-700" : "bg-slate-100 border-slate-200"}`}>
-                        {item.image ? <img src={getMediaUrl(item.image)} alt="Gallery" className="w-full h-full object-cover" /> : <ImageIcon className="text-slate-600 m-auto mt-4" size={24} />}
+                    <div key={idx} className={`flex flex-col gap-3 p-4 rounded-xl border ${darkMode ? "bg-slate-900 border-slate-700" : "bg-white border-slate-200 shadow-sm"}`}>
+                      <div className="flex gap-4 items-center">
+                        <div className={`w-14 h-14 rounded-lg border overflow-hidden flex-shrink-0 ${darkMode ? "bg-slate-800 border-slate-700" : "bg-slate-100 border-slate-200"}`}>
+                          {item.image ? <img src={getMediaUrl(item.image)} alt="Gallery" className="w-full h-full object-cover" /> : <ImageIcon className="text-slate-600 m-auto mt-4" size={24} />}
+                        </div>
+                        <div className="flex-1 space-y-2">
+                          <input type="text" value={item.text} onChange={(e) => handleGalleryChange(idx, "text", e.target.value)} placeholder="Label Text" className={`w-full border rounded-lg px-2 py-1.5 text-xs outline-none ${darkMode ? "bg-slate-800 border-slate-700 text-white" : "bg-white border-slate-300 text-slate-900"}`} />
+                          <label className={`flex items-center justify-center gap-2 px-2 py-1.5 border rounded-lg text-xs cursor-pointer text-teal-400 ${darkMode ? "bg-slate-800 border-slate-600" : "bg-slate-100 border-slate-300"}`}>
+                            <Upload size={12} /> Upload Image
+                            <input type="file" accept="image/*" onChange={(e) => handleGalleryFileSelect(idx, e)} className="hidden" />
+                          </label>
+                        </div>
+                        <button type="button" onClick={() => removeGalleryItem(idx)} className="text-rose-400 p-2"><Trash2 size={16} /></button>
                       </div>
-                      <div className="flex-1 space-y-2">
-                        <input type="text" value={item.text} onChange={(e) => handleGalleryChange(idx, "text", e.target.value)} placeholder="Label Text" className={`w-full border rounded-lg px-2 py-1.5 text-xs outline-none ${darkMode ? "bg-slate-800 border-slate-700 text-white" : "bg-white border-slate-300 text-slate-900"}`} />
-                        <label className={`flex items-center justify-center gap-2 px-2 py-1.5 border rounded-lg text-xs cursor-pointer text-teal-400 ${darkMode ? "bg-slate-800 border-slate-600" : "bg-slate-100 border-slate-300"}`}>
-                          <Upload size={12} /> Upload
-                          <input type="file" accept="image/*" onChange={(e) => handleGalleryFileSelect(idx, e)} className="hidden" />
-                        </label>
+                      {/* Individual Image Description */}
+                      <div>
+                        <input type="text" value={item.description || ""} onChange={(e) => handleGalleryChange(idx, "description", e.target.value)} placeholder="Image Description (Optional)" className={`w-full border rounded-lg px-3 py-2 text-xs outline-none ${darkMode ? "bg-slate-800 border-slate-700 text-white" : "bg-white border-slate-300 text-slate-900"}`} />
                       </div>
-                      <button type="button" onClick={() => removeGalleryItem(idx)} className="text-rose-400 p-2"><Trash2 size={16} /></button>
                     </div>
                   ))}
                 </div>
