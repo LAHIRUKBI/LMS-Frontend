@@ -4,19 +4,19 @@
 import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { 
-  Home, 
-  UserPlus, 
-  Users, 
-  LogOut, 
-  GraduationCap, 
-  Sun, 
-  Moon, 
-  ShieldPlus, 
-  Shield, 
-  ClipboardCheck, 
-  Bell, 
-  Trash2, 
+import {
+  Home,
+  UserPlus,
+  Users,
+  LogOut,
+  GraduationCap,
+  Sun,
+  Moon,
+  ShieldPlus,
+  Shield,
+  ClipboardCheck,
+  Bell,
+  Trash2,
   X,
   ChevronsLeft,
   ChevronsRight,
@@ -29,7 +29,7 @@ import {
   FileText,
   LayoutDashboard,
   BellRing,
-  CircleHelp, 
+  CircleHelp,
 } from "lucide-react";
 import { useTheme } from "@/app/context/ThemeContext";
 import axios from "axios";
@@ -42,10 +42,11 @@ export default function AdminSidebar() {
   const [newStudentCount, setNewStudentCount] = useState(0);
   const [newMaterialCount, setNewMaterialCount] = useState(0);
   const [newQuizCount, setNewQuizCount] = useState(0);
-  
+  const [newClassRequestCount, setNewClassRequestCount] = useState(0);
+
   // Admin Profile Photo State එක අලුතින් එකතු කරන ලදී
   const [adminProfilePhoto, setAdminProfilePhoto] = useState<string>("");
-  
+
   // Notifications States
   const [adminNotifications, setAdminNotifications] = useState<any[]>([]);
   const [isNotifOpen, setIsNotifOpen] = useState(false);
@@ -61,68 +62,83 @@ export default function AdminSidebar() {
   };
 
   const handleNavClick = async (path: string) => {
-  if (path === "/admin/student/student_view" && newStudentCount > 0) {
-    try {
-      const token = localStorage.getItem("token");
-      await axios.put("http://localhost:5000/api/admin/students/clear-sidebar", {}, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setNewStudentCount(0); // Badge එක බිංදුව කරන්න
-    } catch (error) {
-      console.error(error);
+    if (path === "/admin/student/student_view" && newStudentCount > 0) {
+      try {
+        const token = localStorage.getItem("token");
+        await axios.put("http://localhost:5000/api/admin/students/clear-sidebar", {}, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        setNewStudentCount(0); // Badge එක බිංදුව කරන්න
+      } catch (error) {
+        console.error(error);
+      }
     }
-  }
-  // Quiz logic
-  if (path === "/admin/materials/quize_view" && newQuizCount > 0) {
-    try {
-      const token = localStorage.getItem("token");
-      await axios.put("http://localhost:5000/api/quiz/admin/clear-sidebar", {}, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setNewQuizCount(0);
-    } catch (error) {
-      console.error(error);
+    // Quiz logic
+    if (path === "/admin/materials/quize_view" && newQuizCount > 0) {
+      try {
+        const token = localStorage.getItem("token");
+        await axios.put("http://localhost:5000/api/quiz/admin/clear-sidebar", {}, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        setNewQuizCount(0);
+      } catch (error) {
+        console.error(error);
+      }
     }
-  }
+    // student request class view logic
+    if (path === "/admin/materials/class_view" && newClassRequestCount > 0) {
+      setNewClassRequestCount(0);
+    }
 
-  // Material logic
-  if (path === "/admin/materials/review" && newMaterialCount > 0) {
-    try {
-      const token = localStorage.getItem("token");
-      await axios.put("http://localhost:5000/api/materials/admin/clear-sidebar", {}, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setNewMaterialCount(0);
-    } catch (error) {
-      console.error(error);
+    // Material logic
+    if (path === "/admin/materials/review" && newMaterialCount > 0) {
+      try {
+        const token = localStorage.getItem("token");
+        await axios.put("http://localhost:5000/api/materials/admin/clear-sidebar", {}, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        setNewMaterialCount(0);
+      } catch (error) {
+        console.error(error);
+      }
     }
-  }
-};
+  };
 
   // Socket.io සහ Notifications Logic සමඟ Admin Profile Photo එක ලබා ගැනීම
   useEffect(() => {
     const token = localStorage.getItem("token");
-    
+
     if (token) {
       // 1. පරණ Admin Notifications ලබා ගැනීම
       axios.get("http://localhost:5000/api/notifications/admin", {
         headers: { Authorization: `Bearer ${token}` }
       }).then(res => setAdminNotifications(res.data)).catch(console.error);
-   
+
       // 2. getting the number of new students
       axios.get("http://localhost:5000/api/admin/students/new-count", {
-      headers: { Authorization: `Bearer ${token}` }
-    }).then(res => setNewStudentCount(res.data.count)).catch(console.error);
+        headers: { Authorization: `Bearer ${token}` }
+      }).then(res => setNewStudentCount(res.data.count)).catch(console.error);
 
       // 3. getting the number of new Material Count
       axios.get("http://localhost:5000/api/materials/admin/new-count", {
-      headers: { Authorization: `Bearer ${token}` }
-    }).then(res => setNewMaterialCount(res.data.count)).catch(console.error);
+        headers: { Authorization: `Bearer ${token}` }
+      }).then(res => setNewMaterialCount(res.data.count)).catch(console.error);
 
-    // getting the number of new Quiz Count
-    axios.get("http://localhost:5000/api/quiz/admin/new-count", {
-      headers: { Authorization: `Bearer ${token}` }
-    }).then(res => setNewQuizCount(res.data.count)).catch(console.error);
+      // 4. getting the number of new Quiz Count
+      axios.get("http://localhost:5000/api/quiz/admin/new-count", {
+        headers: { Authorization: `Bearer ${token}` }
+      }).then(res => setNewQuizCount(res.data.count)).catch(console.error);
+
+      // 5. getting the number of new request class Count
+      axios.get("http://localhost:5000/api/classes/requests/all", {
+        headers: { Authorization: `Bearer ${token}` }
+      }).then(res => {
+        const pendingRequests = res.data.filter(
+          (request: any) => request.status === "Pending"
+        );
+
+        setNewClassRequestCount(pendingRequests.length);
+      }).catch(console.error);
 
       // Admin Profile Photo එක ලබා ගැනීම
       axios.get("http://localhost:5000/api/admin/profile", {
@@ -177,7 +193,7 @@ export default function AdminSidebar() {
       await axios.delete("http://localhost:5000/api/notifications/admin/clear-all", {
         headers: { Authorization: `Bearer ${token}` }
       });
-      setAdminNotifications([]); 
+      setAdminNotifications([]);
     } catch (error) {
       console.error(error);
     }
@@ -186,14 +202,14 @@ export default function AdminSidebar() {
   // තනි Notification එකක් මකා දැමීම
   const handleDeleteNotification = async (e: React.MouseEvent, id: string) => {
     e.preventDefault();
-    e.stopPropagation(); 
-    
+    e.stopPropagation();
+
     try {
       const token = localStorage.getItem("token");
       await axios.delete(`http://localhost:5000/api/notifications/admin/${id}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      setAdminNotifications(prev => prev.filter(n => n._id !== id)); 
+      setAdminNotifications(prev => prev.filter(n => n._id !== id));
     } catch (error) {
       console.error(error);
     }
@@ -203,8 +219,8 @@ export default function AdminSidebar() {
     { name: "Dashboard", path: "/admin/dashboard", icon: Home },
     { name: "Add Teacher", path: "/admin/teachers/add", icon: UserPlus },
     { name: "Teacher List", path: "/admin/teachers/list", icon: Users },
-    { name: "Add Admin", path: "/admin/register", icon: ShieldPlus }, 
-    { name: "Admin List", path: "/admin/list", icon: Shield }, 
+    { name: "Add Admin", path: "/admin/register", icon: ShieldPlus },
+    { name: "Admin List", path: "/admin/list", icon: Shield },
     { name: "Review Materials", path: "/admin/materials/review", icon: FileCheck },
     { name: "Review Quiz", path: "/admin/materials/quize_view", icon: ClipboardList },
     { name: "Tickets", path: "/admin/tickets", icon: Ticket },
@@ -222,20 +238,18 @@ export default function AdminSidebar() {
 
   return (
     <aside
-      className={`fixed left-6 top-3 bottom-3 flex flex-col transition-all duration-300 ease-in-out z-45 shadow-2xl rounded-3xl overflow-visible backdrop-blur-2xl ${
-        darkMode 
-          ? "bg-[#0F172A]/60 border border-slate-700/40 shadow-black/50" 
+      className={`fixed left-6 top-3 bottom-3 flex flex-col transition-all duration-300 ease-in-out z-45 shadow-2xl rounded-3xl overflow-visible backdrop-blur-2xl ${darkMode
+          ? "bg-[#0F172A]/60 border border-slate-700/40 shadow-black/50"
           : "bg-white/50 border border-white/80 shadow-indigo-500/10"
-      } ${isCollapsed ? "w-20" : "w-64"}`}
+        } ${isCollapsed ? "w-20" : "w-64"}`}
     >
       {/* Collapse Button */}
       <button
         onClick={() => setIsCollapsed(!isCollapsed)}
-        className={`absolute -right-3.5 top-8 flex h-7 w-7 items-center justify-center rounded-full border shadow-lg transition-transform duration-300 hover:scale-110 z-[100] ${
-          darkMode
+        className={`absolute -right-3.5 top-8 flex h-7 w-7 items-center justify-center rounded-full border shadow-lg transition-transform duration-300 hover:scale-110 z-[100] ${darkMode
             ? "bg-slate-900 border-slate-700 text-slate-300 hover:text-white"
             : "bg-white border-slate-200 text-slate-500 hover:text-slate-900"
-        }`}
+          }`}
         title={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
       >
         {isCollapsed ? <ChevronsRight size={16} /> : <ChevronsLeft size={16} />}
@@ -245,27 +259,23 @@ export default function AdminSidebar() {
       <div className={`p-3.5 pt-4 transition-all duration-300 ${isCollapsed ? "px-2.5" : "px-3.5"}`}>
         <Link href="/admin/profile">
           <div
-            className={`flex items-center gap-3 rounded-2xl cursor-pointer group transition-all duration-300 border backdrop-blur-md shadow-sm ${
-              isCollapsed ? "p-2 justify-center" : "p-3"
-            } ${
-              darkMode
+            className={`flex items-center gap-3 rounded-2xl cursor-pointer group transition-all duration-300 border backdrop-blur-md shadow-sm ${isCollapsed ? "p-2 justify-center" : "p-3"
+              } ${darkMode
                 ? "bg-slate-800/30 border-slate-700/40 hover:bg-slate-800/60 hover:border-blue-500/40"
                 : "bg-white/40 border-slate-200/40 hover:bg-white/70 hover:border-blue-200"
-            }`}
+              }`}
             title="Go to Profile"
           >
             <div
-              className={`relative flex items-center justify-center rounded-full shadow-inner transition-transform group-hover:scale-105 overflow-hidden shrink-0 ${
-                isCollapsed ? "h-10 w-10" : "h-11 w-11"
-              } ${darkMode ? "bg-slate-800 border border-slate-700" : "bg-blue-50 border border-blue-100"}`}
+              className={`relative flex items-center justify-center rounded-full shadow-inner transition-transform group-hover:scale-105 overflow-hidden shrink-0 ${isCollapsed ? "h-10 w-10" : "h-11 w-11"
+                } ${darkMode ? "bg-slate-800 border border-slate-700" : "bg-blue-50 border border-blue-100"}`}
             >
               {adminProfilePhoto ? (
                 <img src={adminProfilePhoto} alt="Admin Profile" className="h-full w-full object-cover" />
               ) : (
                 <div
-                  className={`flex items-center justify-center ${
-                    darkMode ? "text-blue-400" : "text-blue-600"
-                  }`}
+                  className={`flex items-center justify-center ${darkMode ? "text-blue-400" : "text-blue-600"
+                    }`}
                 >
                   <GraduationCap size={isCollapsed ? 20 : 22} />
                 </div>
@@ -274,21 +284,18 @@ export default function AdminSidebar() {
             </div>
 
             <div
-              className={`flex flex-col overflow-hidden transition-all duration-300 ${
-                isCollapsed ? "w-0 opacity-0 hidden" : "w-auto opacity-100"
-              }`}
+              className={`flex flex-col overflow-hidden transition-all duration-300 ${isCollapsed ? "w-0 opacity-0 hidden" : "w-auto opacity-100"
+                }`}
             >
               <h2
-                className={`text-sm font-bold tracking-tight truncate ${
-                  darkMode ? "text-white" : "text-slate-900"
-                }`}
+                className={`text-sm font-bold tracking-tight truncate ${darkMode ? "text-white" : "text-slate-900"
+                  }`}
               >
                 LMS Admin
               </h2>
               <p
-                className={`text-[10px] font-medium mt-0.5 opacity-70 ${
-                  darkMode ? "text-slate-400" : "text-slate-500"
-                }`}
+                className={`text-[10px] font-medium mt-0.5 opacity-70 ${darkMode ? "text-slate-400" : "text-slate-500"
+                  }`}
               >
                 Control Panel
               </p>
@@ -303,54 +310,51 @@ export default function AdminSidebar() {
           const isActive = pathname === item.path;
           const Icon = item.icon;
           return (
-            <Link 
-              href={item.path} 
-              key={item.path} 
+            <Link
+              href={item.path}
+              key={item.path}
               title={item.name}
               onClick={() => handleNavClick(item.path)}
             >
               <div
-                className={`group flex items-center rounded-2xl px-3 py-2.5 text-sm font-medium transition-all duration-300 ease-in-out border backdrop-blur-sm relative ${
-                  isCollapsed ? "justify-center px-0" : "gap-3"
-                } ${
-                  isActive
+                className={`group flex items-center rounded-2xl px-3 py-2.5 text-sm font-medium transition-all duration-300 ease-in-out border backdrop-blur-sm relative ${isCollapsed ? "justify-center px-0" : "gap-3"
+                  } ${isActive
                     ? darkMode
                       ? "bg-blue-600/30 text-blue-300 border-blue-500/40 shadow-md shadow-blue-500/10 -translate-y-0.5"
                       : "bg-blue-50/80 text-blue-700 border-blue-200/70 shadow-md shadow-blue-100/60 -translate-y-0.5"
                     : darkMode
-                    ? "text-slate-400 bg-slate-900/10 border-slate-800/30 hover:bg-slate-800/40 hover:text-white hover:-translate-y-0.5"
-                    : "text-slate-600 bg-white/30 border-slate-200/30 hover:bg-white/60 hover:text-slate-900 hover:-translate-y-0.5"
-                }`}
+                      ? "text-slate-400 bg-slate-900/10 border-slate-800/30 hover:bg-slate-800/40 hover:text-white hover:-translate-y-0.5"
+                      : "text-slate-600 bg-white/30 border-slate-200/30 hover:bg-white/60 hover:text-slate-900 hover:-translate-y-0.5"
+                  }`}
               >
                 {/* Displaying the icon and name */}
                 <Icon size={18} className="shrink-0" />
-                <span 
-                  className={`transition-all duration-300 whitespace-nowrap overflow-hidden ${
-                    isCollapsed ? "w-0 opacity-0 hidden" : "w-auto opacity-100"
-                  }`}
+                <span
+                  className={`transition-all duration-300 whitespace-nowrap overflow-hidden ${isCollapsed ? "w-0 opacity-0 hidden" : "w-auto opacity-100"
+                    }`}
                 >
                   {item.name}
                 </span>
-                
+
                 {item.name === "Review Materials" && newMaterialCount > 0 && !isCollapsed && (
                   <span className="ml-auto flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white shadow-sm">
                     {newMaterialCount}
-                </span>
+                  </span>
                 )}
 
                 {item.name === "Review Quiz" && newQuizCount > 0 && !isCollapsed && (
-              <span className="ml-auto flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white shadow-sm">
-                {newQuizCount}
-              </span>
-            )}
+                  <span className="ml-auto flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white shadow-sm">
+                    {newQuizCount}
+                  </span>
+                )}
 
                 {item.name === "Review Materials" && newMaterialCount > 0 && isCollapsed && (
                   <span className="absolute top-2 right-2 h-2.5 w-2.5 rounded-full bg-red-500 border-2 border-white dark:border-slate-900" />
                 )}
 
                 {item.name === "Review Quiz" && newQuizCount > 0 && isCollapsed && (
-              <span className="absolute top-2 right-2 h-2.5 w-2.5 rounded-full bg-red-500 border-2 border-white dark:border-slate-900" />
-            )}
+                  <span className="absolute top-2 right-2 h-2.5 w-2.5 rounded-full bg-red-500 border-2 border-white dark:border-slate-900" />
+                )}
 
                 {item.name === "Students" && newStudentCount > 0 && !isCollapsed && (
                   <span className="ml-auto flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white shadow-sm">
@@ -365,6 +369,16 @@ export default function AdminSidebar() {
                 {isActive && !isCollapsed && item.name !== "Students" && (
                   <span className={`ml-auto h-1.5 w-1.5 rounded-full transition-all duration-300 ${darkMode ? "bg-blue-400" : "bg-blue-600"}`} />
                 )}
+
+                {item.name === "Class view" && newClassRequestCount > 0 && !isCollapsed && (
+                  <span className="ml-auto flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white shadow-sm">
+                    {newClassRequestCount}
+                  </span>
+                )}
+
+                {item.name === "Class view" && newClassRequestCount > 0 && isCollapsed && (
+                  <span className="absolute top-2 right-2 h-2.5 w-2.5 rounded-full bg-red-500 border-2 border-white dark:border-slate-900" />
+                )}
               </div>
             </Link>
           );
@@ -377,17 +391,15 @@ export default function AdminSidebar() {
         <div ref={notifDropdownRef} className="relative w-full">
           <button
             onClick={handleOpenAdminNotifications}
-            className={`flex w-full items-center rounded-2xl px-3 py-2.5 text-sm font-semibold transition-all duration-300 border backdrop-blur-sm shadow-sm ${
-              isCollapsed ? "justify-center px-0" : "justify-between"
-            } ${
-              isNotifOpen
+            className={`flex w-full items-center rounded-2xl px-3 py-2.5 text-sm font-semibold transition-all duration-300 border backdrop-blur-sm shadow-sm ${isCollapsed ? "justify-center px-0" : "justify-between"
+              } ${isNotifOpen
                 ? darkMode
                   ? "bg-blue-600/30 text-blue-300 border-blue-500/40"
                   : "bg-blue-50/80 text-blue-700 border-blue-200"
                 : darkMode
-                ? "bg-slate-800/30 text-slate-300 border-slate-700/40 hover:bg-slate-800/60"
-                : "bg-white/40 text-slate-600 border-slate-200/50 hover:bg-white/70"
-            }`}
+                  ? "bg-slate-800/30 text-slate-300 border-slate-700/40 hover:bg-slate-800/60"
+                  : "bg-white/40 text-slate-600 border-slate-200/50 hover:bg-white/70"
+              }`}
             title="Alerts"
           >
             <span className={`flex items-center ${isCollapsed ? "gap-0" : "gap-3"}`}>
@@ -400,9 +412,8 @@ export default function AdminSidebar() {
                 )}
               </div>
               <span
-                className={`transition-all duration-300 ${
-                  isCollapsed ? "w-0 opacity-0 overflow-hidden hidden" : "w-auto opacity-100"
-                }`}
+                className={`transition-all duration-300 ${isCollapsed ? "w-0 opacity-0 overflow-hidden hidden" : "w-auto opacity-100"
+                  }`}
               >
                 Alerts
               </span>
@@ -418,14 +429,12 @@ export default function AdminSidebar() {
           {/* Notifications Dropdown */}
           {isNotifOpen && (
             <div
-              className={`absolute bottom-full mb-3 w-80 max-h-[400px] flex flex-col rounded-3xl border shadow-2xl z-50 transition-all duration-300 backdrop-blur-2xl ${
-                darkMode ? "bg-slate-950/90 border-slate-800" : "bg-white/95 border-slate-100"
-              } ${isCollapsed ? "left-0" : "left-full ml-3"}`}
+              className={`absolute bottom-full mb-3 w-80 max-h-[400px] flex flex-col rounded-3xl border shadow-2xl z-50 transition-all duration-300 backdrop-blur-2xl ${darkMode ? "bg-slate-950/90 border-slate-800" : "bg-white/95 border-slate-100"
+                } ${isCollapsed ? "left-0" : "left-full ml-3"}`}
             >
               <div
-                className={`p-5 border-b flex justify-between items-center ${
-                  darkMode ? "border-slate-800" : "border-slate-100"
-                }`}
+                className={`p-5 border-b flex justify-between items-center ${darkMode ? "border-slate-800" : "border-slate-100"
+                  }`}
               >
                 <div>
                   <h3 className={`font-bold text-sm ${darkMode ? "text-white" : "text-slate-900"}`}>Admin Alerts</h3>
@@ -439,9 +448,8 @@ export default function AdminSidebar() {
                 {adminNotifications.length > 0 && (
                   <button
                     onClick={handleClearAll}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-colors ${
-                      darkMode ? "bg-red-500/10 text-red-400 hover:bg-red-500/20" : "bg-red-50 text-red-600 hover:bg-red-100"
-                    }`}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-colors ${darkMode ? "bg-red-500/10 text-red-400 hover:bg-red-500/20" : "bg-red-50 text-red-600 hover:bg-red-100"
+                      }`}
                   >
                     <Trash2 size={14} /> Clear All
                   </button>
@@ -455,55 +463,52 @@ export default function AdminSidebar() {
                   </div>
                 ) : (
                   adminNotifications.map((notif, index) => {
-  let targetUrl = "/admin/dashboard";
-  
-  if (notif.title.toLowerCase().includes("ticket") || notif.ticketId) {
-    targetUrl = notif.ticketId ? `/admin/tickets?ticketId=${notif.ticketId}` : "/admin/tickets";
-  } else if (
-    notif.title.toLowerCase().includes("material") || 
-    notif.title.toLowerCase().includes("video") || 
-    notif.title.toLowerCase().includes("pdf")
-  ) {
-    targetUrl = "/admin/materials/review";
-  }
+                    let targetUrl = "/admin/dashboard";
+
+                    if (notif.title.toLowerCase().includes("ticket") || notif.ticketId) {
+                      targetUrl = notif.ticketId ? `/admin/tickets?ticketId=${notif.ticketId}` : "/admin/tickets";
+                    } else if (
+                      notif.title.toLowerCase().includes("material") ||
+                      notif.title.toLowerCase().includes("video") ||
+                      notif.title.toLowerCase().includes("pdf")
+                    ) {
+                      targetUrl = "/admin/materials/review";
+                    }
 
                     return (
                       <Link
                         href={targetUrl}
                         key={notif._id || index}
                         onClick={() => setIsNotifOpen(false)}
-                        className={`group relative p-4 rounded-2xl flex items-start gap-4 transition-colors duration-300 cursor-pointer ${
-                          !notif.isRead
+                        className={`group relative p-4 rounded-2xl flex items-start gap-4 transition-colors duration-300 cursor-pointer ${!notif.isRead
                             ? darkMode
                               ? "bg-blue-950/40 hover:bg-blue-950/70"
                               : "bg-blue-50 hover:bg-blue-100"
                             : darkMode
-                            ? "hover:bg-slate-900/50"
-                            : "hover:bg-slate-50"
-                        }`}
+                              ? "hover:bg-slate-900/50"
+                              : "hover:bg-slate-50"
+                          }`}
                       >
                         <div
-                          className={`mt-1 p-2 rounded-full flex-shrink-0 ${
-                            !notif.isRead
+                          className={`mt-1 p-2 rounded-full flex-shrink-0 ${!notif.isRead
                               ? "bg-blue-600 text-white shadow-md shadow-blue-500/20"
                               : darkMode
-                              ? "bg-slate-800 text-slate-400"
-                              : "bg-slate-100 text-slate-400"
-                          }`}
+                                ? "bg-slate-800 text-slate-400"
+                                : "bg-slate-100 text-slate-400"
+                            }`}
                         >
                           <Bell size={14} />
                         </div>
                         <div className="pr-8 flex-1 overflow-hidden">
                           <h4
-                            className={`text-sm font-bold truncate ${
-                              !notif.isRead
+                            className={`text-sm font-bold truncate ${!notif.isRead
                                 ? darkMode
                                   ? "text-blue-300"
                                   : "text-blue-700"
                                 : darkMode
-                                ? "text-slate-300"
-                                : "text-slate-800"
-                            }`}
+                                  ? "text-slate-300"
+                                  : "text-slate-800"
+                              }`}
                           >
                             {notif.title}
                           </h4>
@@ -517,11 +522,10 @@ export default function AdminSidebar() {
 
                         <button
                           onClick={(e) => handleDeleteNotification(e, notif._id)}
-                          className={`absolute top-3 right-3 p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-all duration-300 ${
-                            darkMode
+                          className={`absolute top-3 right-3 p-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-all duration-300 ${darkMode
                               ? "hover:bg-red-500/20 text-slate-500 hover:text-red-400"
                               : "hover:bg-red-100 text-slate-400 hover:text-red-600"
-                          }`}
+                            }`}
                           title="Delete"
                         >
                           <X size={16} />
@@ -537,29 +541,25 @@ export default function AdminSidebar() {
 
         {/* Theme & Logout Container */}
         <div
-          className={`rounded-2xl p-2 space-y-1.5 transition-all duration-300 border backdrop-blur-md ${
-            darkMode 
-              ? "bg-slate-800/30 border-slate-700/40 shadow-lg shadow-black/20" 
+          className={`rounded-2xl p-2 space-y-1.5 transition-all duration-300 border backdrop-blur-md ${darkMode
+              ? "bg-slate-800/30 border-slate-700/40 shadow-lg shadow-black/20"
               : "bg-white/40 border-slate-200/50 shadow-sm"
-          } ${isCollapsed ? "p-1 bg-transparent border-none shadow-none" : ""}`}
+            } ${isCollapsed ? "p-1 bg-transparent border-none shadow-none" : ""}`}
         >
           {/* Dark Mode Toggle */}
           <button
             type="button"
             onClick={toggleDarkMode}
-            className={`flex w-full items-center rounded-xl px-3 py-2 text-sm font-semibold transition-all duration-300 ${
-              isCollapsed ? "justify-center px-0 py-2.5" : "justify-between"
-            } ${
-              darkMode ? "text-slate-300 hover:bg-slate-700/80" : "text-slate-600 hover:bg-slate-200/50"
-            }`}
+            className={`flex w-full items-center rounded-xl px-3 py-2 text-sm font-semibold transition-all duration-300 ${isCollapsed ? "justify-center px-0 py-2.5" : "justify-between"
+              } ${darkMode ? "text-slate-300 hover:bg-slate-700/80" : "text-slate-600 hover:bg-slate-200/50"
+              }`}
             title={darkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
           >
             <span className={`flex items-center ${isCollapsed ? "gap-0" : "gap-3"}`}>
               {darkMode ? <Moon size={18} /> : <Sun size={18} />}
               <span
-                className={`transition-all duration-300 ${
-                  isCollapsed ? "w-0 opacity-0 overflow-hidden hidden" : "w-auto opacity-100"
-                }`}
+                className={`transition-all duration-300 ${isCollapsed ? "w-0 opacity-0 overflow-hidden hidden" : "w-auto opacity-100"
+                  }`}
               >
                 {darkMode ? "Dark Mode" : "Light Mode"}
               </span>
@@ -567,14 +567,12 @@ export default function AdminSidebar() {
 
             {!isCollapsed && (
               <span
-                className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors duration-300 ${
-                  darkMode ? "bg-blue-600" : "bg-slate-300"
-                }`}
+                className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors duration-300 ${darkMode ? "bg-blue-600" : "bg-slate-300"
+                  }`}
               >
                 <span
-                  className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform duration-300 ${
-                    darkMode ? "translate-x-4" : "translate-x-0.5"
-                  }`}
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform duration-300 ${darkMode ? "translate-x-4" : "translate-x-0.5"
+                    }`}
                 />
               </span>
             )}
@@ -583,18 +581,15 @@ export default function AdminSidebar() {
           {/* Logout Button */}
           <button
             onClick={handleLogout}
-            className={`flex w-full items-center rounded-xl px-3 py-2 text-sm font-bold transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] ${
-              isCollapsed ? "justify-center px-0 py-2.5" : "gap-3"
-            } ${
-              darkMode ? "bg-red-600/10 text-red-400 hover:bg-red-600/20" : "bg-red-50 text-red-600 hover:bg-red-100"
-            }`}
+            className={`flex w-full items-center rounded-xl px-3 py-2 text-sm font-bold transition-all duration-300 hover:scale-[1.02] active:scale-[0.98] ${isCollapsed ? "justify-center px-0 py-2.5" : "gap-3"
+              } ${darkMode ? "bg-red-600/10 text-red-400 hover:bg-red-600/20" : "bg-red-50 text-red-600 hover:bg-red-100"
+              }`}
             title="Logout"
           >
             <LogOut size={18} />
             <span
-              className={`transition-all duration-300 ${
-                isCollapsed ? "w-0 opacity-0 overflow-hidden hidden" : "w-auto opacity-100"
-              }`}
+              className={`transition-all duration-300 ${isCollapsed ? "w-0 opacity-0 overflow-hidden hidden" : "w-auto opacity-100"
+                }`}
             >
               Logout
             </span>

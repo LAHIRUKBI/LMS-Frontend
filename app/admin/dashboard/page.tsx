@@ -47,9 +47,10 @@ export default function AdminDashboard() {
     students: 0, 
   });
   
-  // අලුතින් එකතු කළ States: ගුරුවරුන්ගේ ලැයිස්තුව සහ Materials ලැයිස්තුව
+  // States: List of teachers, list of materials, and list of students.
   const [teachersList, setTeachersList] = useState<any[]>([]);
   const [materialsList, setMaterialsList] = useState<any[]>([]);
+  const [studentsList, setStudentsList] = useState<any[]>([]);
   
   const { darkMode } = useTheme();
 
@@ -67,8 +68,8 @@ export default function AdminDashboard() {
 
   const fetchDashboardStats = async (token: string) => {
     try {
-      // Teachers, Admins සහ Materials එකවර ලබා ගැනීම
-      const [teachersRes, adminsRes, materialsRes] = await Promise.all([
+      // Accessing Teachers, Admins, Materials, and Students simultaneously.
+      const [teachersRes, adminsRes, materialsRes, studentsRes] = await Promise.all([
         axios.get("http://localhost:5000/api/admin/teachers", {
           headers: { Authorization: `Bearer ${token}` },
         }),
@@ -77,16 +78,20 @@ export default function AdminDashboard() {
         }),
         axios.get("http://localhost:5000/api/materials/admin/all", {
           headers: { Authorization: `Bearer ${token}` },
-        }).catch(() => ({ data: [] })), // Error එකක් ආවොත් හිස් array එකක් යවයි
+        }).catch(() => ({ data: [] })),
+        axios.get("http://localhost:5000/api/admin/students", {
+          headers: { Authorization: `Bearer ${token}` },
+        }).catch(() => ({ data: [] })),
       ]);
 
       setTeachersList(teachersRes.data || []);
       setMaterialsList(materialsRes.data || []);
+      setStudentsList(studentsRes.data || []);
 
       setCounts({
         teachers: teachersRes.data.length,
         admins: adminsRes.data.length,
-        students: 0, 
+        students: studentsRes.data.length,
       });
     } catch (error) {
       console.error("Dashboard error:", error);
@@ -126,7 +131,7 @@ export default function AdminDashboard() {
       value: counts.students.toString(), 
       icon: <GraduationCap size={20} />,
       accent: "emerald",
-      trend: "Pending portal",
+      trend: "Active portal",
     },
   ];
 
@@ -260,8 +265,8 @@ export default function AdminDashboard() {
                 System Materials Activity
               </h2>
               <button onClick={() => router.push('/admin/materials')} className={`flex items-center gap-1 text-xs font-semibold transition-colors ${
-                  darkMode ? "text-blue-400 hover:text-blue-300" : "text-blue-600 hover:text-blue-700"
-                }`}
+                darkMode ? "text-blue-400 hover:text-blue-300" : "text-blue-600 hover:text-blue-700"
+              }`}
               >
                 View all <ArrowUpRight size={14} />
               </button>
