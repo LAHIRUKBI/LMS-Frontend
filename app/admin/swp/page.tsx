@@ -46,7 +46,12 @@ export default function AdminDashboardSettings() {
     featureTitleLine1: "",
     featureTitleHighlight: "",
     featureDescription: "",
-    featureItems: [] as { title: string; description: string; iconType: string; iconImage: string }[]
+    featureItems: [] as { title: string; description: string; iconType: string; iconImage: string }[],
+
+    // NEW: Hero Stats Settings
+    heroStatsBadge: "",
+    heroStatsTitle: "",
+    heroStatsList: [] as { value: string; label: string }[]
   });
 
   const [heroFiles, setHeroFiles] = useState<Record<number, File>>({});
@@ -60,6 +65,7 @@ export default function AdminDashboardSettings() {
   const MAX_GALLERY_ITEMS = 5;
   const MAX_BADGE_AVATARS = 4;
   const MAX_FEATURE_ITEMS = 6;
+  const MAX_HERO_STATS = 4; // NEW
 
   useEffect(() => {
     fetchSettings();
@@ -130,6 +136,28 @@ export default function AdminDashboardSettings() {
 
   const removeHeroImage = (index: number) => {
     setSettings(prev => ({ ...prev, heroImages: settings.heroImages.filter((_, idx) => idx !== index) }));
+  };
+
+  // NEW: Hero Stats Handlers
+  const handleHeroStatChange = (index: number, field: string, value: string) => {
+    const updatedStats = [...(settings.heroStatsList || [])];
+    updatedStats[index] = { ...updatedStats[index], [field]: value };
+    setSettings(prev => ({ ...prev, heroStatsList: updatedStats }));
+  };
+
+  const addHeroStat = () => {
+    if ((settings.heroStatsList?.length || 0) >= MAX_HERO_STATS) return;
+    setSettings(prev => ({
+      ...prev,
+      heroStatsList: [...(prev.heroStatsList || []), { value: "", label: "" }]
+    }));
+  };
+
+  const removeHeroStat = (index: number) => {
+    setSettings(prev => ({
+      ...prev,
+      heroStatsList: (prev.heroStatsList || []).filter((_, idx) => idx !== index)
+    }));
   };
 
   const handleGalleryFileSelect = (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
@@ -389,6 +417,41 @@ export default function AdminDashboardSettings() {
                 </div>
               </div>
 
+              {/* NEW: Admin settings for Hero Stats */}
+              <div className={`pt-6 border-t ${darkMode ? "border-slate-700/50" : "border-slate-200"}`}>
+                <div className="flex justify-between items-center mb-4">
+                  <div>
+                    <h2 className="text-xl font-bold text-teal-400">Hero Stats Section (Bottom Details)</h2>
+                    <p className={`text-xs ${darkMode ? "text-slate-400" : "text-slate-600"}`}>Manage bottom statistics and heading description</p>
+                  </div>
+                  <button type="button" onClick={addHeroStat} disabled={(settings.heroStatsList?.length || 0) >= MAX_HERO_STATS} className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 disabled:opacity-40 ${darkMode ? "bg-slate-700 text-white" : "bg-slate-200 text-slate-800 hover:bg-slate-300"}`}><Plus size={14} /> Add Stat</button>
+                </div>
+
+                <div className="space-y-4 mb-6">
+                  <div>
+                    <label className={`block text-xs font-bold uppercase tracking-wider mb-2 ${darkMode ? "text-slate-400" : "text-slate-600"}`}>Stats Badge Text</label>
+                    <input type="text" name="heroStatsBadge" value={settings.heroStatsBadge || ""} onChange={handleChange} placeholder="About Us" className={`w-full border rounded-xl px-4 py-3 text-sm outline-none ${darkMode ? "bg-slate-900 border-slate-700 text-white" : "bg-white border-slate-300 text-slate-900"}`} />
+                  </div>
+                  <div>
+                    <label className={`block text-xs font-bold uppercase tracking-wider mb-2 ${darkMode ? "text-slate-400" : "text-slate-600"}`}>Stats Subtitle / Description</label>
+                    <textarea name="heroStatsTitle" rows={2} value={settings.heroStatsTitle || ""} onChange={handleChange} placeholder="We are passionate about..." className={`w-full border rounded-xl px-4 py-3 text-sm outline-none resize-none ${darkMode ? "bg-slate-900 border-slate-700 text-white" : "bg-white border-slate-300 text-slate-900"}`} />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {settings.heroStatsList?.map((stat, idx) => (
+                    <div key={idx} className={`p-3 rounded-xl border space-y-3 ${darkMode ? "bg-slate-900 border-slate-700" : "bg-white border-slate-200 shadow-sm"}`}>
+                      <div className="flex justify-between items-center">
+                        <span className="text-xs font-bold text-teal-400">Stat #{idx + 1}</span>
+                        <button type="button" onClick={() => removeHeroStat(idx)} className="text-rose-400 p-1"><Trash2 size={16} /></button>
+                      </div>
+                      <input type="text" value={stat.value} onChange={(e) => handleHeroStatChange(idx, "value", e.target.value)} placeholder="Value (e.g. 25+)" className={`w-full border rounded-lg px-3 py-2 text-xs outline-none ${darkMode ? "bg-slate-800 border-slate-700 text-white" : "bg-white border-slate-300 text-slate-900"}`} />
+                      <input type="text" value={stat.label} onChange={(e) => handleHeroStatChange(idx, "label", e.target.value)} placeholder="Label Text" className={`w-full border rounded-lg px-3 py-2 text-xs outline-none ${darkMode ? "bg-slate-800 border-slate-700 text-white" : "bg-white border-slate-300 text-slate-900"}`} />
+                    </div>
+                  ))}
+                </div>
+              </div>
+
               <div className={`pt-6 border-t ${darkMode ? "border-slate-700/50" : "border-slate-200"}`}>
                 <div className="flex justify-between items-center mb-4">
                   <h2 className="text-xl font-bold text-teal-400">Badge Avatars (Next to Hero Badge)</h2>
@@ -504,14 +567,12 @@ export default function AdminDashboardSettings() {
                 </div>
               </div>
 
-              {/* --- Our Gallery Section --- */}
               <div className={`pt-6 border-t ${darkMode ? "border-slate-700/50" : "border-slate-200"}`}>
                 <div className="flex justify-between items-center mb-4">
                   <h2 className="text-xl font-bold text-teal-400">Our Gallery Section</h2>
                   <button type="button" onClick={addGalleryItem} disabled={settings.galleryItems?.length >= MAX_GALLERY_ITEMS} className={`px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 ${darkMode ? "bg-slate-700 text-white" : "bg-slate-200 text-slate-800 hover:bg-slate-300"}`}><Plus size={14} /> Add Gallery Image</button>
                 </div>
 
-                {/* Gallery Section Description */}
                 <div className="mb-6">
                   <label className={`block text-xs font-bold uppercase tracking-wider mb-2 ${darkMode ? "text-slate-400" : "text-slate-600"}`}>Gallery Section Description</label>
                   <textarea name="galleryDescription" rows={2} value={settings.galleryDescription || ""} onChange={handleChange} placeholder="Enter a short description for the gallery section..." className={`w-full border rounded-xl px-4 py-3 text-sm outline-none resize-none ${darkMode ? "bg-slate-900 border-slate-700 text-white" : "bg-white border-slate-300 text-slate-900"}`} />
@@ -533,7 +594,6 @@ export default function AdminDashboardSettings() {
                         </div>
                         <button type="button" onClick={() => removeGalleryItem(idx)} className="text-rose-400 p-2"><Trash2 size={16} /></button>
                       </div>
-                      {/* Individual Image Description */}
                       <div>
                         <input type="text" value={item.description || ""} onChange={(e) => handleGalleryChange(idx, "description", e.target.value)} placeholder="Image Description (Optional)" className={`w-full border rounded-lg px-3 py-2 text-xs outline-none ${darkMode ? "bg-slate-800 border-slate-700 text-white" : "bg-white border-slate-300 text-slate-900"}`} />
                       </div>
@@ -547,7 +607,6 @@ export default function AdminDashboardSettings() {
           {/* ================= TAB: TESTIMONIALS ================= */}
           {activeTab === "reviews" && (
             <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-300">
-              
               <div className={`p-5 rounded-2xl border space-y-4 ${darkMode ? "bg-slate-900 border-slate-700" : "bg-white border-slate-200 shadow-sm"}`}>
                 <h2 className="text-lg font-bold text-teal-400">Testimonials Section Background Image</h2>
                 <div className="flex flex-col sm:flex-row items-center gap-6">
@@ -559,7 +618,7 @@ export default function AdminDashboardSettings() {
                     )}
                   </div>
                   <div className="flex-1 space-y-2 w-full">
-                    <p className={`text-xs ${darkMode ? "text-slate-400" : "text-slate-600"}`}>Upload a background image for the testimonials section with curved arrows.</p>
+                    <p className={`text-xs ${darkMode ? "text-slate-400" : "text-slate-600"}`}>Upload a background image for the testimonials section.</p>
                     <label className={`inline-flex items-center gap-2 px-4 py-2.5 border rounded-xl text-xs cursor-pointer text-teal-400 transition-colors ${darkMode ? "bg-slate-800 hover:bg-slate-700 border-slate-600" : "bg-slate-100 hover:bg-slate-200 border-slate-300"}`}>
                       <Upload size={16} /> Upload Background Image
                       <input type="file" accept="image/*" onChange={handleTestimonialBgFileSelect} className="hidden" />
@@ -579,7 +638,7 @@ export default function AdminDashboardSettings() {
                       <div className={`md:col-span-3 flex flex-col items-center gap-3 pb-4 md:pb-0 md:pr-4 ${darkMode ? "border-slate-700" : "border-slate-200"} md:border-r border-b md:border-b-0`}>
                          <div className={`w-16 h-16 rounded-full border overflow-hidden flex-shrink-0 ${darkMode ? "bg-slate-800 border-slate-700" : "bg-slate-100 border-slate-200"}`}>
                           {test.image ? <img src={getMediaUrl(test.image)} alt="Client" className="w-full h-full object-cover" /> : <ImageIcon className="text-slate-600 m-auto mt-5" size={24} />}
-                        </div>
+                         </div>
                         <label className={`flex items-center justify-center gap-2 px-2 py-1.5 border rounded-lg text-[11px] cursor-pointer text-teal-400 w-full ${darkMode ? "bg-slate-800 border-slate-600" : "bg-slate-100 border-slate-300"}`}>
                           <Upload size={12} /> Upload Image
                           <input type="file" accept="image/*" onChange={(e) => handleTestimonialFileSelect(idx, e)} className="hidden" />
