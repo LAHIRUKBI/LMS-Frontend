@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import axios from "axios";
 import { Trash2, User, Phone } from "lucide-react";
 import DeleteConfirmationModal from "@/app/components/AdminDeleteConfirmationModal";
-import { useTheme } from "@/app/context/ThemeContext"; // ThemeContext එක import කිරීම
+import { useTheme } from "@/app/context/ThemeContext";
 
 interface AdminUser {
   _id: string;
@@ -17,17 +17,32 @@ interface AdminUser {
 }
 
 export default function AdminListPage() {
-  const { darkMode } = useTheme(); // darkMode තත්ත්වය ලබා ගැනීම
+  const { darkMode } = useTheme();
   const [admins, setAdmins] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
-  // States required to control the modal
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedAdmin, setSelectedAdmin] = useState<{ id: string; name: string } | null>(null);
 
-  // Helper function to format image URL correctly
+  // To check if the logged-in user is a Super Admin
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false);
+
+  useEffect(() => {
+    const storedUser = localStorage.getItem("user");
+    if (storedUser) {
+      try {
+        const parsedUser = JSON.parse(storedUser);
+        if (parsedUser.role === "admin" && parsedUser.isDefault) {
+          setIsSuperAdmin(true);
+        }
+      } catch (e) {
+        console.error("Error parsing user from localStorage", e);
+      }
+    }
+  }, []);
+
   const formatImageUrl = (path: string) => {
     if (!path) return "";
     const cleanPath = path.replace(/\\/g, '/');
@@ -52,13 +67,16 @@ export default function AdminListPage() {
     fetchAdmins();
   }, []);
 
-  // Opening the modal when the Delete button is clicked
   const openDeleteModal = (id: string, name: string) => {
+    if (!isSuperAdmin) {
+      setError("Only the Super Admin has the authority to remove admins!");
+      setTimeout(() => setError(""), 3000);
+      return;
+    }
     setSelectedAdmin({ id, name });
     setIsModalOpen(true);
   };
 
-  // The function that performs the actual deletion.
   const handleDeleteConfirm = async () => {
     if (!selectedAdmin) return;
 
@@ -72,11 +90,7 @@ export default function AdminListPage() {
       });
 
       setSuccess(res.data.message || "Account successfully removed.");
-      
-      // Remove only the relevant admin from the state without reloading the table
       setAdmins(admins.filter((admin) => admin._id !== selectedAdmin.id));
-
-      // Clear the success message after 3 seconds
       setTimeout(() => setSuccess(""), 3000);
     } catch (err: any) {
       setError(err.response?.data?.message || "An error occurred while removing.");
@@ -93,7 +107,6 @@ export default function AdminListPage() {
           Registered Admin List
         </h2>
 
-        {/* Error and Success messages */}
         {error && <div className="p-4 mb-4 text-sm text-red-700 bg-red-100 dark:bg-red-500/10 dark:text-red-300 rounded-md">{error}</div>}
         {success && <div className="p-4 mb-4 text-sm text-green-700 bg-green-100 dark:bg-green-500/10 dark:text-green-300 rounded-md">{success}</div>}
 
@@ -118,7 +131,6 @@ export default function AdminListPage() {
               <tbody className={`divide-y ${darkMode ? "divide-slate-700" : "divide-slate-200"}`}>
                 {admins.map((admin) => (
                   <tr key={admin._id} className={`transition-colors ${darkMode ? "hover:bg-slate-800/50" : "hover:bg-slate-50"}`}>
-                    {/* Profile Picture Column */}
                     <td className="px-4 py-3">
                       <div className={`h-10 w-10 rounded-full overflow-hidden flex items-center justify-center border ${
                         darkMode ? "bg-slate-800 border-slate-700" : "bg-slate-100 border-slate-300"
@@ -159,12 +171,15 @@ export default function AdminListPage() {
                       )}
                     </td>
                     <td className="px-4 py-3 text-center">
-                      {/* Show Delete Button only if it's not the Default Admin */}
                       {!admin.isDefault ? (
                         <button
                           onClick={() => openDeleteModal(admin._id, admin.name)}
-                          className="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 transition-colors p-2 rounded-md hover:bg-red-50 dark:hover:bg-red-500/10"
-                          title="Delete Admin"
+                          className={`transition-colors p-2 rounded-md ${
+                            isSuperAdmin 
+                              ? "text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-500/10" 
+                              : "text-slate-400 cursor-not-allowed opacity-50"
+                          }`}
+                          title={isSuperAdmin ? "Delete Admin" : "Only Super Admin can delete"}
                         >
                           <Trash2 size={18} />
                         </button>
@@ -180,7 +195,6 @@ export default function AdminListPage() {
         )}
       </div>
 
-      {/* The delete confirmation modal is included here. */}
       <DeleteConfirmationModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
