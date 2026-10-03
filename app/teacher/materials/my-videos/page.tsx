@@ -4,7 +4,7 @@
 
 import { useEffect, useState, useMemo } from "react";
 import axios from "axios";
-import { Film, BookOpen, Loader2, PlayCircle, Trash2, AlertCircle, Globe, Search, Video, Calendar, Clock, CheckCircle2, MoreVertical, ExternalLink, X, Check } from "lucide-react"; 
+import { Film, BookOpen, Loader2, PlayCircle, Trash2, AlertCircle, Globe, Search, Video, Calendar, Clock, CheckCircle2, MoreVertical, ExternalLink, X, Check, Gift } from "lucide-react"; 
 import { useTheme } from "@/app/context/ThemeContext";
 import PublishSuccessPopup from "@/app/components/PublishSuccessPopup";
 import DeleteConfirmPopup from "@/app/components/VideoDeleteConfirmPopup";
@@ -28,6 +28,7 @@ export default function MyVideosPage() {
   const [selectedVideoForPublish, setSelectedVideoForPublish] = useState<any>(null);
   const [teacherClasses, setTeacherClasses] = useState<any[]>([]);
   const [selectedClassIds, setSelectedClassIds] = useState<string[]>([]);
+  const [isFreeChecked, setIsFreeChecked] = useState(false);
 
   useEffect(() => {
     fetchVideos();
@@ -78,6 +79,7 @@ export default function MyVideosPage() {
   const openPublishModal = (video: any) => {
     setSelectedVideoForPublish(video);
     setSelectedClassIds(video.classIds ? video.classIds.map((c: any) => c._id || c) : []);
+    setIsFreeChecked(video.isFree || false);
     setPublishModalOpen(true);
   };
 
@@ -86,7 +88,8 @@ export default function MyVideosPage() {
     try {
       const token = localStorage.getItem("token");
       const res = await axios.put(`http://localhost:5000/api/materials/${selectedVideoForPublish._id}/publish`, {
-        classIds: selectedClassIds
+        classIds: selectedClassIds,
+        isFree: isFreeChecked
       }, {
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -105,13 +108,33 @@ export default function MyVideosPage() {
     try {
       const token = localStorage.getItem("token");
       const res = await axios.put(`http://localhost:5000/api/materials/${id}/publish`, {
-        classIds: []
+        classIds: [],
+        isFree: false
       }, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setVideos(videos.map(video => video._id === id ? res.data.material : video));
     } catch (err: any) {
       alert("Failed to unpublish.");
+    }
+  };
+
+  // Remove a specific class from published classes list
+  const handleRemoveSingleClass = async (video: any, classIdToRemove: string) => {
+    try {
+      const updatedClassIds = (video.classIds || []).map((c: any) => c._id || c).filter((id: string) => id !== classIdToRemove);
+      const token = localStorage.getItem("token");
+      
+      const res = await axios.put(`http://localhost:5000/api/materials/${video._id}/publish`, {
+        classIds: updatedClassIds,
+        isFree: video.isFree
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      setVideos(videos.map(item => item._id === video._id ? res.data.material : item));
+    } catch (err: any) {
+      alert("Failed to remove class.");
     }
   };
 
@@ -164,22 +187,46 @@ export default function MyVideosPage() {
         itemName={deleteItem?.title}
       />
 
-      {/* Class Selection Modal for Publishing */}
+      {/* Class Selection & Free Option Modal for Publishing */}
       {publishModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
           <div className={`w-full max-w-lg p-6 rounded-3xl shadow-2xl border ${darkMode ? "bg-slate-900 border-slate-800 text-white" : "bg-white border-slate-200 text-slate-900"}`}>
             <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-extrabold">Select Classes to Publish Video</h3>
+              <h3 className="text-lg font-extrabold">Select Classes & Access to Publish Video</h3>
               <button onClick={() => setPublishModalOpen(false)} className="p-1 rounded-lg text-slate-400 hover:bg-slate-500/10">
                 <X size={20} />
               </button>
             </div>
-            <p className="text-xs text-slate-400 mb-4">Choose one or more classes where this video should be published.</p>
+            <p className="text-xs text-slate-400 mb-4">Choose classes where this video should be published, or make it Free for everyone.</p>
 
+            {/* Free Option Toggle Selector */}
+            <div 
+              onClick={() => setIsFreeChecked(!isFreeChecked)}
+              className={`mb-5 p-4 rounded-2xl border cursor-pointer flex items-center justify-between transition-all ${
+                isFreeChecked 
+                  ? (darkMode ? "bg-emerald-500/10 border-emerald-500/50 text-white" : "bg-emerald-50 border-emerald-300 text-slate-900")
+                  : (darkMode ? "bg-slate-800/50 border-slate-800 text-slate-300" : "bg-slate-50 border-slate-200 text-slate-700")
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <div className={`p-2 rounded-xl ${isFreeChecked ? "bg-emerald-600 text-white" : "bg-slate-500/20 text-slate-400"}`}>
+                  <Gift size={18} />
+                </div>
+                <div>
+                  <h4 className="font-bold text-sm">Make it Free (Public)</h4>
+                  <p className="text-xs opacity-70">Visible to both registered and unregistered students on the Free page.</p>
+                </div>
+              </div>
+              <div className={`w-5 h-5 rounded-lg flex items-center justify-center border ${isFreeChecked ? "bg-emerald-600 border-emerald-600 text-white" : "border-slate-400"}`}>
+                {isFreeChecked && <Check size={14} />}
+              </div>
+            </div>
+
+            <div className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Select Classes</div>
             {teacherClasses.length === 0 ? (
-              <p className="text-sm text-center py-6 text-slate-500">No classes created yet. Please create a class first.</p>
+              <p className="text-sm text-center py-4 text-slate-500">No classes created yet. Please create a class first.</p>
             ) : (
-              <div className="space-y-2 max-h-60 overflow-y-auto pr-1 mb-6">
+              <div className="space-y-2 max-h-48 overflow-y-auto pr-1 mb-6">
                 {teacherClasses.map((cls) => {
                   const isSelected = selectedClassIds.includes(cls._id);
                   return (
@@ -214,7 +261,7 @@ export default function MyVideosPage() {
               </button>
               <button 
                 onClick={handleConfirmPublish}
-                disabled={selectedClassIds.length === 0}
+                disabled={selectedClassIds.length === 0 && !isFreeChecked}
                 className="px-6 py-2.5 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-white disabled:opacity-50 shadow-md"
               >
                 Publish Now
@@ -320,6 +367,7 @@ export default function MyVideosPage() {
                     {video.status === 'approved' && !video.isPublished && <span className="bg-emerald-500/90 text-white text-[9px] px-2 py-0.5 rounded-md font-bold uppercase tracking-wider">Approved</span>}
                     {video.status === 'rejected' && <span className="bg-red-500/90 text-white text-[9px] px-2 py-0.5 rounded-md font-bold uppercase tracking-wider">Rejected</span>}
                     {video.isPublished && <span className="bg-blue-600/90 text-white text-[9px] px-2 py-0.5 rounded-md font-bold uppercase tracking-wider flex items-center gap-1"><Globe size={10} /> Published</span>}
+                    {video.isFree && <span className="bg-emerald-600/90 text-white text-[9px] px-2 py-0.5 rounded-md font-bold uppercase tracking-wider flex items-center gap-1"><Gift size={10} /> Free</span>}
                   </div>
                 </a>
                 
@@ -339,15 +387,47 @@ export default function MyVideosPage() {
                     </div>
                   </div>
 
-                  {/* Published Classes List Display */}
-                  {video.isPublished && video.classIds && video.classIds.length > 0 && (
+                  {/* Published Classes & Free Tag Display List */}
+                  {video.isPublished && ((video.classIds && video.classIds.length > 0) || video.isFree) && (
                     <div className={`mt-3 pt-2 border-t flex flex-wrap gap-1 ${darkMode ? "border-slate-800" : "border-slate-100"}`}>
-                      <span className="text-[10px] font-bold text-slate-400 uppercase w-full">Published Classes:</span>
-                      {video.classIds.map((cls: any) => (
-                        <span key={cls._id || cls} className={`text-[10px] px-2 py-0.5 rounded font-bold border ${darkMode ? "bg-slate-800 border-slate-700 text-indigo-400" : "bg-indigo-50 border-indigo-200 text-indigo-700"}`}>
-                          {cls.grade ? `${cls.grade} - ${cls.medium}` : "Class"}
+                      <span className="text-[10px] font-bold text-slate-400 uppercase w-full">Published to:</span>
+                      
+                      {video.isFree && (
+                        <span className="text-[10px] px-2 py-0.5 rounded font-bold border flex items-center gap-1 bg-emerald-500/10 border-emerald-500/30 text-emerald-400">
+                          <Gift size={10} /> Free Page
+                          <button 
+                            onClick={async () => {
+                              const token = localStorage.getItem("token");
+                              const res = await axios.put(`http://localhost:5000/api/materials/${video._id}/publish`, {
+                                classIds: video.classIds.map((c: any) => c._id || c),
+                                isFree: false
+                              }, { headers: { Authorization: `Bearer ${token}` } });
+                              setVideos(videos.map(item => item._id === video._id ? res.data.material : item));
+                            }}
+                            className="hover:bg-emerald-500/20 rounded p-0.5 ml-0.5"
+                            title="Remove from Free"
+                          >
+                            <X size={10} />
+                          </button>
                         </span>
-                      ))}
+                      )}
+
+                      {video.classIds && video.classIds.map((cls: any) => {
+                        const classId = cls._id || cls;
+                        const displayTitle = cls.grade ? `${cls.grade} - ${cls.medium}` : "Class";
+                        return (
+                          <span key={classId} className={`text-[10px] px-2 py-0.5 rounded font-bold border flex items-center gap-1 ${darkMode ? "bg-slate-800 border-slate-700 text-indigo-400" : "bg-indigo-50 border-indigo-200 text-indigo-700"}`}>
+                            {displayTitle}
+                            <button 
+                              onClick={() => handleRemoveSingleClass(video, classId)}
+                              className="hover:bg-indigo-500/20 rounded p-0.5 ml-0.5"
+                              title="Remove from this class"
+                            >
+                              <X size={10} />
+                            </button>
+                          </span>
+                        );
+                      })}
                     </div>
                   )}
 
@@ -360,20 +440,21 @@ export default function MyVideosPage() {
                 </div>
 
                 <div className={`p-3 border-t flex items-center justify-between gap-2 ${darkMode ? "border-slate-800 bg-slate-900/50" : "border-slate-100 bg-slate-50/50"}`}>
-                  <div className="flex-1">
+                  <div className="flex-1 flex gap-1.5">
                     {video.status === 'approved' && (
                       <>
-                        {!video.isPublished ? (
-                          <button 
-                            onClick={() => openPublishModal(video)}
-                            className="flex items-center justify-center w-full gap-1.5 py-1.5 rounded-lg font-bold text-xs bg-blue-600 hover:bg-blue-500 text-white shadow-sm"
-                          >
-                            <Globe size={14} /> Publish
-                          </button>
-                        ) : (
+                        <button 
+                          onClick={() => openPublishModal(video)}
+                          className="flex items-center justify-center flex-1 gap-1 py-1.5 rounded-lg font-bold text-xs bg-blue-600 hover:bg-blue-500 text-white shadow-sm"
+                        >
+                          <Globe size={13} /> {video.isPublished ? "Edit" : "Publish"}
+                        </button>
+
+                        {video.isPublished && (
                           <button 
                             onClick={() => handleUnpublish(video._id)}
-                            className="flex items-center justify-center w-full gap-1.5 py-1.5 rounded-lg font-bold text-xs bg-rose-600 hover:bg-rose-700 text-white shadow-sm"
+                            className="flex items-center justify-center px-2 py-1.5 rounded-lg font-bold text-[11px] bg-rose-600/10 hover:bg-rose-600 text-rose-500 hover:text-white transition-all border border-rose-500/20"
+                            title="Unpublish All"
                           >
                             Unpublish
                           </button>
@@ -382,7 +463,7 @@ export default function MyVideosPage() {
                     )}
                   </div>
 
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex items-center gap-1">
                     <a href={`http://localhost:5000${video.fileUrl}`} target="_blank" rel="noopener noreferrer" className="p-1.5 rounded-lg hover:bg-slate-700 text-slate-400" title="Open in new tab">
                       <ExternalLink size={16} />
                     </a>
