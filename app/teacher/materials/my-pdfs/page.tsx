@@ -17,7 +17,8 @@ import {
   FileText,
   Calendar,
   X,
-  Check
+  Check,
+  Gift
 } from "lucide-react"; 
 import { useTheme } from "@/app/context/ThemeContext";
 import PublishSuccessPopup from "@/app/components/PublishSuccessPopup";
@@ -40,6 +41,7 @@ export default function MyPDFsPage() {
   const [selectedPdfForPublish, setSelectedPdfForPublish] = useState<any>(null);
   const [teacherClasses, setTeacherClasses] = useState<any[]>([]);
   const [selectedClassIds, setSelectedClassIds] = useState<string[]>([]);
+  const [isFreeChecked, setIsFreeChecked] = useState(false);
 
   useEffect(() => {
     fetchPdfs();
@@ -94,16 +96,18 @@ export default function MyPDFsPage() {
   const openPublishModal = (pdf: any) => {
     setSelectedPdfForPublish(pdf);
     setSelectedClassIds(pdf.classIds ? pdf.classIds.map((c: any) => c._id || c) : []);
+    setIsFreeChecked(pdf.isFree || false);
     setPublishModalOpen(true);
   };
 
-  // Confirm and publish the material to selected classes
+  // Confirm and publish the material to selected classes and/or free status
   const handleConfirmPublish = async () => {
     if (!selectedPdfForPublish) return;
     try {
       const token = localStorage.getItem("token");
       const res = await axios.put(`http://localhost:5000/api/materials/${selectedPdfForPublish._id}/publish`, {
-        classIds: selectedClassIds
+        classIds: selectedClassIds,
+        isFree: isFreeChecked
       }, {
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -118,18 +122,38 @@ export default function MyPDFsPage() {
     }
   };
 
-  // Unpublish material from classes
+  // Unpublish material completely
   const handleUnpublish = async (id: string) => {
     try {
       const token = localStorage.getItem("token");
       const res = await axios.put(`http://localhost:5000/api/materials/${id}/publish`, {
-        classIds: []
+        classIds: [],
+        isFree: false
       }, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setPdfs(pdfs.map(pdf => pdf._id === id ? res.data.material : pdf));
     } catch (err: any) {
       alert("Failed to unpublish.");
+    }
+  };
+
+  // Remove a specific class from published classes list (or unpublish if it was the last one and not free)
+  const handleRemoveSingleClass = async (pdf: any, classIdToRemove: string) => {
+    try {
+      const updatedClassIds = (pdf.classIds || []).map((c: any) => c._id || c).filter((id: string) => id !== classIdToRemove);
+      const token = localStorage.getItem("token");
+      
+      const res = await axios.put(`http://localhost:5000/api/materials/${pdf._id}/publish`, {
+        classIds: updatedClassIds,
+        isFree: pdf.isFree
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      setPdfs(pdfs.map(item => item._id === pdf._id ? res.data.material : item));
+    } catch (err: any) {
+      alert("Failed to remove class.");
     }
   };
 
@@ -185,22 +209,46 @@ export default function MyPDFsPage() {
         itemName={deleteItem?.title}
       />
 
-      {/* Class Selection Modal for Publishing */}
+      {/* Class Selection & Free Option Modal for Publishing */}
       {publishModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
           <div className={`w-full max-w-lg p-6 rounded-3xl shadow-2xl border ${darkMode ? "bg-slate-900 border-slate-800 text-white" : "bg-white border-slate-200 text-slate-900"}`}>
             <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-extrabold">Select Classes to Publish</h3>
+              <h3 className="text-lg font-extrabold">Select Classes & Access to Publish</h3>
               <button onClick={() => setPublishModalOpen(false)} className="p-1 rounded-lg text-slate-400 hover:bg-slate-500/10">
                 <X size={20} />
               </button>
             </div>
-            <p className="text-xs text-slate-400 mb-4">Choose one or more classes where this document should be published.</p>
+            <p className="text-xs text-slate-400 mb-4">Choose classes where this document should be published, or make it Free for everyone.</p>
 
+            {/* Free Option Toggle Selector */}
+            <div 
+              onClick={() => setIsFreeChecked(!isFreeChecked)}
+              className={`mb-5 p-4 rounded-2xl border cursor-pointer flex items-center justify-between transition-all ${
+                isFreeChecked 
+                  ? (darkMode ? "bg-emerald-500/10 border-emerald-500/50 text-white" : "bg-emerald-50 border-emerald-300 text-slate-900")
+                  : (darkMode ? "bg-slate-800/50 border-slate-800 text-slate-300" : "bg-slate-50 border-slate-200 text-slate-700")
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <div className={`p-2 rounded-xl ${isFreeChecked ? "bg-emerald-600 text-white" : "bg-slate-500/20 text-slate-400"}`}>
+                  <Gift size={18} />
+                </div>
+                <div>
+                  <h4 className="font-bold text-sm">Make it Free (Public)</h4>
+                  <p className="text-xs opacity-70">Visible to both registered and unregistered students on the Free page.</p>
+                </div>
+              </div>
+              <div className={`w-5 h-5 rounded-lg flex items-center justify-center border ${isFreeChecked ? "bg-emerald-600 border-emerald-600 text-white" : "border-slate-400"}`}>
+                {isFreeChecked && <Check size={14} />}
+              </div>
+            </div>
+
+            <div className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Select Classes</div>
             {teacherClasses.length === 0 ? (
-              <p className="text-sm text-center py-6 text-slate-500">No classes created yet. Please create a class first.</p>
+              <p className="text-sm text-center py-4 text-slate-500">No classes created yet.</p>
             ) : (
-              <div className="space-y-2 max-h-60 overflow-y-auto pr-1 mb-6">
+              <div className="space-y-2 max-h-48 overflow-y-auto pr-1 mb-6">
                 {teacherClasses.map((cls) => {
                   const isSelected = selectedClassIds.includes(cls._id);
                   return (
@@ -235,7 +283,7 @@ export default function MyPDFsPage() {
               </button>
               <button 
                 onClick={handleConfirmPublish}
-                disabled={selectedClassIds.length === 0}
+                disabled={selectedClassIds.length === 0 && !isFreeChecked}
                 className="px-6 py-2.5 rounded-xl text-xs font-bold bg-orange-600 hover:bg-orange-700 text-white disabled:opacity-50 shadow-md shadow-orange-600/20"
               >
                 Publish Now
@@ -336,6 +384,7 @@ export default function MyPDFsPage() {
                         {pdf.status === 'approved' && !pdf.isPublished && <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-400">Ready to Publish</span>}
                         {pdf.status === 'rejected' && <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-md bg-red-500/10 text-red-400">Rejected</span>}
                         {pdf.isPublished && <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-md bg-blue-500/10 text-blue-400 flex items-center gap-1"><Globe size={10} /> Published</span>}
+                        {pdf.isFree && <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-400 flex items-center gap-1"><Gift size={10} /> Free (Public)</span>}
                       </div>
                       
                       <div className={`flex items-center flex-wrap gap-x-3 gap-y-1 text-xs font-medium ${darkMode ? "text-slate-400" : "text-slate-500"}`}>
@@ -350,19 +399,20 @@ export default function MyPDFsPage() {
                   <div className="flex items-center gap-2.5">
                     {pdf.status === 'approved' && (
                       <>
-                        {!pdf.isPublished ? (
-                          <button 
-                            onClick={() => openPublishModal(pdf)}
-                            className="flex items-center gap-1.5 px-4 py-2 rounded-xl font-bold text-xs bg-orange-600 hover:bg-orange-700 text-white shadow-md shadow-orange-600/20"
-                          >
-                            <Globe size={14} /> Publish
-                          </button>
-                        ) : (
+                        <button 
+                          onClick={() => openPublishModal(pdf)}
+                          className="flex items-center gap-1.5 px-4 py-2 rounded-xl font-bold text-xs bg-orange-600 hover:bg-orange-700 text-white shadow-md shadow-orange-600/20"
+                        >
+                          <Globe size={14} /> {pdf.isPublished ? "Edit Publish" : "Publish"}
+                        </button>
+
+                        {pdf.isPublished && (
                           <button 
                             onClick={() => handleUnpublish(pdf._id)}
-                            className="flex items-center gap-1.5 px-4 py-2 rounded-xl font-bold text-xs bg-rose-600 hover:bg-rose-700 text-white shadow-md shadow-rose-600/20"
+                            className="flex items-center gap-1.5 px-3 py-2 rounded-xl font-bold text-xs bg-rose-600/10 hover:bg-rose-600 text-rose-500 hover:text-white transition-all border border-rose-500/20"
+                            title="Unpublish Completely"
                           >
-                            Unpublish
+                            Unpublish All
                           </button>
                         )}
                       </>
@@ -389,15 +439,47 @@ export default function MyPDFsPage() {
                   </div>
                 )}
 
-                {/* Published Classes List Display under the item */}
-                {pdf.isPublished && pdf.classIds && pdf.classIds.length > 0 && (
+                {/* Published Classes List Display under the item with individual removal option */}
+                {pdf.isPublished && ((pdf.classIds && pdf.classIds.length > 0) || pdf.isFree) && (
                   <div className={`mt-2 pt-3 border-t flex flex-wrap items-center gap-2 ${darkMode ? "border-slate-800" : "border-slate-100"}`}>
-                    <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mr-2">Published to Classes:</span>
-                    {pdf.classIds.map((cls: any) => (
-                      <span key={cls._id || cls} className={`text-[11px] px-2.5 py-1 rounded-lg font-bold border ${darkMode ? "bg-slate-800 border-slate-700 text-orange-400" : "bg-orange-50 border-orange-200 text-orange-700"}`}>
-                        {cls.grade ? `${cls.grade} - ${cls.medium} (${cls.mode})` : "Class"}
+                    <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mr-2">Published to:</span>
+                    
+                    {pdf.isFree && (
+                      <span className="text-[11px] px-2.5 py-1 rounded-lg font-bold border flex items-center gap-1.5 bg-emerald-500/10 border-emerald-500/30 text-emerald-400">
+                        <Gift size={12} /> Free Page
+                        <button 
+                          onClick={async () => {
+                            const token = localStorage.getItem("token");
+                            const res = await axios.put(`http://localhost:5000/api/materials/${pdf._id}/publish`, {
+                              classIds: pdf.classIds.map((c: any) => c._id || c),
+                              isFree: false
+                            }, { headers: { Authorization: `Bearer ${token}` } });
+                            setPdfs(pdfs.map(item => item._id === pdf._id ? res.data.material : item));
+                          }}
+                          className="hover:bg-emerald-500/20 rounded p-0.5 ml-1"
+                          title="Remove from Free"
+                        >
+                          <X size={12} />
+                        </button>
                       </span>
-                    ))}
+                    )}
+
+                    {pdf.classIds && pdf.classIds.map((cls: any) => {
+                      const classId = cls._id || cls;
+                      const displayTitle = cls.grade ? `${cls.grade} - ${cls.medium} (${cls.mode})` : "Class";
+                      return (
+                        <span key={classId} className={`text-[11px] px-2.5 py-1 rounded-lg font-bold border flex items-center gap-1.5 ${darkMode ? "bg-slate-800 border-slate-700 text-orange-400" : "bg-orange-50 border-orange-200 text-orange-700"}`}>
+                          {displayTitle}
+                          <button 
+                            onClick={() => handleRemoveSingleClass(pdf, classId)}
+                            className="hover:bg-orange-500/20 rounded p-0.5 ml-1"
+                            title="Remove from this class"
+                          >
+                            <X size={12} />
+                          </button>
+                        </span>
+                      );
+                    })}
                   </div>
                 )}
               </div>
