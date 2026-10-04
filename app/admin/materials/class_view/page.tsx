@@ -5,10 +5,12 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import axios from "axios";
-import { Calendar, Clock, BookOpen, User, Loader2, ShieldAlert, Monitor, UserCheck, UserX, Trash2, Search, GraduationCap, Image as ImageIcon, Edit3, X, Check, FileText, CreditCard, ExternalLink, Briefcase, Phone, Users } from "lucide-react";
+import { Calendar, Clock, BookOpen, User, Loader2, ShieldAlert, Monitor, UserCheck, UserX, Trash2, Search, GraduationCap, Image as ImageIcon, Edit3, X, Check, FileText, CreditCard, ExternalLink, Briefcase, Phone, Users, ChevronLeft, ChevronRight, Bell, ChevronDown, ChevronUp } from "lucide-react";
+import { useTheme } from "@/app/context/ThemeContext";
 
 export default function AdminClassViewPage() {
   const router = useRouter();
+  const { darkMode } = useTheme();
   const [groupedClasses, setGroupedClasses] = useState<any[]>([]);
   const [classRequests, setClassRequests] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -16,6 +18,36 @@ export default function AdminClassViewPage() {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
   const [searchQueries, setSearchQueries] = useState<{ [key: string]: string }>({});
+
+  // Pagination State for each teacher's classes (teacherId -> pageNumber)
+  const [teacherPages, setTeacherPages] = useState<{ [key: string]: number }>({});
+  const classesPerPage = 2; // එක් ගුරුවරයෙක් තුළ පන්ති 2 ක් පමණක් පෙන්වීමට
+
+  // Pending Quick View Popup State (teacherId -> boolean)
+  const [activePendingPopup, setActivePendingPopup] = useState<string | null>(null);
+
+  // Teacher Sections Collapse State with LocalStorage persistence
+  const [collapsedTeachers, setCollapsedTeachers] = useState<{ [key: string]: boolean }>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const saved = localStorage.getItem("admin_collapsed_teachers");
+        return saved ? JSON.parse(saved) : {};
+      } catch (e) {
+        return {};
+      }
+    }
+    return {};
+  });
+
+  const handleToggleCollapse = (teacherId: string) => {
+    setCollapsedTeachers(prev => {
+      const updated = { ...prev, [teacherId]: !prev[teacherId] };
+      if (typeof window !== "undefined") {
+        localStorage.setItem("admin_collapsed_teachers", JSON.stringify(updated));
+      }
+      return updated;
+    });
+  };
 
   // Admin Edit Class Modal States
   const [editingClass, setEditingClass] = useState<any | null>(null);
@@ -151,13 +183,11 @@ export default function AdminClassViewPage() {
     }
   };
 
-  // පන්තියේ ID එක (classId) සමඟ සිසුවාගේ තොරතුරු ලබා ගැනීම
   const handleOpenStudentDetails = async (student: any, classId: string, isFreeCard: boolean) => {
     setSelectedStudentDetails(student);
     setDetailsLoading(true);
     setFreeCardData(null);
 
-    // මෙම ඉල්ලීම Free Card එකක් නොවේ නම්, Free Card API එක Call කිරීම අවශ්‍ය නොවේ
     if (!isFreeCard) {
       setDetailsLoading(false);
       return;
@@ -174,6 +204,35 @@ export default function AdminClassViewPage() {
     } finally {
       setDetailsLoading(false);
     }
+  };
+
+  const handleJumpToClass = (teacherId: string, targetClassId: string, allClassesList: any[]) => {
+    setCollapsedTeachers(prev => {
+      const updated = { ...prev, [teacherId]: false };
+      if (typeof window !== "undefined") {
+        localStorage.setItem("admin_collapsed_teachers", JSON.stringify(updated));
+      }
+      return updated;
+    });
+
+    const classIndex = allClassesList.findIndex((c: any) => c._id === targetClassId);
+    if (classIndex !== -1) {
+      const targetPage = Math.floor(classIndex / classesPerPage) + 1;
+      setTeacherPages(prev => ({ ...prev, [teacherId]: targetPage }));
+    }
+
+    setActivePendingPopup(null);
+
+    setTimeout(() => {
+      const element = document.getElementById(`class-card-${targetClassId}`);
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        element.classList.add('ring-4', 'ring-blue-500/50', 'transition-all', 'duration-500');
+        setTimeout(() => {
+          element.classList.remove('ring-4', 'ring-blue-500/50');
+        }, 2000);
+      }
+    }, 150);
   };
 
   const getProfileImageUrl = (photoUrl: string) => {
@@ -196,61 +255,61 @@ export default function AdminClassViewPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 p-4 sm:p-8 font-sans transition-colors duration-500">
+    <div className={`min-h-screen p-3 sm:p-6 font-sans transition-colors duration-500 ${darkMode ? "dark bg-slate-950 text-white" : "bg-slate-50 text-slate-900"}`}>
 
-      {/* Admin Edit Class Modal (Cover Photo & Description) */}
+      {/* Admin Edit Class Modal */}
       {editingClass && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="w-full max-w-lg bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border dark:border-slate-800 p-6 space-y-5">
-            <div className="flex justify-between items-center border-b pb-3 dark:border-slate-800">
-              <h3 className="text-lg font-bold text-slate-900 dark:text-white">Manage Class Info (Admin)</h3>
+          <div className="w-full max-w-lg bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 p-5 space-y-4 text-slate-900 dark:text-white text-xs">
+            <div className="flex justify-between items-center border-b pb-2.5 border-slate-200 dark:border-slate-800">
+              <h3 className="text-sm font-bold">Manage Class Info (Admin)</h3>
               <button
                 onClick={() => setEditingClass(null)}
-                className="p-1.5 rounded-xl text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                className="p-1 rounded-lg text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
               >
-                <X size={20} />
+                <X size={18} />
               </button>
             </div>
 
-            <form onSubmit={handleAdminUpdateClassSubmit} className="space-y-4">
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-slate-500 uppercase">Class Description</label>
+            <form onSubmit={handleAdminUpdateClassSubmit} className="space-y-3">
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-slate-500 uppercase">Class Description</label>
                 <textarea
                   value={editDescription}
                   onChange={(e) => setEditDescription(e.target.value)}
                   placeholder="Enter class description..."
-                  rows={3}
-                  className="w-full p-3.5 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-none outline-none font-medium text-xs resize-none"
+                  rows={2}
+                  className="w-full p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-none outline-none font-medium text-xs resize-none"
                 ></textarea>
               </div>
 
-              <div className="space-y-1.5">
-                <label className="text-xs font-bold text-slate-500 uppercase flex items-center gap-1.5">
-                  <ImageIcon size={14} /> Class Cover Photo
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1">
+                  <ImageIcon size={12} /> Class Cover Photo
                 </label>
                 <input
                   type="file"
                   accept="image/*"
                   onChange={(e) => setEditCoverImage(e.target.files ? e.target.files[0] : null)}
-                  className="w-full p-2.5 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-none outline-none text-xs file:mr-4 file:py-1.5 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-blue-600 file:text-white hover:file:bg-blue-700 cursor-pointer"
+                  className="w-full p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 border-none outline-none text-[11px] file:mr-3 file:py-1 file:px-2.5 file:rounded-lg file:border-0 file:text-[10px] file:font-bold file:bg-blue-600 file:text-white hover:file:bg-blue-700 cursor-pointer"
                 />
               </div>
 
-              <div className="flex justify-end gap-2.5 pt-3">
+              <div className="flex justify-end gap-2 pt-2">
                 <button
                   type="button"
                   onClick={() => setEditingClass(null)}
-                  className="px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-xl text-xs font-bold transition-colors"
+                  className="px-3 py-1.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-xl font-bold transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={editLoading}
-                  className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-md shadow-blue-600/25 transition-all flex items-center gap-1.5"
+                  className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold shadow-md shadow-blue-600/25 transition-all flex items-center gap-1.5"
                 >
-                  {editLoading ? <Loader2 className="animate-spin" size={16} /> : <Check size={16} />}
-                  <span>Save Changes</span>
+                  {editLoading ? <Loader2 className="animate-spin" size={14} /> : <Check size={14} />}
+                  <span>Save</span>
                 </button>
               </div>
             </form>
@@ -261,124 +320,74 @@ export default function AdminClassViewPage() {
       {/* Student Details & Free Card Info Modal */}
       {selectedStudentDetails && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
-          <div className="w-full max-w-xl bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border dark:border-slate-800 p-6 space-y-4 my-8 max-h-[90vh] overflow-y-auto custom-scrollbar">
-            <div className="flex justify-between items-center border-b pb-3 dark:border-slate-800">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-full overflow-hidden bg-slate-100 dark:bg-slate-800 border flex items-center justify-center">
+          <div className="w-full max-w-lg bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-800 p-5 space-y-3 my-8 max-h-[90vh] overflow-y-auto custom-scrollbar text-slate-900 dark:text-white text-xs">
+            <div className="flex justify-between items-center border-b pb-2.5 border-slate-200 dark:border-slate-800">
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-full overflow-hidden bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex items-center justify-center shrink-0">
                   {selectedStudentDetails.profileImage ? (
                     <img src={getStudentProfileImageUrl(selectedStudentDetails.profileImage) || ""} alt="" className="w-full h-full object-cover" />
                   ) : (
-                    <User size={24} className="text-slate-400" />
+                    <User size={20} className="text-slate-400" />
                   )}
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-slate-900 dark:text-white">{selectedStudentDetails.name}</h3>
-                  <p className="text-xs text-slate-400">{selectedStudentDetails.email}</p>
+                  <h3 className="text-sm font-bold">{selectedStudentDetails.name}</h3>
+                  <p className="text-[10px] text-slate-400">{selectedStudentDetails.email}</p>
                 </div>
               </div>
               <button
                 onClick={() => setSelectedStudentDetails(null)}
-                className="p-1.5 rounded-xl text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                className="p-1 rounded-lg text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
               >
-                <X size={20} />
+                <X size={18} />
               </button>
             </div>
 
-            <div className="space-y-3 text-xs">
-              <div className="grid grid-cols-2 gap-2 p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50">
+            <div className="space-y-2.5">
+              <div className="grid grid-cols-2 gap-2 p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800">
                 <div>
-                  <span className="text-slate-400 font-bold uppercase text-[10px]">Phone:</span>
+                  <span className="text-slate-400 font-bold uppercase text-[9px]">Phone:</span>
                   <p className="font-semibold text-slate-800 dark:text-slate-200">{selectedStudentDetails.phone || "N/A"}</p>
                 </div>
                 <div>
-                  <span className="text-slate-400 font-bold uppercase text-[10px]">School / Grade:</span>
+                  <span className="text-slate-400 font-bold uppercase text-[9px]">School / Grade:</span>
                   <p className="font-semibold text-slate-800 dark:text-slate-200">{selectedStudentDetails.school || "N/A"} ({selectedStudentDetails.grade || "N/A"})</p>
                 </div>
-                <div className="col-span-2 mt-1">
-                  <span className="text-slate-400 font-bold uppercase text-[10px]">Address:</span>
+                <div className="col-span-2 mt-0.5">
+                  <span className="text-slate-400 font-bold uppercase text-[9px]">Address:</span>
                   <p className="font-semibold text-slate-800 dark:text-slate-200">{selectedStudentDetails.address || "N/A"}</p>
                 </div>
               </div>
 
               {detailsLoading ? (
-                <div className="flex justify-center py-6">
-                  <Loader2 className="animate-spin text-blue-600" size={24} />
+                <div className="flex justify-center py-4">
+                  <Loader2 className="animate-spin text-blue-600" size={20} />
                 </div>
               ) : freeCardData ? (
-                <div className="space-y-3 pt-2 border-t dark:border-slate-800">
-                  <div className="flex items-center gap-1.5 text-amber-600 dark:text-amber-400 font-bold text-xs">
-                    <CreditCard size={16} /> Free Card Request Details
+                <div className="space-y-2.5 pt-1.5 border-t border-slate-200 dark:border-slate-800">
+                  <div className="flex items-center gap-1 text-amber-600 dark:text-amber-400 font-bold text-[11px]">
+                    <CreditCard size={14} /> Free Card Request Details
                   </div>
 
-                  {/* Father's Details */}
-                  <div className="p-3 rounded-xl bg-amber-50/50 dark:bg-amber-500/10 border border-amber-200/50 dark:border-amber-500/20 space-y-1">
-                    <span className="text-amber-700 dark:text-amber-400 font-bold uppercase text-[10px]">Father's Details</span>
-                    <div className="grid grid-cols-2 gap-2 text-xs">
-                      <div>
-                        <span className="text-slate-400 font-semibold text-[9px]">Name:</span>
-                        <p className="font-semibold text-slate-800 dark:text-slate-200">{freeCardData.fatherName || "N/A"}</p>
-                      </div>
-                      <div>
-                        <span className="text-slate-400 font-semibold text-[9px]">Occupation:</span>
-                        <p className="font-semibold text-slate-800 dark:text-slate-200">{freeCardData.fatherOccupation || "N/A"}</p>
-                      </div>
-                      <div className="col-span-2">
-                        <span className="text-slate-400 font-semibold text-[9px]">Phone:</span>
-                        <p className="font-semibold text-slate-800 dark:text-slate-200">{freeCardData.fatherPhone || "N/A"}</p>
-                      </div>
+                  <div className="p-2.5 rounded-xl bg-amber-50/50 dark:bg-amber-500/10 border border-amber-200/50 dark:border-amber-500/20 space-y-1">
+                    <span className="text-amber-700 dark:text-amber-400 font-bold uppercase text-[9px]">Father's Details</span>
+                    <div className="grid grid-cols-2 gap-1.5 text-[11px]">
+                      <div><span className="text-slate-400 text-[9px]">Name:</span> <p className="font-semibold">{freeCardData.fatherName || "N/A"}</p></div>
+                      <div><span className="text-slate-400 text-[9px]">Phone:</span> <p className="font-semibold">{freeCardData.fatherPhone || "N/A"}</p></div>
                     </div>
                   </div>
 
-                  {/* Mother's Details */}
-                  <div className="p-3 rounded-xl bg-amber-50/50 dark:bg-amber-500/10 border border-amber-200/50 dark:border-amber-500/20 space-y-1">
-                    <span className="text-amber-700 dark:text-amber-400 font-bold uppercase text-[10px]">Mother's Details</span>
-                    <div className="grid grid-cols-2 gap-2 text-xs">
-                      <div>
-                        <span className="text-slate-400 font-semibold text-[9px]">Name:</span>
-                        <p className="font-semibold text-slate-800 dark:text-slate-200">{freeCardData.motherName || "N/A"}</p>
-                      </div>
-                      <div>
-                        <span className="text-slate-400 font-semibold text-[9px]">Occupation:</span>
-                        <p className="font-semibold text-slate-800 dark:text-slate-200">{freeCardData.motherOccupation || "N/A"}</p>
-                      </div>
-                      <div className="col-span-2">
-                        <span className="text-slate-400 font-semibold text-[9px]">Phone:</span>
-                        <p className="font-semibold text-slate-800 dark:text-slate-200">{freeCardData.motherPhone || "N/A"}</p>
-                      </div>
+                  <div className="p-2.5 rounded-xl bg-amber-50/50 dark:bg-amber-500/10 border border-amber-200/50 dark:border-amber-500/20 space-y-1">
+                    <span className="text-amber-700 dark:text-amber-400 font-bold uppercase text-[9px]">Mother's Details</span>
+                    <div className="grid grid-cols-2 gap-1.5 text-[11px]">
+                      <div><span className="text-slate-400 text-[9px]">Name:</span> <p className="font-semibold">{freeCardData.motherName || "N/A"}</p></div>
+                      <div><span className="text-slate-400 text-[9px]">Phone:</span> <p className="font-semibold">{freeCardData.motherPhone || "N/A"}</p></div>
                     </div>
                   </div>
 
-                  {/* Guardian Details (If applicable) */}
-                  {freeCardData.hasGuardian && (
-                    <div className="p-3 rounded-xl bg-purple-50/50 dark:bg-purple-500/10 border border-purple-200/50 dark:border-purple-500/20 space-y-1">
-                      <span className="text-purple-700 dark:text-purple-400 font-bold uppercase text-[10px]">Guardian Details</span>
-                      <div className="grid grid-cols-2 gap-2 text-xs">
-                        <div>
-                          <span className="text-slate-400 font-semibold text-[9px]">Name:</span>
-                          <p className="font-semibold text-slate-800 dark:text-slate-200">{freeCardData.guardianName || "N/A"}</p>
-                        </div>
-                        <div>
-                          <span className="text-slate-400 font-semibold text-[9px]">Relationship:</span>
-                          <p className="font-semibold text-slate-800 dark:text-slate-200">{freeCardData.guardianRelation || "N/A"}</p>
-                        </div>
-                        <div className="col-span-2">
-                          <span className="text-slate-400 font-semibold text-[9px]">Phone:</span>
-                          <p className="font-semibold text-slate-800 dark:text-slate-200">{freeCardData.guardianPhone || "N/A"}</p>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Family Background Reason */}
-                  <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/50 dark:border-slate-700">
-                    <span className="text-slate-400 font-bold uppercase text-[10px]">Family Background / Reason:</span>
-                    <p className="font-medium text-slate-700 dark:text-slate-300 italic mt-1 bg-white dark:bg-slate-900 p-2.5 rounded-lg border">{freeCardData.familyBackground || "N/A"}</p>
-                  </div>
-
-                  {/* Uploaded Documents */}
                   {freeCardData.files && freeCardData.files.length > 0 && (
-                    <div className="space-y-1.5">
-                      <span className="text-slate-400 font-bold uppercase text-[10px]">Uploaded Documents ({freeCardData.files.length}):</span>
+                    <div className="space-y-1">
+                      <span className="text-slate-400 font-bold uppercase text-[9px]">Documents ({freeCardData.files.length}):</span>
                       <div className="space-y-1">
                         {freeCardData.files.map((fileUrl: string, idx: number) => (
                           <a
@@ -386,13 +395,10 @@ export default function AdminClassViewPage() {
                             href={`http://localhost:5000${fileUrl}`}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="flex items-center justify-between p-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors text-xs font-semibold text-blue-600 dark:text-blue-400"
+                            className="flex items-center justify-between p-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 transition-colors text-[11px] font-semibold text-blue-600 dark:text-blue-400"
                           >
-                            <div className="flex items-center gap-2 truncate">
-                              <FileText size={14} className="shrink-0" />
-                              <span className="truncate">Document {idx + 1}</span>
-                            </div>
-                            <ExternalLink size={14} />
+                            <span className="truncate">Document {idx + 1}</span>
+                            <ExternalLink size={12} />
                           </a>
                         ))}
                       </div>
@@ -400,14 +406,14 @@ export default function AdminClassViewPage() {
                   )}
                 </div>
               ) : (
-                <p className="text-xs text-slate-400 italic text-center py-4">No Free Card Request submitted by this student.</p>
+                <p className="text-[11px] text-slate-400 italic text-center py-2">No Free Card Request submitted.</p>
               )}
             </div>
 
-            <div className="flex justify-end pt-3">
+            <div className="flex justify-end pt-2 border-t border-slate-200 dark:border-slate-800">
               <button
                 onClick={() => setSelectedStudentDetails(null)}
-                className="px-5 py-2 bg-slate-900 dark:bg-slate-800 text-white rounded-xl text-xs font-bold transition-all"
+                className="px-4 py-1.5 bg-slate-900 dark:bg-slate-800 text-white rounded-xl text-xs font-bold transition-all"
               >
                 Close
               </button>
@@ -416,54 +422,73 @@ export default function AdminClassViewPage() {
         </div>
       )}
 
-      <div className="max-w-7xl mx-auto space-y-8">
+      <div className="max-w-7xl mx-auto space-y-5">
 
         {/* Header Section */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
           <div>
-            <h1 className="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight">Teachers, Classes & Student Requests</h1>
+            <h1 className="text-2xl font-extrabold tracking-tight">Teachers, Classes & Requests</h1>
           </div>
-          <div className="bg-blue-600 text-white px-5 py-2.5 rounded-2xl font-bold text-sm shadow-md shadow-blue-600/20">
+          <div className="bg-blue-600 text-white px-4 py-2 rounded-xl font-bold text-xs shadow-md shadow-blue-600/20">
             Total Educators: {groupedClasses.length}
           </div>
         </div>
 
         {error && (
-          <div className="bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 text-red-600 dark:text-red-400 p-4 rounded-2xl text-sm font-medium flex items-center gap-2">
-            <ShieldAlert size={18} /> {error}
+          <div className="bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 text-red-600 dark:text-red-400 p-3 rounded-xl text-xs font-medium flex items-center gap-2">
+            <ShieldAlert size={16} /> {error}
           </div>
         )}
 
         {/* Content Area */}
         {loading ? (
-          <div className="flex flex-col items-center justify-center py-20">
-            <Loader2 className="animate-spin text-blue-600 mb-4" size={40} />
-            <p className="text-slate-500 dark:text-slate-400 font-medium">Loading classes and requests...</p>
+          <div className="flex flex-col items-center justify-center py-16">
+            <Loader2 className="animate-spin text-blue-600 mb-3" size={32} />
+            <p className="text-slate-500 text-xs font-medium">Loading classes and requests...</p>
           </div>
         ) : groupedClasses.length === 0 ? (
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl py-20 flex flex-col items-center justify-center text-center px-4 shadow-sm">
-            <div className="bg-slate-50 dark:bg-slate-800 p-5 rounded-full mb-5">
-              <BookOpen size={48} className="text-slate-300 dark:text-slate-600" />
-            </div>
-            <h3 className="text-2xl font-bold text-slate-700 dark:text-white mb-2">No Classes Found</h3>
-            <p className="text-slate-500 dark:text-slate-400 max-w-md">No teachers have created classes in the system yet.</p>
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl py-16 flex flex-col items-center justify-center text-center px-4 shadow-sm">
+            <BookOpen size={36} className="text-slate-300 dark:text-slate-600 mb-3" />
+            <h3 className="text-lg font-bold mb-1">No Classes Found</h3>
+            <p className="text-slate-500 text-xs">No teachers have created classes yet.</p>
           </div>
         ) : (
-          <div className="space-y-8">
+          <div className="space-y-5">
             {groupedClasses.map((item) => {
               const teacher = item.teacher;
               const classesList = item.classes;
 
+              const teacherId = teacher._id;
+              const currentPage = teacherPages[teacherId] || 1;
+              const totalPages = Math.ceil(classesList.length / classesPerPage);
+              const startIndex = (currentPage - 1) * classesPerPage;
+              const currentClasses = classesList.slice(startIndex, startIndex + classesPerPage);
+
+              const teacherClassIds = classesList.map((c: any) => c._id);
+              const teacherPendingRequests = classRequests.filter(
+                (req: any) => teacherClassIds.includes(req.classId?._id) && req.status === 'Pending'
+              );
+              const pendingCount = teacherPendingRequests.length;
+              const isCollapsed = !!collapsedTeachers[teacherId];
+
               return (
                 <div
-                  key={teacher._id}
-                  className="bg-white dark:bg-slate-900 rounded-[32px] border border-slate-200/80 dark:border-slate-800 p-5 sm:p-6 shadow-xl shadow-slate-200/40 dark:shadow-none transition-all duration-300 flex flex-col gap-5"
+                  key={teacherId}
+                  className={`rounded-2xl border p-4 sm:p-5 shadow-sm transition-all duration-300 flex flex-col gap-3.5 relative text-xs ${
+                    darkMode 
+                      ? "bg-slate-900 border-slate-800 text-white" 
+                      : "bg-white border-slate-200 text-slate-900"
+                  }`}
                 >
 
-                  {/* Teacher Info Banner */}
-                  <div className="bg-gradient-to-r from-blue-50 via-indigo-50 to-blue-50 dark:from-slate-800 dark:via-slate-800/80 dark:to-slate-800 rounded-2xl px-4 py-3 border border-blue-100/60 dark:border-slate-700/60 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-sm">
-                    <div className="flex items-center gap-3 w-full sm:w-auto">
-                      <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-white dark:border-slate-700 bg-white dark:bg-slate-900 flex items-center justify-center shadow-sm shrink-0">
+                  {/* Teacher Info Banner (Compact & Cute) */}
+                  <div className={`rounded-xl px-3 py-2.5 border flex flex-col sm:flex-row items-center justify-between gap-3 shadow-2xs ${
+                    darkMode ? "bg-slate-800/80 border-slate-700/80 text-white" : "bg-slate-50 border-slate-200 text-slate-900"
+                  }`}>
+                    <div className="flex items-center gap-2.5 w-full sm:w-auto">
+                      <div className={`w-9 h-9 rounded-full overflow-hidden border flex items-center justify-center shadow-2xs shrink-0 ${
+                        darkMode ? "border-slate-700 bg-slate-900" : "border-white bg-slate-100"
+                      }`}>
                         {teacher?.profilePhoto ? (
                           <img
                             src={getProfileImageUrl(teacher.profilePhoto) || ""}
@@ -474,197 +499,53 @@ export default function AdminClassViewPage() {
                             }}
                           />
                         ) : (
-                          <User size={24} className="text-slate-400" />
+                          <User size={18} className="text-slate-400" />
                         )}
                       </div>
-                      <div className="flex flex-wrap items-center gap-2 sm:gap-4">
-                        <h3 className="font-extrabold text-base sm:text-lg text-slate-900 dark:text-white tracking-tight">{teacher?.name}</h3>
-                        <span className="text-slate-300 dark:text-slate-600 hidden sm:inline">•</span>
-                        <p className="text-xs font-bold text-teal-600 dark:text-teal-400 flex items-center gap-1">
-                          <BookOpen size={13} /> {teacher?.subject}
-                        </p>
-                      </div>
-                    </div>
+                      <div className="flex flex-wrap items-center gap-2 relative">
+                        <div className="flex items-center gap-1.5">
+                          <h3 className="font-extrabold text-xs sm:text-sm tracking-tight">{teacher?.name}</h3>
+                          
+                          {/* Pending Badge */}
+                          {pendingCount > 0 && (
+                            <div className="relative">
+                              <button
+                                onClick={() => setActivePendingPopup(activePendingPopup === teacherId ? null : teacherId)}
+                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-extrabold bg-amber-500 hover:bg-amber-600 text-white animate-pulse shadow-2xs transition-all cursor-pointer"
+                                title="Click to view pending requests"
+                              >
+                                <Bell size={9} /> {pendingCount} Pending
+                              </button>
 
-                    <div className="bg-blue-600 text-white px-3.5 py-1.5 rounded-xl text-xs font-bold shadow-sm shadow-blue-600/20 flex items-center gap-1.5 shrink-0 self-end sm:self-center">
-                      <GraduationCap size={14} /> Total Classes: {classesList.length}
-                    </div>
-                  </div>
-
-                  {/* Classes & Student Requests */}
-                  <div className="flex flex-col">
-                    <h4 className="text-xs font-extrabold text-slate-400 uppercase tracking-wider mb-4">Conducted Classes & Student Requests</h4>
-
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                      {classesList.map((cls: any) => {
-                        const clsRequests = classRequests.filter((req: any) => req.classId?._id === cls._id);
-
-                        const query = (searchQueries[cls._id] || "").toLowerCase();
-                        const filteredRequests = clsRequests.filter((req: any) =>
-                          req.studentId?.name?.toLowerCase().includes(query)
-                        );
-
-                        return (
-                          <div key={cls._id} className="bg-slate-50 dark:bg-slate-800/60 p-5 rounded-2xl border border-slate-200/60 dark:border-slate-800 shadow-sm flex flex-col justify-between gap-4">
-
-                            <div className="space-y-3">
-                              {/* Class Cover Image Display */}
-                              <div className="relative w-full h-36 rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-900">
-                                {cls.coverImage ? (
-                                  <img src={`http://localhost:5000${cls.coverImage}`} alt={cls.grade} className="w-full h-full object-cover" />
-                                ) : (
-                                  <div className="w-full h-full flex flex-col items-center justify-center text-slate-400 gap-1">
-                                    <ImageIcon size={24} />
-                                    <span className="text-[10px] italic">No cover photo provided</span>
+                              {/* Interactive Pending Dropdown Popup */}
+                              {activePendingPopup === teacherId && (
+                                <div className={`absolute left-0 mt-1.5 w-64 rounded-xl shadow-xl z-50 p-2.5 space-y-1.5 border text-xs ${
+                                  darkMode ? "bg-slate-900 border-slate-700 text-white" : "bg-white border-slate-200 text-slate-900"
+                                }`}>
+                                  <div className={`flex items-center justify-between border-b pb-1.5 ${darkMode ? "border-slate-800" : "border-slate-100"}`}>
+                                    <span className="text-[10px] font-bold uppercase opacity-80">Pending Requests</span>
+                                    <button onClick={() => setActivePendingPopup(null)} className="text-slate-400 hover:text-slate-600">
+                                      <X size={12} />
+                                    </button>
                                   </div>
-                                )}
-                                <button
-                                  onClick={() => {
-                                    setEditingClass(cls);
-                                    setEditDescription(cls.description || "");
-                                    setEditCoverImage(null);
-                                  }}
-                                  className="absolute top-2 right-2 bg-slate-900/70 hover:bg-slate-900 text-white p-2 rounded-xl text-xs font-bold flex items-center gap-1 backdrop-blur-sm transition-all"
-                                  title="Manage Cover & Description"
-                                >
-                                  <Edit3 size={14} /> Edit Info
-                                </button>
-                              </div>
-
-                              <div className="flex flex-wrap items-center justify-between gap-2">
-                                <div className="flex flex-wrap items-center gap-2">
-                                  <span className="px-3 py-1 bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded-xl text-xs font-extrabold">
-                                    {cls.grade}
-                                  </span>
-                                  <span className="px-3 py-1 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 rounded-xl text-xs font-extrabold">
-                                    {cls.medium}
-                                  </span>
-                                  <span className="px-3 py-1 bg-orange-50 dark:bg-orange-500/10 text-orange-600 dark:text-orange-400 rounded-xl text-xs font-extrabold flex items-center gap-1">
-                                    <Monitor size={12} /> {cls.mode}
-                                  </span>
-                                </div>
-                              </div>
-
-                              <div className="flex flex-wrap items-center gap-4 text-xs font-bold text-slate-700 dark:text-slate-300">
-                                <div className="flex items-center gap-1.5">
-                                  <Calendar size={14} className="text-blue-500" /> <span>{cls.day}</span>
-                                </div>
-                                <div className="flex items-center gap-1.5">
-                                  <Clock size={14} className="text-orange-500" /> <span>{cls.startTime} - {cls.endTime}</span>
-                                </div>
-                              </div>
-
-                              {cls.description ? (
-                                <p className="text-xs text-slate-600 dark:text-slate-400 italic bg-white dark:bg-slate-900 p-2.5 rounded-xl border border-slate-200 dark:border-slate-800">
-                                  {cls.description}
-                                </p>
-                              ) : (
-                                <p className="text-[11px] text-slate-400 italic">No description provided by teacher.</p>
-                              )}
-                            </div>
-
-                            {/* Student Requests Section for this Class */}
-                            <div className="pt-3 border-t border-slate-200 dark:border-slate-700">
-                              <div className="flex items-center justify-between mb-2">
-                                <h5 className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                                  Student Join Requests ({clsRequests.length})
-                                </h5>
-                              </div>
-
-                              {clsRequests.length > 0 && (
-                                <div className="relative mb-3">
-                                  <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                                  <input
-                                    type="text"
-                                    placeholder="Search student by name..."
-                                    value={searchQueries[cls._id] || ""}
-                                    onChange={(e) => handleSearchChange(cls._id, e.target.value)}
-                                    className="w-full pl-9 pr-3 py-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-800 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
-                                  />
-                                </div>
-                              )}
-
-                              {clsRequests.length === 0 ? (
-                                <p className="text-xs text-slate-400 italic">No student requests yet.</p>
-                              ) : filteredRequests.length === 0 ? (
-                                <p className="text-xs text-slate-400 italic py-3 text-center">No student found.</p>
-                              ) : (
-                                <div className="max-h-[280px] overflow-y-auto pr-1 space-y-2.5 custom-scrollbar">
-                                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                                    {filteredRequests.map((req: any) => {
-                                      const student = req.studentId;
-                                      if (!student) return null;
+                                  <div className="max-h-40 overflow-y-auto space-y-1 custom-scrollbar">
+                                    {teacherPendingRequests.map((req: any) => {
+                                      const studentName = req.studentId?.name || "Student";
+                                      const classObj = req.classId;
+                                      if (!classObj) return null;
 
                                       return (
-                                        <div key={req._id} className="bg-white dark:bg-slate-900 p-3 rounded-xl border border-slate-200 dark:border-slate-800 flex flex-col justify-between gap-2.5">
-                                          {/* Clickable student card to view full profile & free card details */}
-                                          <div
-                                            onClick={() => handleOpenStudentDetails(student, cls._id, req.isFreeCard)}
-                                            className="flex items-center gap-2.5 cursor-pointer group"
-                                            title="Click to view student details"
-                                          >
-                                            <div className="w-9 h-9 rounded-full overflow-hidden bg-slate-100 dark:bg-slate-800 shrink-0 flex items-center justify-center border group-hover:border-blue-500 transition-colors">
-                                              {student.profileImage ? (
-                                                <img src={getStudentProfileImageUrl(student.profileImage) || ""} alt="" className="w-full h-full object-cover" />
-                                              ) : (
-                                                <User size={16} className="text-slate-400" />
-                                              )}
-                                            </div>
-                                            <div className="overflow-hidden">
-                                              <p className="text-xs font-bold text-slate-800 dark:text-white truncate group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">{student.name}</p>
-
-                                              {/* Status & Free Card Badge */}
-                                              <div className="flex flex-wrap items-center gap-1 mt-0.5">
-                                                <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-extrabold ${req.status === 'Approved' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400' :
-                                                    req.status === 'Blocked' ? 'bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400' :
-                                                      'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400'
-                                                  }`}>
-                                                  {req.status}
-                                                </span>
-
-                                                {/* Free Card Request Indicator Badge */}
-                                                {req.isFreeCard && (
-                                                  <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-orange-100 text-orange-700 dark:bg-orange-500/20 dark:text-orange-400">
-                                                    <CreditCard size={10} /> Free Card
-                                                  </span>
-                                                )}
-                                              </div>
-                                            </div>
-                                          </div>
-
-                                          <div className="flex items-center justify-between gap-1 pt-1.5 border-t border-slate-100 dark:border-slate-800">
-                                            {actionLoading === req._id ? (
-                                              <Loader2 className="animate-spin text-blue-600 mx-auto" size={14} />
-                                            ) : (
-                                              <div className="flex items-center gap-1 w-full justify-end">
-                                                {req.status !== 'Approved' && (
-                                                  <button
-                                                    onClick={() => handleStatusUpdate(req._id, 'Approved')}
-                                                    className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[10px] font-bold flex items-center gap-1 transition-colors"
-                                                    title="Approve Student"
-                                                  >
-                                                    <UserCheck size={12} /> Approve
-                                                  </button>
-                                                )}
-                                                {req.status !== 'Blocked' && (
-                                                  <button
-                                                    onClick={() => handleStatusUpdate(req._id, 'Blocked')}
-                                                    className="px-2.5 py-1 bg-red-600 hover:bg-red-700 text-white rounded-lg text-[10px] font-bold flex items-center gap-1 transition-colors"
-                                                    title="Block Student"
-                                                  >
-                                                    <UserX size={12} /> Block
-                                                  </button>
-                                                )}
-                                                <button
-                                                  onClick={() => handleDropStudent(req._id)}
-                                                  className="px-2.5 py-1 bg-slate-600 hover:bg-slate-700 text-white rounded-lg text-[10px] font-bold flex items-center gap-1 transition-colors"
-                                                  title="Drop Student"
-                                                >
-                                                  <Trash2 size={12} /> Drop
-                                                </button>
-                                              </div>
-                                            )}
-                                          </div>
+                                        <div
+                                          key={req._id}
+                                          onClick={() => handleJumpToClass(teacherId, classObj._id, classesList)}
+                                          className={`p-1.5 rounded-lg border cursor-pointer transition-all group text-[11px] ${
+                                            darkMode ? "bg-slate-800 border-slate-700 hover:bg-blue-900/20" : "bg-slate-50 border-slate-200 hover:bg-blue-50"
+                                          }`}
+                                        >
+                                          <p className="font-bold group-hover:text-blue-600">👤 {studentName}</p>
+                                          <p className="text-[9px] opacity-70 truncate mt-0.5">
+                                            📚 <span className="text-teal-600 dark:text-teal-400 font-semibold">{classObj.grade} - {classObj.medium} ({classObj.day})</span>
+                                          </p>
                                         </div>
                                       );
                                     })}
@@ -672,13 +553,274 @@ export default function AdminClassViewPage() {
                                 </div>
                               )}
                             </div>
+                          )}
+                        </div>
 
-                          </div>
-                        );
-                      })}
+                        <span className="opacity-40 hidden sm:inline">•</span>
+                        <p className="text-[11px] font-bold text-teal-600 dark:text-teal-400 flex items-center gap-1">
+                          <BookOpen size={11} /> {teacher?.subject}
+                        </p>
+                      </div>
                     </div>
 
+                    <div className="flex items-center gap-2">
+                      {/* Total Classes Badge */}
+                      <div className="bg-blue-600 text-white px-3 py-1 rounded-lg text-[11px] font-bold shadow-2xs flex items-center gap-1">
+                        <GraduationCap size={12} /> Classes: {classesList.length}
+                      </div>
+
+                      {/* Collapse / Expand Toggle Button */}
+                      <button
+                        onClick={() => handleToggleCollapse(teacherId)}
+                        className={`p-1.5 rounded-lg border transition-all flex items-center gap-1 text-[11px] font-bold ${
+                          darkMode ? "bg-slate-900 border-slate-700 text-slate-300 hover:bg-slate-700" : "bg-white border-slate-200 text-slate-700 hover:bg-slate-100"
+                        }`}
+                        title={isCollapsed ? "Expand Classes" : "Collapse Classes"}
+                      >
+                        {isCollapsed ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
+                        <span className="hidden sm:inline">{isCollapsed ? "Show" : "Hide"}</span>
+                      </button>
+                    </div>
                   </div>
+
+                  {/* Classes & Student Requests */}
+                  {!isCollapsed && (
+                    <div className="flex flex-col animate-fadeIn space-y-3">
+                      <div className="flex items-center justify-between">
+                        <h4 className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider">Conducted Classes & Requests</h4>
+
+                        {classesList.length > classesPerPage && (
+                          <div className="flex items-center gap-1">
+                            <button
+                              onClick={() => setTeacherPages(prev => ({ ...prev, [teacherId]: Math.max(currentPage - 1, 1) }))}
+                              disabled={currentPage === 1}
+                              className={`p-1 rounded-md disabled:opacity-40 disabled:cursor-not-allowed transition-all border text-[11px] ${
+                                darkMode ? "bg-slate-800 border-slate-700 text-slate-300" : "bg-slate-100 border-slate-200 text-slate-700"
+                              }`}
+                              title="Previous"
+                            >
+                              <ChevronLeft size={12} />
+                            </button>
+                            <span className="text-[11px] font-bold px-1.5">
+                              {currentPage}/{totalPages}
+                            </span>
+                            <button
+                              onClick={() => setTeacherPages(prev => ({ ...prev, [teacherId]: Math.min(currentPage + 1, totalPages) }))}
+                              disabled={currentPage === totalPages}
+                              className={`p-1 rounded-md disabled:opacity-40 disabled:cursor-not-allowed transition-all border text-[11px] ${
+                                darkMode ? "bg-slate-800 border-slate-700 text-slate-300" : "bg-slate-100 border-slate-200 text-slate-700"
+                              }`}
+                              title="Next"
+                            >
+                              <ChevronRight size={12} />
+                            </button>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                        {currentClasses.map((cls: any) => {
+                          const clsRequests = classRequests.filter((req: any) => req.classId?._id === cls._id);
+                          const totalStudentsCount = clsRequests.length;
+
+                          const query = (searchQueries[cls._id] || "").toLowerCase();
+                          const filteredRequests = clsRequests.filter((req: any) =>
+                            req.studentId?.name?.toLowerCase().includes(query)
+                          );
+
+                          return (
+                            <div 
+                              key={cls._id} 
+                              id={`class-card-${cls._id}`} 
+                              className={`p-3.5 rounded-xl border shadow-2xs flex flex-col justify-between gap-3 transition-all ${
+                                darkMode ? "bg-slate-800/40 border-slate-700/80" : "bg-slate-50 border-slate-200/80"
+                              }`}
+                            >
+
+                              <div className="space-y-2.5">
+                                {/* Class Cover Image Display */}
+                                <div className={`relative w-full h-28 rounded-xl overflow-hidden border ${
+                                  darkMode ? "border-slate-700 bg-slate-900" : "border-slate-200 bg-slate-100"
+                                }`}>
+                                  {cls.coverImage ? (
+                                    <img src={`http://localhost:5000${cls.coverImage}`} alt={cls.grade} className="w-full h-full object-cover" />
+                                  ) : (
+                                    <div className="w-full h-full flex flex-col items-center justify-center text-slate-400 gap-0.5">
+                                      <ImageIcon size={20} />
+                                      <span className="text-[9px] italic">No cover photo</span>
+                                    </div>
+                                  )}
+                                  <button
+                                    onClick={() => {
+                                      setEditingClass(cls);
+                                      setEditDescription(cls.description || "");
+                                      setEditCoverImage(null);
+                                    }}
+                                    className="absolute top-1.5 right-1.5 bg-slate-900/70 hover:bg-slate-900 text-white px-2 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1 backdrop-blur-sm transition-all"
+                                    title="Edit Info"
+                                  >
+                                    <Edit3 size={11} /> Edit
+                                  </button>
+                                </div>
+
+                                <div className="flex flex-wrap items-center justify-between gap-1.5">
+                                  <div className="flex flex-wrap items-center gap-1.5">
+                                    <span className="px-2.5 py-0.5 bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded-lg text-[10px] font-extrabold">
+                                      {cls.grade}
+                                    </span>
+                                    <span className="px-2.5 py-0.5 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 rounded-lg text-[10px] font-extrabold">
+                                      {cls.medium}
+                                    </span>
+                                    <span className="px-2.5 py-0.5 bg-orange-50 dark:bg-orange-500/10 text-orange-600 dark:text-orange-400 rounded-lg text-[10px] font-extrabold flex items-center gap-0.5">
+                                      <Monitor size={10} /> {cls.mode}
+                                    </span>
+                                  </div>
+
+                                  <div className="px-2.5 py-0.5 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-500/20 rounded-lg text-[10px] font-bold flex items-center gap-1">
+                                    <Users size={11} /> Students: {totalStudentsCount}
+                                  </div>
+                                </div>
+
+                                <div className="flex flex-wrap items-center gap-3 text-[11px] font-bold opacity-80">
+                                  <div className="flex items-center gap-1">
+                                    <Calendar size={12} className="text-blue-500" /> <span>{cls.day}</span>
+                                  </div>
+                                  <div className="flex items-center gap-1">
+                                    <Clock size={12} className="text-orange-500" /> <span>{cls.startTime} - {cls.endTime}</span>
+                                  </div>
+                                </div>
+
+                                {cls.description ? (
+                                  <p className={`text-[11px] italic p-2 rounded-lg border ${
+                                    darkMode ? "bg-slate-900 border-slate-700 text-slate-300" : "bg-white border-slate-200 text-slate-600"
+                                  }`}>
+                                    {cls.description}
+                                  </p>
+                                ) : (
+                                  <p className="text-[10px] text-slate-400 italic">No description provided.</p>
+                                )}
+                              </div>
+
+                              {/* Student Requests Section for this Class */}
+                              <div className={`pt-2.5 border-t ${darkMode ? "border-slate-700/80" : "border-slate-200/80"}`}>
+                                <div className="flex items-center justify-between mb-1.5">
+                                  <h5 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                                    Student Requests ({clsRequests.length})
+                                  </h5>
+                                </div>
+
+                                {clsRequests.length > 0 && (
+                                  <div className="relative mb-2">
+                                    <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                                    <input
+                                      type="text"
+                                      placeholder="Search student..."
+                                      value={searchQueries[cls._id] || ""}
+                                      onChange={(e) => handleSearchChange(cls._id, e.target.value)}
+                                      className={`w-full pl-8 pr-2.5 py-1 rounded-lg text-[11px] focus:outline-none focus:ring-1 focus:ring-blue-500 border ${
+                                        darkMode ? "bg-slate-900 border-slate-700 text-white" : "bg-white border-slate-200 text-slate-900"
+                                      }`}
+                                    />
+                                  </div>
+                                )}
+
+                                {clsRequests.length === 0 ? (
+                                  <p className="text-[11px] text-slate-400 italic">No student requests yet.</p>
+                                ) : filteredRequests.length === 0 ? (
+                                  <p className="text-[11px] text-slate-400 italic py-2 text-center">No student found.</p>
+                                ) : (
+                                  <div className="max-h-48 overflow-y-auto pr-1 space-y-2 custom-scrollbar">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                      {filteredRequests.map((req: any) => {
+                                        const student = req.studentId;
+                                        if (!student) return null;
+
+                                        return (
+                                          <div key={req._id} className={`p-2.5 rounded-xl border flex flex-col justify-between gap-2 ${
+                                            darkMode ? "bg-slate-900 border-slate-700" : "bg-white border-slate-200 shadow-2xs"
+                                          }`}>
+                                            <div
+                                              onClick={() => handleOpenStudentDetails(student, cls._id, req.isFreeCard)}
+                                              className="flex items-center gap-2 cursor-pointer group"
+                                              title="Click to view details"
+                                            >
+                                              <div className={`w-7 h-7 rounded-full overflow-hidden shrink-0 flex items-center justify-center border group-hover:border-blue-500 transition-colors ${
+                                                darkMode ? "bg-slate-800 border-slate-700" : "bg-slate-100 border-slate-200"
+                                              }`}>
+                                                {student.profileImage ? (
+                                                  <img src={getStudentProfileImageUrl(student.profileImage) || ""} alt="" className="w-full h-full object-cover" />
+                                                ) : (
+                                                  <User size={14} className="text-slate-400" />
+                                                )}
+                                              </div>
+                                              <div className="overflow-hidden">
+                                                <p className="text-[11px] font-bold truncate group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">{student.name}</p>
+
+                                                <div className="flex flex-wrap items-center gap-1 mt-0.5">
+                                                  <span className={`inline-block px-1.5 py-0.2 rounded-full text-[9px] font-extrabold ${req.status === 'Approved' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400' :
+                                                      req.status === 'Blocked' ? 'bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400' :
+                                                        'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400'
+                                                    }`}>
+                                                    {req.status}
+                                                  </span>
+
+                                                  {req.isFreeCard && (
+                                                    <span className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded-full text-[9px] font-extrabold bg-orange-100 text-orange-700 dark:bg-orange-500/20 dark:text-orange-400">
+                                                      <CreditCard size={9} /> Free Card
+                                                    </span>
+                                                  )}
+                                                </div>
+                                              </div>
+                                            </div>
+
+                                            <div className={`flex items-center justify-between gap-1 pt-1 border-t ${darkMode ? "border-slate-800" : "border-slate-100"}`}>
+                                              {actionLoading === req._id ? (
+                                                <Loader2 className="animate-spin text-blue-600 mx-auto" size={12} />
+                                              ) : (
+                                                <div className="flex items-center gap-1 w-full justify-end">
+                                                  {req.status !== 'Approved' && (
+                                                    <button
+                                                      onClick={() => handleStatusUpdate(req._id, 'Approved')}
+                                                      className="px-2 py-0.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md text-[9px] font-bold flex items-center gap-0.5 transition-colors"
+                                                      title="Approve"
+                                                    >
+                                                      <UserCheck size={10} /> Approve
+                                                    </button>
+                                                  )}
+                                                  {req.status !== 'Blocked' && (
+                                                    <button
+                                                      onClick={() => handleStatusUpdate(req._id, 'Blocked')}
+                                                      className="px-2 py-0.5 bg-red-600 hover:bg-red-700 text-white rounded-md text-[9px] font-bold flex items-center gap-0.5 transition-colors"
+                                                      title="Block"
+                                                    >
+                                                      <UserX size={10} /> Block
+                                                    </button>
+                                                  )}
+                                                  <button
+                                                    onClick={() => handleDropStudent(req._id)}
+                                                    className="px-2 py-0.5 bg-slate-600 hover:bg-slate-700 text-white rounded-md text-[9px] font-bold flex items-center gap-0.5 transition-colors"
+                                                    title="Drop"
+                                                  >
+                                                    <Trash2 size={10} /> Drop
+                                                  </button>
+                                                </div>
+                                              )}
+                                            </div>
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                    </div>
+                  )}
 
                 </div>
               );
