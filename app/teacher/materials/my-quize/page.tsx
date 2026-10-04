@@ -6,6 +6,7 @@ import React, { useEffect, useState } from "react";
 import { CheckCircle, Clock, Globe, FileText, Trash2, AlertCircle, Image as ImageIcon, X, Check, Eye, User, CheckSquare, Send, Calendar, ArrowLeft, Download, Award } from "lucide-react";
 import { useTheme } from "@/app/context/ThemeContext";
 import axios from "axios";
+import QuizUploadSuccessPopup from "@/app/components/QuizUploadSuccessPopup"; // 👈 Popup සංරචකය ආනයනය කර ඇත
 
 interface SubQuestion {
   _id?: string;
@@ -73,6 +74,12 @@ export default function TeacherMyQuizzesPage() {
 
   const [essayMarksInput, setEssayMarksInput] = useState<{ [key: string]: { [qId: string]: any } }>({});
   const [checkedPapers, setCheckedPapers] = useState<{ [subId: string]: boolean }>({});
+  
+  // Essay සඳහා ගුරුවරයා ලබාදෙන Corrective Feedback / Text Box සඳහා වන state එක
+  const [teacherCorrectionInputs, setTeacherCorrectionInputs] = useState<{ [subId: string]: { [qId: string]: string } }>({});
+
+  // Save Marks to Database බටන් එක එබූ විට පෙන්වන Popup state එක
+  const [showSaveSuccessPopup, setShowSaveSuccessPopup] = useState(false);
 
   const fetchMyQuizzes = async () => {
     try {
@@ -266,22 +273,45 @@ export default function TeacherMyQuizzesPage() {
     });
   };
 
+  const handleTeacherCorrectionChange = (subId: string, qId: string, text: string) => {
+    setTeacherCorrectionInputs({
+      ...teacherCorrectionInputs,
+      [subId]: {
+        ...(teacherCorrectionInputs[subId] || {}),
+        [qId]: text
+      }
+    });
+  };
+
+  // Save Marks to Database බටන් එක එබූ විට ක්‍රියාත්මක වන කොටස (Components පිටුවේ ඇති popup එක පෙන්වා ස්වයංක්‍රීයව Student Submissions මොඩලයට යාම)
   const handleSendMarksToDB = async (subId: string) => {
     try {
       const token = localStorage.getItem("token");
       const marks = essayMarksInput[subId] || {};
+      const corrections = teacherCorrectionInputs[subId] || {};
+      
       const res = await axios.post(`http://localhost:5000/api/quiz/evaluate-essay`, {
         submissionId: subId,
-        essayMarks: marks
+        essayMarks: marks,
+        teacherCorrections: corrections
       }, {
         headers: { Authorization: `Bearer ${token}` }
       });
 
-      alert("Marks successfully sent and saved to database!");
+      // ලස්සන popup message එක පෙන්වීම
+      setShowSaveSuccessPopup(true);
+
       setSelectedQuizSubmissions(selectedQuizSubmissions.map(s => s._id === subId ? res.data.sub : s));
       if (selectedStudentSub && selectedStudentSub._id === subId) {
         setSelectedStudentSub(res.data.sub);
       }
+
+      // තත්පර 2 කින් පමණ popup එක automatically ඉවත් වී Student Submissions ලැයිස්තු දසුනට (Student list view) යැවීම
+      setTimeout(() => {
+        setShowSaveSuccessPopup(false);
+        setSelectedStudentSub(null);
+      }, 2000);
+
     } catch (err) {
       alert("Failed to send marks to database.");
     }
@@ -296,8 +326,11 @@ export default function TeacherMyQuizzesPage() {
       });
 
       if (res.status === 200) {
-        alert("All student objective papers checked and marks successfully saved to database!");
-        openSubmissionsModal(selectedQuizDetails);
+        setShowSaveSuccessPopup(true);
+        setTimeout(() => {
+          setShowSaveSuccessPopup(false);
+          openSubmissionsModal(selectedQuizDetails);
+        }, 2000);
       }
     } catch (err) {
       alert("Failed to evaluate and send all marks.");
@@ -364,7 +397,8 @@ export default function TeacherMyQuizzesPage() {
         const correctStr = Array.isArray(q.correctAnswer) ? q.correctAnswer.join(', ') : String(q.correctAnswer || '');
         htmlContent += `<div class="correct-ans">✅ Correct Answers: ${correctStr}</div>`;
       } else if (q.type === 'single' || q.type === 'short') {
-        htmlContent += `<div class="correct-ans">✅ Correct Answer: ${String(q.correctAnswer || '')}</div>`;
+        const ansRef = String(q.correctAnswer || '').trim();
+        htmlContent += `<div class="correct-ans">✅ Correct Answer Reference: ${ansRef || 'None specified (Manual evaluation)'}</div>`;
       } else {
         htmlContent += `<div class="correct-ans">📝 Essay / Structured Question (Evaluated by Teacher)</div>`;
       }
@@ -396,6 +430,13 @@ export default function TeacherMyQuizzesPage() {
   return (
     <div className={`p-4 sm:p-6 lg:p-8 min-h-screen transition-colors duration-300 ${darkMode ? "bg-slate-950 text-white" : "bg-slate-50 text-slate-900"}`}>
       
+      {/* Save Success Popup Message */}
+      <QuizUploadSuccessPopup 
+        isOpen={showSaveSuccessPopup}
+        onClose={() => setShowSaveSuccessPopup(false)}
+        message="Marks successfully saved to Database and paper evaluated!"
+      />
+
       {/* Submissions Evaluation Modal */}
       {submissionsModalOpen && selectedQuizDetails && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 overflow-y-auto">
@@ -439,7 +480,6 @@ export default function TeacherMyQuizzesPage() {
                     return sub.essayMarks[qIdStr] || 0;
                   };
 
-                  // ගණනය කළ මුළු ලකුණු පෙන්වීම සඳහා
                   let calculatedTotalScore = 0;
                   selectedQuizDetails.questions.forEach((q: any) => {
                     const qId = q._id.toString();
@@ -448,7 +488,13 @@ export default function TeacherMyQuizzesPage() {
                     if (q.type === 'single' || q.type === 'short') {
                       const cleanStudent = String(studentAns || "").trim().toLowerCase().replace(/[^a-z0-9]/g, '');
                       const cleanCorrect = String(q.correctAnswer || "").trim().toLowerCase().replace(/[^a-z0-9]/g, '');
-                      if (cleanStudent === cleanCorrect) calculatedTotalScore += q.marks;
+                      if (cleanCorrect && cleanStudent === cleanCorrect) {
+                        calculatedTotalScore += q.marks;
+                      } else if (!cleanCorrect) {
+                        // Short Answer එකට teacher answer key එකක් දී නැත්නම් අතින් දෙන ලකුණු හෝ ගනු ලැබේ
+                        const manualVal = (essayMarksInput[sub._id] || {})[qId] !== undefined ? Number((essayMarksInput[sub._id] || {})[qId]) : getSavedEssayMark(qId);
+                        calculatedTotalScore += manualVal || 0;
+                      }
                     } else if (q.type === 'mcq') {
                       const correctArr = Array.isArray(q.correctAnswer) ? q.correctAnswer : [q.correctAnswer];
                       if (Array.isArray(studentAns)) {
@@ -463,7 +509,6 @@ export default function TeacherMyQuizzesPage() {
                     }
                   });
 
-                  // ගුරුවරයා ලබාදුන් රචනා ලකුණු එකතු කිරීම
                   const currentEssayMarks = essayMarksInput[sub._id] || sub.essayMarks || {};
                   Object.entries(currentEssayMarks).forEach(([qIdKey, val]: [string, any]) => {
                     const targetQ = selectedQuizDetails.questions.find((q: any) => q._id.toString() === qIdKey);
@@ -497,7 +542,6 @@ export default function TeacherMyQuizzesPage() {
                         </span>
                       </div>
 
-                      {/* Check Answers Button */}
                       {!isChecked ? (
                         <div className="my-3">
                           <button 
@@ -509,18 +553,26 @@ export default function TeacherMyQuizzesPage() {
                         </div>
                       ) : (
                         <div className="space-y-4 pl-2 border-l-2 border-blue-500/40 my-3">
-                          <p className="text-xs font-bold text-emerald-500">✔ Auto-evaluation completed (Review right/wrong marks & give custom marks if needed):</p>
+                          <p className="text-xs font-bold text-emerald-500">✔ Auto-evaluation completed (Review right/wrong marks & give custom marks/feedback if needed):</p>
                           
                           {selectedQuizDetails.questions.map((q: any, qIdx: number) => {
                             const qId = q._id.toString();
                             const studentAns = studentAnswers[qId];
 
-                            // MCQ / Single / Short නිවැරදි දැයි පරීක්ෂා කිරීම
                             let isCorrect = false;
-                            if (q.type === 'single' || q.type === 'short') {
+                            if (q.type === 'single') {
                               const cleanStudent = String(studentAns || "").trim().toLowerCase().replace(/[^a-z0-9]/g, '');
                               const cleanCorrect = String(q.correctAnswer || "").trim().toLowerCase().replace(/[^a-z0-9]/g, '');
                               isCorrect = cleanStudent === cleanCorrect && cleanStudent !== "";
+                            } else if (q.type === 'short') {
+                              const cleanCorrect = String(q.correctAnswer || "").trim();
+                              if (cleanCorrect) {
+                                const cleanStudent = String(studentAns || "").trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+                                const cleanRef = cleanCorrect.toLowerCase().replace(/[^a-z0-9]/g, '');
+                                isCorrect = cleanStudent === cleanRef;
+                              } else {
+                                isCorrect = false; // Answer Key එකක් නැත, ගුරුවරයා අතින් ලකුණු දිය යුතුය
+                              }
                             } else if (q.type === 'mcq') {
                               const correctArr = Array.isArray(q.correctAnswer) ? q.correctAnswer : [q.correctAnswer];
                               if (Array.isArray(studentAns)) {
@@ -528,12 +580,11 @@ export default function TeacherMyQuizzesPage() {
                               }
                             }
 
-                            // එක් එක් ප්‍රශ්නයට සිසුවා ලබාගත් ලකුණු ගණනය කිරීම
                             let questionEarnedMarks = 0;
                             if (q.type !== 'essay') {
                               if (isCorrect) {
                                 questionEarnedMarks = q.marks;
-                              } else if (q.type === 'mcq') {
+                              } else {
                                 const manualMark = (essayMarksInput[sub._id] || {})[qId];
                                 questionEarnedMarks = manualMark !== undefined ? Number(manualMark) : getSavedEssayMark(qId);
                               }
@@ -550,6 +601,20 @@ export default function TeacherMyQuizzesPage() {
 
                             const hasSubQ = q.subQuestions && Array.isArray(q.subQuestions) && q.subQuestions.length > 0;
 
+                            // 👈 මෙහිදී Essay හෝ Short/Essay ප්‍රශ්න සඳහා සිසුවාගේ වැරදි පිළිතුරු වලට නිවැරදි දේවල් කුමක්දැයි ලිවීමට Text Box එක සකසා ඇත.
+                            // එසේම Sub-Questions වල පිළිතුරු JSON ආකාරයට අවුල් සහගතව පෙන්වීම වෙනුවට ලස්සනට සකසා ඇත.
+                            let formattedStudentAnswer = "";
+                            if (Array.isArray(studentAns)) {
+                              formattedStudentAnswer = studentAns.join(', ');
+                            } else if (typeof studentAns === 'object' && studentAns !== null) {
+                              // Sub-questions වල පිළිතුරු {"0":"...", "1":"..."} ලෙස තිබේ නම් ඒවා පිරිසිදු ලැයිස්තුවක් ලෙස පෙන්වීම
+                              formattedStudentAnswer = Object.entries(studentAns)
+                                .map(([k, v]) => `Part (${Number(k) + 1}): ${v}`)
+                                .join(' | ');
+                            } else {
+                              formattedStudentAnswer = String(studentAns || "No Answer Given");
+                            }
+
                             return (
                               <div key={qId} className={`p-4 rounded-xl border text-xs space-y-2.5 ${darkMode ? "bg-slate-900 border-slate-800" : "bg-white border-slate-200"}`}>
                                 <div className="flex justify-between items-center">
@@ -561,7 +626,7 @@ export default function TeacherMyQuizzesPage() {
                                       Score: {questionEarnedMarks} / {hasSubQ ? q.subQuestions.reduce((s: number, sq: any) => s + sq.marks, 0) : q.marks} Marks
                                     </span>
 
-                                    {q.type !== 'essay' && (
+                                    {q.type !== 'essay' && q.type !== 'short' && (
                                       <span className={`px-2.5 py-1 rounded-lg text-xs font-bold flex items-center gap-1 ${
                                         isCorrect ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" : "bg-rose-500/10 text-rose-500 border border-rose-500/20"
                                       }`}>
@@ -576,21 +641,37 @@ export default function TeacherMyQuizzesPage() {
                                   <div className="p-3 rounded-lg bg-slate-100 dark:bg-slate-800/80 border">
                                     <span className="text-[10px] text-slate-400 block font-bold mb-1">Student Answer:</span>
                                     <span className="text-slate-200 font-medium">
-                                      {Array.isArray(studentAns) ? studentAns.join(', ') : (typeof studentAns === 'object' && studentAns !== null ? JSON.stringify(studentAns) : (studentAns || "No Answer Given"))}
+                                      {formattedStudentAnswer}
                                     </span>
                                   </div>
 
                                   {q.type !== 'essay' && (
                                     <div className="p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
-                                      <span className="text-[10px] text-emerald-400 block font-bold mb-1">Teacher's Answer Key:</span>
+                                      <span className="text-[10px] text-emerald-400 block font-bold mb-1">Teacher's Answer Key Reference:</span>
                                       <span className="text-emerald-400 font-bold">
-                                        {Array.isArray(q.correctAnswer) ? q.correctAnswer.join(', ') : String(q.correctAnswer || '')}
+                                        {Array.isArray(q.correctAnswer) ? q.correctAnswer.join(', ') : String(q.correctAnswer || 'None specified (Manual grading)')}
                                       </span>
                                     </div>
                                   )}
                                 </div>
 
-                                {/* MCQ වැරදුණු විට ගුරුවරයාට අතින් ලකුණු ලබා දීමේ පහසුකම */}
+                                {/* Short Answer සඳහා Answer Key එකක් නොමැති නම් හෝ වැරදුණු විට ගුරුවරයාට ලකුණු දීමේ පහසුකම */}
+                                {q.type === 'short' && (
+                                  <div className="mt-3 pt-2 border-t flex items-center justify-between bg-amber-500/5 p-2.5 rounded-xl border border-amber-500/20">
+                                    <span className="font-bold text-xs text-amber-500">Give Short Answer Marks (Max {q.marks} Marks):</span>
+                                    <input 
+                                      type="number"
+                                      max={q.marks}
+                                      min={0}
+                                      defaultValue={getSavedEssayMark(qId)}
+                                      onChange={(e) => {
+                                        handleEssayMarkChange(sub._id, qId, Number(e.target.value));
+                                      }}
+                                      className="w-24 p-2 rounded-lg border bg-slate-800 text-center font-extrabold text-white text-sm focus:ring-2 focus:ring-amber-500"
+                                    />
+                                  </div>
+                                )}
+
                                 {q.type === 'mcq' && !isCorrect && (
                                   <div className="mt-3 pt-2 border-t flex items-center justify-between bg-amber-500/5 p-2.5 rounded-xl border border-amber-500/20">
                                     <span className="font-bold text-xs text-amber-500">Give Custom/Partial Marks (Max {q.marks} Marks):</span>
@@ -648,6 +729,20 @@ export default function TeacherMyQuizzesPage() {
                                     />
                                   </div>
                                 )}
+
+                                {/* 👈 ESSAY සහ අනෙකුත් ප්‍රශ්න සඳහා වැරදි උත්තර ලියා තිබේ නම් නිවැරදි දේවල් කුමක්දැයි සදහන් කිරීමට Text Box එක */}
+                                <div className="mt-3 pt-2 border-t">
+                                  <label className="block text-[11px] font-bold text-slate-400 mb-1">
+                                    Teacher's Correction / What is correct for this question (Feedback for student):
+                                  </label>
+                                  <textarea
+                                    rows={2}
+                                    placeholder="Write the correct explanation or advice for the student here..."
+                                    defaultValue={sub.teacherCorrections?.get ? sub.teacherCorrections.get(qId) : (sub.teacherCorrections?.[qId] || "")}
+                                    onChange={(e) => handleTeacherCorrectionChange(sub._id, qId, e.target.value)}
+                                    className="w-full p-2.5 text-xs rounded-xl border bg-slate-800/80 border-slate-700 text-white outline-none focus:ring-1 focus:ring-indigo-500"
+                                  />
+                                </div>
                               </div>
                             );
                           })}
@@ -1104,7 +1199,6 @@ export default function TeacherMyQuizzesPage() {
                             </div>
                           )}
 
-                          {/* MCQ or Single Options */}
                           {(q.type === 'mcq' || q.type === 'single') && q.options && q.options.length > 0 && (
                             <div className="space-y-1 mt-2 pl-2 border-l-2 border-indigo-500/40">
                               <p className="text-[11px] font-semibold text-slate-400">Options:</p>
@@ -1124,7 +1218,6 @@ export default function TeacherMyQuizzesPage() {
                             </div>
                           )}
 
-                          {/* Essay Sub-questions */}
                           {q.type === 'essay' && q.subQuestions && q.subQuestions.length > 0 && (
                             <div className="space-y-1 mt-2 pl-2 border-l-2 border-indigo-500/40">
                               <p className="text-[11px] font-semibold text-slate-400">Sub-Questions:</p>
@@ -1145,9 +1238,14 @@ export default function TeacherMyQuizzesPage() {
                                 ✅ Correct Answers: <strong className="text-emerald-400">{Array.isArray(q.correctAnswer) ? q.correctAnswer.join(', ') : String(q.correctAnswer || '')}</strong>
                               </span>
                             )}
-                            {(q.type === 'single' || q.type === 'short') && (
+                            {q.type === 'single' && (
                               <span className="font-mono bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 px-2.5 py-1 rounded inline-block text-[11px]">
                                 ✅ Correct Answer: <strong className="text-emerald-400">{String(q.correctAnswer || '')}</strong>
+                              </span>
+                            )}
+                            {q.type === 'short' && (
+                              <span className="font-mono bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 px-2.5 py-1 rounded inline-block text-[11px]">
+                                ✅ Correct Reference: <strong className="text-emerald-400">{String(q.correctAnswer || 'None (Manual grading)')}</strong>
                               </span>
                             )}
                             {q.type === 'essay' && (
