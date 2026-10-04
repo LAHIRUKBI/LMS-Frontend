@@ -4,7 +4,7 @@
 
 import { useEffect, useState, useMemo } from "react";
 import axios from "axios";
-import { Film, BookOpen, Loader2, PlayCircle, Trash2, AlertCircle, Globe, Search, Video, Calendar, Clock, CheckCircle2, MoreVertical, ExternalLink, X, Check, Gift } from "lucide-react"; 
+import { Film, BookOpen, Loader2, PlayCircle, Trash2, AlertCircle, Globe, Search, Video, Calendar, Clock, CheckCircle2, MoreVertical, ExternalLink, X, Check, Gift, ChevronLeft, ChevronRight } from "lucide-react"; 
 import { useTheme } from "@/app/context/ThemeContext";
 import PublishSuccessPopup from "@/app/components/PublishSuccessPopup";
 import DeleteConfirmPopup from "@/app/components/VideoDeleteConfirmPopup";
@@ -23,6 +23,10 @@ export default function MyVideosPage() {
   const [publishedItemName, setPublishedItemName] = useState("");
   const [deleteItem, setDeleteItem] = useState<any>(null);
 
+  // Pagination State (4 items per page as requested)
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 4;
+
   // Class Selection Modal States (Publish කිරීම සඳහා)
   const [publishModalOpen, setPublishModalOpen] = useState(false);
   const [selectedVideoForPublish, setSelectedVideoForPublish] = useState<any>(null);
@@ -34,6 +38,11 @@ export default function MyVideosPage() {
     fetchVideos();
     fetchTeacherClasses();
   }, []);
+
+  // Reset to page 1 whenever search or tab changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, activeTab]);
 
   const fetchVideos = async () => {
     const token = localStorage.getItem("token");
@@ -162,6 +171,13 @@ export default function MyVideosPage() {
     });
   }, [videos, searchTerm, activeTab]);
 
+  // Pagination Logic (4 items per page)
+  const totalPages = Math.ceil(filteredVideos.length / itemsPerPage);
+  const paginatedVideos = useMemo(() => {
+    const start = (currentPage - 1) * itemsPerPage;
+    return filteredVideos.slice(start, start + itemsPerPage);
+  }, [filteredVideos, currentPage]);
+
   const tabs = [
     { id: "all", label: "All Videos" },
     { id: "published", label: "Published" },
@@ -171,7 +187,7 @@ export default function MyVideosPage() {
   ];
 
   return (
-    <div className={`p-6 sm:p-8 min-h-screen transition-colors duration-300 font-sans ${darkMode ? "bg-slate-950" : "bg-slate-50/80"}`}>
+    <div className={`p-4 sm:p-6 min-h-screen transition-colors duration-300 font-sans ${darkMode ? "bg-slate-950" : "bg-slate-50/80"}`}>
       
       <PublishSuccessPopup 
         isOpen={isPublishPopupOpen} 
@@ -190,64 +206,64 @@ export default function MyVideosPage() {
       {/* Class Selection & Free Option Modal for Publishing */}
       {publishModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className={`w-full max-w-lg p-6 rounded-3xl shadow-2xl border ${darkMode ? "bg-slate-900 border-slate-800 text-white" : "bg-white border-slate-200 text-slate-900"}`}>
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-extrabold">Select Classes & Access to Publish Video</h3>
+          <div className={`w-full max-w-md p-5 rounded-2xl shadow-2xl border ${darkMode ? "bg-slate-900 border-slate-800 text-white" : "bg-white border-slate-200 text-slate-900"}`}>
+            <div className="flex justify-between items-center mb-3">
+              <h3 className="text-base font-extrabold">Select Classes & Access to Publish Video</h3>
               <button onClick={() => setPublishModalOpen(false)} className="p-1 rounded-lg text-slate-400 hover:bg-slate-500/10">
-                <X size={20} />
+                <X size={18} />
               </button>
             </div>
-            <p className="text-xs text-slate-400 mb-4">Choose classes where this video should be published, or make it Free for everyone.</p>
+            <p className="text-[11px] text-slate-400 mb-3">Choose classes where this video should be published, or make it Free for everyone.</p>
 
             {/* Free Option Toggle Selector */}
             <div 
               onClick={() => setIsFreeChecked(!isFreeChecked)}
-              className={`mb-5 p-4 rounded-2xl border cursor-pointer flex items-center justify-between transition-all ${
+              className={`mb-4 p-3 rounded-xl border cursor-pointer flex items-center justify-between transition-all ${
                 isFreeChecked 
                   ? (darkMode ? "bg-emerald-500/10 border-emerald-500/50 text-white" : "bg-emerald-50 border-emerald-300 text-slate-900")
                   : (darkMode ? "bg-slate-800/50 border-slate-800 text-slate-300" : "bg-slate-50 border-slate-200 text-slate-700")
               }`}
             >
-              <div className="flex items-center gap-3">
-                <div className={`p-2 rounded-xl ${isFreeChecked ? "bg-emerald-600 text-white" : "bg-slate-500/20 text-slate-400"}`}>
-                  <Gift size={18} />
+              <div className="flex items-center gap-2.5">
+                <div className={`p-1.5 rounded-lg ${isFreeChecked ? "bg-emerald-600 text-white" : "bg-slate-500/20 text-slate-400"}`}>
+                  <Gift size={16} />
                 </div>
                 <div>
-                  <h4 className="font-bold text-sm">Make it Free (Public)</h4>
-                  <p className="text-xs opacity-70">Visible to both registered and unregistered students on the Free page.</p>
+                  <h4 className="font-bold text-xs">Make it Free (Public)</h4>
+                  <p className="text-[10px] opacity-70">Visible to registered and unregistered students.</p>
                 </div>
               </div>
-              <div className={`w-5 h-5 rounded-lg flex items-center justify-center border ${isFreeChecked ? "bg-emerald-600 border-emerald-600 text-white" : "border-slate-400"}`}>
-                {isFreeChecked && <Check size={14} />}
+              <div className={`w-4 h-4 rounded-md flex items-center justify-center border ${isFreeChecked ? "bg-emerald-600 border-emerald-600 text-white" : "border-slate-400"}`}>
+                {isFreeChecked && <Check size={12} />}
               </div>
             </div>
 
-            <div className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">Select Classes</div>
+            <div className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2">Select Classes</div>
             {teacherClasses.length === 0 ? (
-              <p className="text-sm text-center py-4 text-slate-500">No classes created yet. Please create a class first.</p>
+              <p className="text-xs text-center py-3 text-slate-500">No classes created yet. Please create a class first.</p>
             ) : (
-              <div className="space-y-2 max-h-48 overflow-y-auto pr-1 mb-6">
+              <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1 mb-4">
                 {teacherClasses.map((cls) => {
                   const isSelected = selectedClassIds.includes(cls._id);
                   return (
                     <div 
                       key={cls._id}
                       onClick={() => toggleClassSelection(cls._id)}
-                      className={`p-3.5 rounded-2xl border cursor-pointer flex items-center justify-between transition-all ${
+                      className={`p-3 rounded-xl border cursor-pointer flex items-center justify-between transition-all ${
                         isSelected 
                           ? (darkMode ? "bg-indigo-500/10 border-indigo-500/50 text-white" : "bg-indigo-50 border-indigo-300 text-slate-900")
                           : (darkMode ? "bg-slate-800/50 border-slate-800 text-slate-300" : "bg-slate-50 border-slate-200 text-slate-700")
                       }`}
                     >
                       <div>
-                        <div className="flex items-center gap-2">
-                          <span className="font-bold text-sm">{cls.grade}</span>
-                          <span className="text-xs opacity-70">({cls.medium} - {cls.mode})</span>
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-bold text-xs">{cls.grade}</span>
+                          <span className="text-[10px] opacity-70">({cls.medium} - {cls.mode})</span>
                         </div>
-                        <p className="text-xs opacity-60 mt-0.5">{cls.day} | {cls.startTime} - {cls.endTime}</p>
+                        <p className="text-[10px] opacity-60 mt-0.5">{cls.day} | {cls.startTime} - {cls.endTime}</p>
                       </div>
-                      <div className={`w-5 h-5 rounded-lg flex items-center justify-center border ${isSelected ? "bg-indigo-600 border-indigo-600 text-white" : "border-slate-400"}`}>
-                        {isSelected && <Check size={14} />}
+                      <div className={`w-4 h-4 rounded-md flex items-center justify-center border ${isSelected ? "bg-indigo-600 border-indigo-600 text-white" : "border-slate-400"}`}>
+                        {isSelected && <Check size={12} />}
                       </div>
                     </div>
                   );
@@ -255,14 +271,14 @@ export default function MyVideosPage() {
               </div>
             )}
 
-            <div className="flex justify-end gap-3">
-              <button onClick={() => setPublishModalOpen(false)} className={`px-5 py-2.5 rounded-xl text-xs font-bold ${darkMode ? "bg-slate-800 text-slate-300" : "bg-slate-100 text-slate-700"}`}>
+            <div className="flex justify-end gap-2">
+              <button onClick={() => setPublishModalOpen(false)} className={`px-4 py-2 rounded-xl text-xs font-bold ${darkMode ? "bg-slate-800 text-slate-300" : "bg-slate-100 text-slate-700"}`}>
                 Cancel
               </button>
               <button 
                 onClick={handleConfirmPublish}
                 disabled={selectedClassIds.length === 0 && !isFreeChecked}
-                className="px-6 py-2.5 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-white disabled:opacity-50 shadow-md"
+                className="px-5 py-2 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-white disabled:opacity-50 shadow-md"
               >
                 Publish Now
               </button>
@@ -271,42 +287,42 @@ export default function MyVideosPage() {
         </div>
       )}
 
-      <div className="max-w-[1400px] mx-auto">
-        <div className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-6">
-          <div className="flex items-center gap-4">
-            <div className={`flex h-14 w-14 items-center justify-center rounded-2xl shadow-sm ${darkMode ? "bg-indigo-500/10 text-indigo-400 border border-indigo-500/20" : "bg-white text-indigo-600 border border-indigo-100"}`}>
-              <Film size={26} strokeWidth={2} />
+      <div className="max-w-6xl mx-auto">
+        <div className="mb-6 flex flex-col md:flex-row md:items-end justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className={`flex h-12 w-12 items-center justify-center rounded-2xl shadow-sm ${darkMode ? "bg-indigo-500/10 text-indigo-400 border border-indigo-500/20" : "bg-white text-indigo-600 border border-indigo-100"}`}>
+              <Film size={22} strokeWidth={2} />
             </div>
             <div>
-              <h2 className={`text-2xl sm:text-3xl font-extrabold tracking-tight ${darkMode ? "text-white" : "text-slate-900"}`}>
+              <h2 className={`text-xl sm:text-2xl font-extrabold tracking-tight ${darkMode ? "text-white" : "text-slate-900"}`}>
                 My Video Lessons
               </h2>
-              <p className={`mt-1 text-sm font-medium ${darkMode ? "text-slate-400" : "text-slate-500"}`}>
-                Manage, view, and publish your uploaded video lessons.
+              <p className={`mt-0.5 text-xs font-medium ${darkMode ? "text-slate-400" : "text-slate-500"}`}>
+                Manage, view, and publish your uploaded video lessons (Max 4 per view).
               </p>
             </div>
           </div>
 
-          <div className="relative w-full md:w-80">
-            <Search className={`absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 ${darkMode ? "text-slate-500" : "text-slate-400"}`} />
+          <div className="relative w-full md:w-72">
+            <Search className={`absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 ${darkMode ? "text-slate-500" : "text-slate-400"}`} />
             <input 
               type="text" 
-              placeholder="Search videos by title or subject..." 
+              placeholder="Search videos..." 
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className={`w-full pl-10 pr-4 py-2.5 rounded-xl border text-sm font-medium transition-all focus:outline-none focus:ring-2 focus:ring-indigo-500/50 ${
+              className={`w-full pl-9 pr-3 py-2 rounded-xl border text-xs font-medium transition-all focus:outline-none focus:ring-2 focus:ring-indigo-500/50 ${
                 darkMode ? "bg-slate-900 border-slate-800 text-slate-200 placeholder-slate-500" : "bg-white border-slate-200 text-slate-800 placeholder-slate-400 shadow-sm"
               }`}
             />
           </div>
         </div>
 
-        <div className="flex overflow-x-auto gap-2 mb-6 pb-2 scrollbar-hide">
+        <div className="flex overflow-x-auto gap-1.5 mb-5 pb-1 scrollbar-hide">
           {tabs.map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`px-4 py-2 rounded-xl text-xs sm:text-sm font-bold whitespace-nowrap transition-all ${
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${
                 activeTab === tab.id
                   ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/20"
                   : (darkMode ? "bg-slate-900 text-slate-400 hover:bg-slate-800 border border-slate-800" : "bg-white text-slate-600 hover:bg-slate-100 border border-slate-200 shadow-sm")
@@ -318,164 +334,202 @@ export default function MyVideosPage() {
         </div>
 
         {loading ? (
-          <div className="flex flex-col justify-center items-center h-64 gap-3">
-            <Loader2 className="animate-spin text-indigo-500" size={36} />
-            <span className={`text-sm font-medium ${darkMode ? "text-slate-400" : "text-slate-500"}`}>Loading videos...</span>
+          <div className="flex flex-col justify-center items-center h-48 gap-2">
+            <Loader2 className="animate-spin text-indigo-500" size={30} />
+            <span className={`text-xs font-medium ${darkMode ? "text-slate-400" : "text-slate-500"}`}>Loading videos...</span>
           </div>
         ) : filteredVideos.length === 0 ? (
-          <div className={`py-16 flex flex-col items-center justify-center text-center rounded-3xl border ${darkMode ? "bg-slate-900/50 border-slate-800" : "bg-white border-slate-200 shadow-sm"}`}>
-            <Video size={36} className="text-slate-400 mb-3" />
-            <h3 className={`text-lg font-bold mb-1 ${darkMode ? "text-slate-300" : "text-slate-700"}`}>No videos found</h3>
+          <div className={`py-12 flex flex-col items-center justify-center text-center rounded-2xl border ${darkMode ? "bg-slate-900/50 border-slate-800" : "bg-white border-slate-200 shadow-sm"}`}>
+            <Video size={30} className="text-slate-400 mb-2" />
+            <h3 className={`text-sm font-bold mb-0.5 ${darkMode ? "text-slate-300" : "text-slate-700"}`}>No videos found</h3>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
-            {filteredVideos.map((video) => (
-              <div 
-                key={video._id} 
-                className={`group flex flex-col overflow-hidden rounded-2xl border transition-all hover:shadow-xl hover:-translate-y-1 ${
-                  darkMode ? "bg-slate-900/80 border-slate-800" : "bg-white border-slate-200 shadow-sm"
-                }`}
-              >
-                
-                <a 
-                  href={`http://localhost:5000${video.fileUrl}`} 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className={`relative w-full aspect-video overflow-hidden group/thumb cursor-pointer block ${
-                    darkMode ? "bg-black border-b border-slate-800" : "bg-slate-100 border-b border-slate-200"
+          <>
+            {/* Exactly 4 items grid layout per page (2x2 or 4 in a compact row style depending on screen) */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {paginatedVideos.map((video) => (
+                <div 
+                  key={video._id} 
+                  className={`group flex flex-col overflow-hidden rounded-xl border transition-all hover:shadow-lg ${
+                    darkMode ? "bg-slate-900/80 border-slate-800" : "bg-white border-slate-200 shadow-sm"
                   }`}
                 >
-                  <video 
-                    src={`http://localhost:5000${video.fileUrl}#t=0.1`} 
-                    className="w-full h-full object-cover transition-transform duration-500 group-hover/thumb:scale-105"
-                    preload="metadata"
-                    muted
-                    playsInline
-                  />
                   
-                  <div className="absolute inset-0 bg-black/20 group-hover/thumb:bg-black/40 flex items-center justify-center transition-colors">
-                    <div className="w-12 h-12 flex items-center justify-center rounded-full bg-white/20 backdrop-blur-sm border border-white/30 group-hover/thumb:bg-indigo-600 transition-all shadow-lg">
-                      <PlayCircle size={24} className="text-white ml-1" />
+                  <a 
+                    href={`http://localhost:5000${video.fileUrl}`} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className={`relative w-full aspect-video overflow-hidden group/thumb cursor-pointer block ${
+                      darkMode ? "bg-black border-b border-slate-800" : "bg-slate-100 border-b border-slate-200"
+                    }`}
+                  >
+                    <video 
+                      src={`http://localhost:5000${video.fileUrl}#t=0.1`} 
+                      className="w-full h-full object-cover transition-transform duration-500 group-hover/thumb:scale-105"
+                      preload="metadata"
+                      muted
+                      playsInline
+                    />
+                    
+                    <div className="absolute inset-0 bg-black/20 group-hover/thumb:bg-black/40 flex items-center justify-center transition-colors">
+                      <div className="w-10 h-10 flex items-center justify-center rounded-full bg-white/20 backdrop-blur-sm border border-white/30 group-hover/thumb:bg-indigo-600 transition-all shadow-md">
+                        <PlayCircle size={20} className="text-white ml-0.5" />
+                      </div>
                     </div>
-                  </div>
 
-                  <div className="absolute top-2 right-2 flex flex-col gap-1.5 items-end">
-                    <div className="bg-black/70 backdrop-blur-md text-white text-[10px] px-2 py-0.5 rounded-md font-bold tracking-widest shadow-sm">
-                      MP4
+                    <div className="absolute top-1.5 right-1.5 flex flex-col gap-1 items-end">
+                      <div className="bg-black/70 backdrop-blur-md text-white text-[9px] px-1.5 py-0.5 rounded font-bold tracking-widest shadow-sm">
+                        MP4
+                      </div>
+                      {video.status === 'pending' && <span className="bg-amber-500/90 text-white text-[8px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wider">Pending</span>}
+                      {video.status === 'approved' && !video.isPublished && <span className="bg-emerald-500/90 text-white text-[8px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wider">Approved</span>}
+                      {video.status === 'rejected' && <span className="bg-red-500/90 text-white text-[8px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wider">Rejected</span>}
+                      {video.isPublished && <span className="bg-blue-600/90 text-white text-[8px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wider flex items-center gap-0.5"><Globe size={8} /> Published</span>}
+                      {video.isFree && <span className="bg-emerald-600/90 text-white text-[8px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wider flex items-center gap-0.5"><Gift size={8} /> Free</span>}
                     </div>
-                    {video.status === 'pending' && <span className="bg-amber-500/90 text-white text-[9px] px-2 py-0.5 rounded-md font-bold uppercase tracking-wider">Pending</span>}
-                    {video.status === 'approved' && !video.isPublished && <span className="bg-emerald-500/90 text-white text-[9px] px-2 py-0.5 rounded-md font-bold uppercase tracking-wider">Approved</span>}
-                    {video.status === 'rejected' && <span className="bg-red-500/90 text-white text-[9px] px-2 py-0.5 rounded-md font-bold uppercase tracking-wider">Rejected</span>}
-                    {video.isPublished && <span className="bg-blue-600/90 text-white text-[9px] px-2 py-0.5 rounded-md font-bold uppercase tracking-wider flex items-center gap-1"><Globe size={10} /> Published</span>}
-                    {video.isFree && <span className="bg-emerald-600/90 text-white text-[9px] px-2 py-0.5 rounded-md font-bold uppercase tracking-wider flex items-center gap-1"><Gift size={10} /> Free</span>}
-                  </div>
-                </a>
-                
-                <div className="flex-1 p-4 flex flex-col">
-                  <h3 className={`font-bold text-sm line-clamp-2 mb-3 ${darkMode ? "text-slate-100" : "text-slate-800"}`} title={video.title}>
-                    {video.title}
-                  </h3>
+                  </a>
                   
-                  <div className={`mt-auto flex flex-col gap-1.5 text-xs font-semibold ${darkMode ? "text-slate-400" : "text-slate-500"}`}>
-                    <div className="flex items-center gap-1.5 truncate">
-                      <BookOpen size={14} /> 
-                      <span className="truncate">{video.subject} {video.grade && `• ${video.grade}`}</span>
+                  <div className="flex-1 p-3 flex flex-col">
+                    <h3 className={`font-bold text-xs line-clamp-2 mb-2 ${darkMode ? "text-slate-100" : "text-slate-800"}`} title={video.title}>
+                      {video.title}
+                    </h3>
+                    
+                    <div className={`mt-auto flex flex-col gap-1 text-[11px] font-semibold ${darkMode ? "text-slate-400" : "text-slate-500"}`}>
+                      <div className="flex items-center gap-1 truncate">
+                        <BookOpen size={12} /> 
+                        <span className="truncate">{video.subject} {video.grade && `• ${video.grade}`}</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Calendar size={12} /> 
+                        <span>{new Date(video.createdAt).toLocaleDateString()}</span>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-1.5">
-                      <Calendar size={14} /> 
-                      <span>{new Date(video.createdAt).toLocaleDateString()}</span>
-                    </div>
-                  </div>
 
-                  {/* Published Classes & Free Tag Display List */}
-                  {video.isPublished && ((video.classIds && video.classIds.length > 0) || video.isFree) && (
-                    <div className={`mt-3 pt-2 border-t flex flex-wrap gap-1 ${darkMode ? "border-slate-800" : "border-slate-100"}`}>
-                      <span className="text-[10px] font-bold text-slate-400 uppercase w-full">Published to:</span>
-                      
-                      {video.isFree && (
-                        <span className="text-[10px] px-2 py-0.5 rounded font-bold border flex items-center gap-1 bg-emerald-500/10 border-emerald-500/30 text-emerald-400">
-                          <Gift size={10} /> Free Page
-                          <button 
-                            onClick={async () => {
-                              const token = localStorage.getItem("token");
-                              const res = await axios.put(`http://localhost:5000/api/materials/${video._id}/publish`, {
-                                classIds: video.classIds.map((c: any) => c._id || c),
-                                isFree: false
-                              }, { headers: { Authorization: `Bearer ${token}` } });
-                              setVideos(videos.map(item => item._id === video._id ? res.data.material : item));
-                            }}
-                            className="hover:bg-emerald-500/20 rounded p-0.5 ml-0.5"
-                            title="Remove from Free"
-                          >
-                            <X size={10} />
-                          </button>
-                        </span>
-                      )}
-
-                      {video.classIds && video.classIds.map((cls: any) => {
-                        const classId = cls._id || cls;
-                        const displayTitle = cls.grade ? `${cls.grade} - ${cls.medium}` : "Class";
-                        return (
-                          <span key={classId} className={`text-[10px] px-2 py-0.5 rounded font-bold border flex items-center gap-1 ${darkMode ? "bg-slate-800 border-slate-700 text-indigo-400" : "bg-indigo-50 border-indigo-200 text-indigo-700"}`}>
-                            {displayTitle}
+                    {/* Published Classes & Free Tag Display List */}
+                    {video.isPublished && ((video.classIds && video.classIds.length > 0) || video.isFree) && (
+                      <div className={`mt-2 pt-2 border-t flex flex-wrap gap-1 ${darkMode ? "border-slate-800" : "border-slate-100"}`}>
+                        <span className="text-[9px] font-bold text-slate-400 uppercase w-full">Published to:</span>
+                        
+                        {video.isFree && (
+                          <span className="text-[9px] px-1.5 py-0.5 rounded font-bold border flex items-center gap-1 bg-emerald-500/10 border-emerald-500/30 text-emerald-400">
+                            <Gift size={9} /> Free Page
                             <button 
-                              onClick={() => handleRemoveSingleClass(video, classId)}
-                              className="hover:bg-indigo-500/20 rounded p-0.5 ml-0.5"
-                              title="Remove from this class"
+                              onClick={async () => {
+                                const token = localStorage.getItem("token");
+                                const res = await axios.put(`http://localhost:5000/api/materials/${video._id}/publish`, {
+                                  classIds: video.classIds.map((c: any) => c._id || c),
+                                  isFree: false
+                                }, { headers: { Authorization: `Bearer ${token}` } });
+                                setVideos(videos.map(item => item._id === video._id ? res.data.material : item));
+                              }}
+                              className="hover:bg-emerald-500/20 rounded p-0.5 ml-0.5"
+                              title="Remove from Free"
                             >
-                              <X size={10} />
+                              <X size={9} />
                             </button>
                           </span>
-                        );
-                      })}
-                    </div>
-                  )}
-
-                  {video.status === 'rejected' && video.rejectReason && (
-                    <div className="mt-3 flex items-start gap-1.5 text-[11px] font-medium text-red-500 bg-red-500/10 px-2.5 py-1.5 rounded-lg border border-red-500/20">
-                      <AlertCircle size={14} className="mt-0.5 flex-shrink-0" />
-                      <span className="line-clamp-2"><strong className="font-bold">Reason:</strong> {video.rejectReason}</span>
-                    </div>
-                  )}
-                </div>
-
-                <div className={`p-3 border-t flex items-center justify-between gap-2 ${darkMode ? "border-slate-800 bg-slate-900/50" : "border-slate-100 bg-slate-50/50"}`}>
-                  <div className="flex-1 flex gap-1.5">
-                    {video.status === 'approved' && (
-                      <>
-                        <button 
-                          onClick={() => openPublishModal(video)}
-                          className="flex items-center justify-center flex-1 gap-1 py-1.5 rounded-lg font-bold text-xs bg-blue-600 hover:bg-blue-500 text-white shadow-sm"
-                        >
-                          <Globe size={13} /> {video.isPublished ? "Edit" : "Publish"}
-                        </button>
-
-                        {video.isPublished && (
-                          <button 
-                            onClick={() => handleUnpublish(video._id)}
-                            className="flex items-center justify-center px-2 py-1.5 rounded-lg font-bold text-[11px] bg-rose-600/10 hover:bg-rose-600 text-rose-500 hover:text-white transition-all border border-rose-500/20"
-                            title="Unpublish All"
-                          >
-                            Unpublish
-                          </button>
                         )}
-                      </>
+
+                        {video.classIds && video.classIds.map((cls: any) => {
+                          const classId = cls._id || cls;
+                          const displayTitle = cls.grade ? `${cls.grade} - ${cls.medium}` : "Class";
+                          return (
+                            <span key={classId} className={`text-[9px] px-1.5 py-0.5 rounded font-bold border flex items-center gap-1 ${darkMode ? "bg-slate-800 border-slate-700 text-indigo-400" : "bg-indigo-50 border-indigo-200 text-indigo-700"}`}>
+                              {displayTitle}
+                              <button 
+                                onClick={() => handleRemoveSingleClass(video, classId)}
+                                className="hover:bg-indigo-500/20 rounded p-0.5 ml-0.5"
+                                title="Remove from this class"
+                              >
+                                <X size={9} />
+                              </button>
+                            </span>
+                          );
+                        })}
+                      </div>
+                    )}
+
+                    {video.status === 'rejected' && video.rejectReason && (
+                      <div className="mt-2 flex items-start gap-1 text-[10px] font-medium text-red-500 bg-red-500/10 px-2 py-1 rounded border border-red-500/20">
+                        <AlertCircle size={12} className="mt-0.5 flex-shrink-0" />
+                        <span className="line-clamp-2"><strong className="font-bold">Reason:</strong> {video.rejectReason}</span>
+                      </div>
                     )}
                   </div>
 
-                  <div className="flex items-center gap-1">
-                    <a href={`http://localhost:5000${video.fileUrl}`} target="_blank" rel="noopener noreferrer" className="p-1.5 rounded-lg hover:bg-slate-700 text-slate-400" title="Open in new tab">
-                      <ExternalLink size={16} />
-                    </a>
-                    <button onClick={() => setDeleteItem(video)} className="p-1.5 rounded-lg hover:bg-red-500/10 text-slate-400 hover:text-red-400" title="Delete Video">
-                      <Trash2 size={16} />
-                    </button>
-                  </div>
-                </div>
+                  <div className={`p-2.5 border-t flex items-center justify-between gap-1.5 ${darkMode ? "border-slate-800 bg-slate-900/50" : "border-slate-100 bg-slate-50/50"}`}>
+                    <div className="flex-1 flex gap-1">
+                      {video.status === 'approved' && (
+                        <>
+                          <button 
+                            onClick={() => openPublishModal(video)}
+                            className="flex items-center justify-center flex-1 gap-1 py-1 rounded-lg font-bold text-[11px] bg-blue-600 hover:bg-blue-500 text-white shadow-sm"
+                          >
+                            <Globe size={11} /> {video.isPublished ? "Edit" : "Publish"}
+                          </button>
 
+                          {video.isPublished && (
+                            <button 
+                              onClick={() => handleUnpublish(video._id)}
+                              className="flex items-center justify-center px-2 py-1 rounded-lg font-bold text-[10px] bg-rose-600/10 hover:bg-rose-600 text-rose-500 hover:text-white transition-all border border-rose-500/20"
+                              title="Unpublish All"
+                            >
+                              Unpublish
+                            </button>
+                          )}
+                        </>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-1">
+                      <a href={`http://localhost:5000${video.fileUrl}`} target="_blank" rel="noopener noreferrer" className="p-1.5 rounded-lg hover:bg-slate-700/20 text-slate-400" title="Open in new tab">
+                        <ExternalLink size={14} />
+                      </a>
+                      <button onClick={() => setDeleteItem(video)} className="p-1.5 rounded-lg hover:bg-red-500/10 text-slate-400 hover:text-red-400" title="Delete Video">
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  </div>
+
+                </div>
+              ))}
+            </div>
+
+            {/* Pagination controls / buttons to navigate sideways */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between mt-5 pt-3 border-t border-slate-200 dark:border-slate-800">
+                <span className={`text-xs font-medium ${darkMode ? "text-slate-400" : "text-slate-500"}`}>
+                  Showing page <span className="font-bold">{currentPage}</span> of <span className="font-bold">{totalPages}</span> ({filteredVideos.length} total videos)
+                </span>
+                
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                    disabled={currentPage === 1}
+                    className={`flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold transition-all border ${
+                      currentPage === 1 
+                        ? "opacity-40 cursor-not-allowed border-slate-300 dark:border-slate-800" 
+                        : (darkMode ? "bg-slate-900 border-slate-700 text-slate-200 hover:bg-slate-800" : "bg-white border-slate-200 text-slate-700 hover:bg-slate-100 shadow-sm")
+                    }`}
+                  >
+                    <ChevronLeft size={14} /> Previous
+                  </button>
+
+                  <button
+                    onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
+                    disabled={currentPage === totalPages}
+                    className={`flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold transition-all border ${
+                      currentPage === totalPages 
+                        ? "opacity-40 cursor-not-allowed border-slate-300 dark:border-slate-800" 
+                        : (darkMode ? "bg-slate-900 border-slate-700 text-slate-200 hover:bg-slate-800" : "bg-white border-slate-200 text-slate-700 hover:bg-slate-100 shadow-sm")
+                    }`}
+                  >
+                    Next <ChevronRight size={14} />
+                  </button>
+                </div>
               </div>
-            ))}
-          </div>
+            )}
+          </>
         )}
       </div>
     </div>

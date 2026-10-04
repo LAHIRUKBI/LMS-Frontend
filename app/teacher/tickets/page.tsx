@@ -1,13 +1,11 @@
-// src/app/teacher/tickets/page.tsx
 "use client";
 
 import { useEffect, useState, Suspense } from "react";
 import axios from "axios";
 import { useSearchParams } from "next/navigation";
 import { useTheme } from "@/app/context/ThemeContext";
-import { MessageSquare, Plus, X, Send, Clock, CheckCircle2, Loader2, User } from "lucide-react";
+import { MessageSquare, Plus, X, Send, Clock, CheckCircle2, Loader2, User, Paperclip, FileText, ExternalLink, Image as ImageIcon } from "lucide-react";
 
-// Suspense Boundary එකක් තුළ Ticket Component එක ලිවීම Next.js (useSearchParams) සඳහා වඩාත් සුදුසුය
 function TicketContent() {
   const { darkMode } = useTheme();
   const searchParams = useSearchParams();
@@ -18,9 +16,11 @@ function TicketContent() {
 
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [newTicket, setNewTicket] = useState({ title: "", description: "" });
+  const [attachmentFile, setAttachmentFile] = useState<File | null>(null);
   
   const [selectedTicket, setSelectedTicket] = useState<any>(null);
   const [replyMessage, setReplyMessage] = useState("");
+  const [replyFile, setReplyFile] = useState<File | null>(null);
 
   const fetchTickets = async () => {
     try {
@@ -40,7 +40,6 @@ function TicketContent() {
     fetchTickets();
   }, []);
 
-  // Notification එකෙන් URL එකට ආවම අදාළ Ticket එක Open කිරීම
   useEffect(() => {
     if (ticketIdParam && tickets.length > 0) {
       const foundTicket = tickets.find(t => t._id === ticketIdParam);
@@ -54,10 +53,21 @@ function TicketContent() {
     e.preventDefault();
     try {
       const token = localStorage.getItem("token");
-      await axios.post("http://localhost:5000/api/tickets", newTicket, {
-        headers: { Authorization: `Bearer ${token}` }
+      const formData = new FormData();
+      formData.append("title", newTicket.title);
+      formData.append("description", newTicket.description);
+      if (attachmentFile) {
+        formData.append("attachment", attachmentFile);
+      }
+
+      await axios.post("http://localhost:5000/api/tickets", formData, {
+        headers: { 
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "multipart/form-data"
+        }
       });
       setNewTicket({ title: "", description: "" });
+      setAttachmentFile(null);
       setIsCreateModalOpen(false);
       fetchTickets();
     } catch (err) {
@@ -67,15 +77,25 @@ function TicketContent() {
 
   const handleReply = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!replyMessage.trim()) return;
+    if (!replyMessage.trim() && !replyFile) return;
     try {
       const token = localStorage.getItem("token");
-      const res = await axios.post(`http://localhost:5000/api/tickets/${selectedTicket._id}/reply`, { message: replyMessage }, {
-        headers: { Authorization: `Bearer ${token}` }
+      const formData = new FormData();
+      formData.append("message", replyMessage);
+      if (replyFile) {
+        formData.append("attachment", replyFile);
+      }
+
+      const res = await axios.post(`http://localhost:5000/api/tickets/${selectedTicket._id}/reply`, formData, {
+        headers: { 
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "multipart/form-data"
+        }
       });
       setSelectedTicket(res.data.ticket);
       setReplyMessage("");
-      fetchTickets(); // Refresh list silently
+      setReplyFile(null);
+      fetchTickets();
     } catch (err) {
       console.error(err);
     }
@@ -85,7 +105,6 @@ function TicketContent() {
     <div className={`min-h-screen p-6 sm:p-8 transition-colors duration-300 font-sans ${darkMode ? "bg-slate-950" : "bg-slate-50/80"}`}>
       <div className="max-w-[1400px] mx-auto">
         
-        {/* Header Section (Modernized) */}
         <div className="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-6">
           <div className="flex items-center gap-4">
             <div className={`flex h-14 w-14 items-center justify-center rounded-2xl shadow-sm ${darkMode ? "bg-indigo-500/10 text-indigo-400 border border-indigo-500/20" : "bg-white text-indigo-600 border border-indigo-100"}`}>
@@ -108,7 +127,6 @@ function TicketContent() {
           </button>
         </div>
 
-        {/* Tickets Grid */}
         {loading ? (
           <div className="flex flex-col justify-center items-center h-64 gap-3">
             <Loader2 className="animate-spin text-indigo-500" size={36} />
@@ -135,7 +153,6 @@ function TicketContent() {
               >
                 <div className="p-5 flex-1 flex flex-col">
                   
-                  {/* Status & Date */}
                   <div className="flex justify-between items-center mb-4">
                     <span className={`px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider ${
                       ticket.status === 'open' 
@@ -149,7 +166,6 @@ function TicketContent() {
                     </span>
                   </div>
                   
-                  {/* Ticket Details */}
                   <h3 className={`font-extrabold text-base leading-tight mb-2 line-clamp-2 ${darkMode ? "text-slate-100" : "text-slate-800"}`} title={ticket.title}>
                     {ticket.title}
                   </h3>
@@ -157,7 +173,14 @@ function TicketContent() {
                     {ticket.description}
                   </p>
                   
-                  {/* Replies Indicator */}
+                  {ticket.attachmentUrl && (
+                    <div className="mb-3">
+                      <span className="text-[10px] font-bold text-indigo-400 uppercase tracking-wide flex items-center gap-1">
+                        <Paperclip size={11} /> Attachment Included
+                      </span>
+                    </div>
+                  )}
+
                   <div className={`mt-auto pt-4 flex items-center justify-between border-t ${darkMode ? "border-slate-800" : "border-slate-100"}`}>
                     <span className={`text-xs font-bold ${darkMode ? "text-slate-500" : "text-slate-400"}`}>
                       Conversation
@@ -172,7 +195,6 @@ function TicketContent() {
                   </div>
                 </div>
                 
-                {/* Actions Bar */}
                 <div className={`p-3 border-t flex items-center gap-2 ${darkMode ? "border-slate-800 bg-slate-900/50" : "border-slate-100 bg-slate-50/50"}`}>
                   <button 
                     onClick={() => setSelectedTicket(ticket)} 
@@ -201,7 +223,7 @@ function TicketContent() {
               </button>
             </div>
             
-            <form onSubmit={handleCreateTicket} className="p-5 sm:p-6 space-y-5">
+            <form onSubmit={handleCreateTicket} className="p-5 sm:p-6 space-y-4">
               <div>
                 <label className={`block text-xs font-bold uppercase tracking-wider mb-2 ${darkMode ? "text-slate-300" : "text-slate-700"}`}>Subject / Title</label>
                 <input 
@@ -217,12 +239,20 @@ function TicketContent() {
                 <label className={`block text-xs font-bold uppercase tracking-wider mb-2 ${darkMode ? "text-slate-300" : "text-slate-700"}`}>Description</label>
                 <textarea 
                   required 
-                  rows={5} 
+                  rows={4} 
                   value={newTicket.description} 
                   onChange={e => setNewTicket({...newTicket, description: e.target.value})} 
                   className={`w-full px-4 py-3 rounded-xl border text-sm font-medium focus:ring-2 outline-none transition-all resize-none ${darkMode ? "bg-slate-950 border-slate-800 text-white focus:ring-indigo-500/50" : "bg-slate-50 border-slate-200 focus:ring-indigo-500/40"}`} 
                   placeholder="Provide details about your issue..."
                 ></textarea>
+              </div>
+              <div>
+                <label className={`block text-xs font-bold uppercase tracking-wider mb-2 ${darkMode ? "text-slate-300" : "text-slate-700"}`}>Attach Image or Document (Optional)</label>
+                <input 
+                  type="file" 
+                  onChange={e => setAttachmentFile(e.target.files ? e.target.files[0] : null)} 
+                  className={`w-full text-xs font-medium file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold ${darkMode ? "file:bg-slate-800 file:text-indigo-400 text-slate-400" : "file:bg-indigo-50 file:text-indigo-600 text-slate-500"}`} 
+                />
               </div>
               <button type="submit" className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold rounded-xl shadow-md shadow-indigo-600/20 transition-all hover:-translate-y-0.5">
                 Submit Ticket
@@ -232,12 +262,11 @@ function TicketContent() {
         </div>
       )}
 
-      {/* Ticket Chat / Details Modal */}
+      {/* Ticket Chat Modal */}
       {selectedTicket && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm animate-in fade-in duration-200">
           <div className={`w-full max-w-2xl h-[85vh] flex flex-col rounded-3xl border shadow-2xl overflow-hidden ${darkMode ? "bg-slate-900 border-slate-800" : "bg-white border-slate-200"}`}>
             
-            {/* Modal Header */}
             <div className={`p-5 border-b flex justify-between items-center ${darkMode ? "border-slate-800 bg-slate-900/80 backdrop-blur-md" : "border-slate-100 bg-white/80 backdrop-blur-md"}`}>
               <div>
                 <h3 className={`text-base font-bold flex items-center gap-2 mb-0.5 ${darkMode ? "text-white" : "text-slate-900"}`}>
@@ -255,21 +284,32 @@ function TicketContent() {
               </button>
             </div>
 
-            {/* Chat Area */}
             <div className={`flex-1 overflow-y-auto p-6 space-y-5 ${darkMode ? "bg-slate-950/40" : "bg-slate-50/50"}`}>
               
-              {/* Original Issue (Teacher Side = Right aligned) */}
               <div className="flex flex-col items-end w-full">
                 <span className={`text-[10px] font-bold uppercase tracking-wider mb-1.5 mr-2 ${darkMode ? "text-indigo-400" : "text-indigo-600"}`}>You • Original Request</span>
                 <div className={`max-w-[85%] sm:max-w-[75%] p-4 rounded-3xl rounded-tr-sm shadow-sm ${darkMode ? "bg-indigo-600 text-white shadow-indigo-500/20" : "bg-indigo-600 text-white shadow-indigo-500/20"}`}>
                   <p className="text-sm whitespace-pre-wrap leading-relaxed">{selectedTicket.description}</p>
+                  
+                  {selectedTicket.attachmentUrl && (
+                    <div className="mt-3 pt-3 border-t border-white/20">
+                      {selectedTicket.attachmentType === 'image' ? (
+                        <a href={`http://localhost:5000${selectedTicket.attachmentUrl}`} target="_blank" rel="noopener noreferrer">
+                          <img src={`http://localhost:5000${selectedTicket.attachmentUrl}`} alt="Attachment" className="rounded-xl max-h-48 object-cover hover:opacity-95 transition-opacity" />
+                        </a>
+                      ) : (
+                        <a href={`http://localhost:5000${selectedTicket.attachmentUrl}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-xs font-bold underline bg-white/10 p-2.5 rounded-xl">
+                          <FileText size={16} /> View Attached Document <ExternalLink size={14} />
+                        </a>
+                      )}
+                    </div>
+                  )}
                 </div>
                 <span className={`text-[10px] font-semibold mt-1.5 mr-2 ${darkMode ? "text-slate-500" : "text-slate-400"}`}>
                   {new Date(selectedTicket.createdAt).toLocaleString()}
                 </span>
               </div>
 
-              {/* Replies */}
               {selectedTicket.replies?.map((reply: any, idx: number) => {
                 const isTeacher = reply.senderRole === 'teacher';
                 return (
@@ -283,6 +323,20 @@ function TicketContent() {
                         : (darkMode ? "bg-slate-800 rounded-tl-sm text-slate-200 border border-slate-700" : "bg-white border border-slate-200 text-slate-800")
                     }`}>
                       <p className="text-sm whitespace-pre-wrap leading-relaxed">{reply.message}</p>
+                      
+                      {reply.attachmentUrl && (
+                        <div className="mt-3 pt-3 border-t border-white/20">
+                          {reply.attachmentType === 'image' ? (
+                            <a href={`http://localhost:5000${reply.attachmentUrl}`} target="_blank" rel="noopener noreferrer">
+                              <img src={`http://localhost:5000${reply.attachmentUrl}`} alt="Reply Attachment" className="rounded-xl max-h-48 object-cover hover:opacity-95 transition-opacity" />
+                            </a>
+                          ) : (
+                            <a href={`http://localhost:5000${reply.attachmentUrl}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-xs font-bold underline bg-white/10 p-2.5 rounded-xl">
+                              <FileText size={16} /> View Attached Document <ExternalLink size={14} />
+                            </a>
+                          )}
+                        </div>
+                      )}
                     </div>
                     <span className={`text-[10px] font-semibold mt-1.5 ${isTeacher ? 'mr-2' : 'ml-2'} ${darkMode ? "text-slate-500" : "text-slate-400"}`}>
                       {new Date(reply.createdAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
@@ -292,26 +346,36 @@ function TicketContent() {
               })}
             </div>
 
-            {/* Input Area */}
             {selectedTicket.status === 'open' ? (
-              <form onSubmit={handleReply} className={`p-4 sm:p-5 border-t flex gap-3 ${darkMode ? "border-slate-800 bg-slate-900" : "border-slate-100 bg-white"}`}>
-                <input 
-                  required 
-                  type="text" 
-                  value={replyMessage} 
-                  onChange={e => setReplyMessage(e.target.value)} 
-                  placeholder="Type your message..." 
-                  className={`flex-1 px-5 py-3.5 rounded-2xl border text-sm font-medium outline-none transition-all focus:ring-2 focus:ring-indigo-500/50 ${
-                    darkMode ? "bg-slate-950 border-slate-800 text-white placeholder-slate-500" : "bg-slate-50 border-slate-200 placeholder-slate-400"
-                  }`} 
-                />
-                <button 
-                  type="submit" 
-                  disabled={!replyMessage.trim()}
-                  className="flex items-center justify-center px-5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:hover:bg-indigo-600 text-white rounded-2xl shadow-md shadow-indigo-500/20 transition-all"
-                >
-                  <Send size={20} className={replyMessage.trim() ? "translate-x-0.5" : ""} />
-                </button>
+              <form onSubmit={handleReply} className={`p-4 sm:p-5 border-t flex flex-col gap-2.5 ${darkMode ? "border-slate-800 bg-slate-900" : "border-slate-100 bg-white"}`}>
+                <div className="flex gap-2 items-center">
+                  <input 
+                    type="text" 
+                    value={replyMessage} 
+                    onChange={e => setReplyMessage(e.target.value)} 
+                    placeholder="Type your message..." 
+                    className={`flex-1 px-4 py-3 rounded-2xl border text-sm font-medium outline-none transition-all focus:ring-2 focus:ring-indigo-500/50 ${
+                      darkMode ? "bg-slate-950 border-slate-800 text-white placeholder-slate-500" : "bg-slate-50 border-slate-200 placeholder-slate-400"
+                    }`} 
+                  />
+                  <label className={`cursor-pointer p-3 rounded-2xl border transition-all flex items-center justify-center ${darkMode ? "bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700" : "bg-slate-100 border-slate-200 text-slate-600 hover:bg-slate-200"}`} title="Attach file">
+                    <Paperclip size={18} />
+                    <input type="file" onChange={e => setReplyFile(e.target.files ? e.target.files[0] : null)} className="hidden" />
+                  </label>
+                  <button 
+                    type="submit" 
+                    disabled={!replyMessage.trim() && !replyFile}
+                    className="flex items-center justify-center px-5 py-3 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white rounded-2xl shadow-md transition-all"
+                  >
+                    <Send size={18} />
+                  </button>
+                </div>
+                {replyFile && (
+                  <div className="flex items-center justify-between text-xs px-3 py-1.5 rounded-xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+                    <span className="truncate">Attached: {replyFile.name}</span>
+                    <button type="button" onClick={() => setReplyFile(null)} className="hover:text-red-400"><X size={14} /></button>
+                  </div>
+                )}
               </form>
             ) : (
               <div className={`p-5 text-center text-sm font-bold border-t ${darkMode ? "border-slate-800 bg-slate-900/50 text-slate-500" : "border-slate-100 bg-slate-50/50 text-slate-400"}`}>
