@@ -3,18 +3,25 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { CheckCircle, Clock, Globe, FileText, Trash2, AlertCircle, Image as ImageIcon, X, Check, Eye, User, CheckSquare, Send, Calendar, ArrowLeft, Download } from "lucide-react";
+import { CheckCircle, Clock, Globe, FileText, Trash2, AlertCircle, Image as ImageIcon, X, Check, Eye, User, CheckSquare, Send, Calendar, ArrowLeft, Download, Award } from "lucide-react";
 import { useTheme } from "@/app/context/ThemeContext";
 import axios from "axios";
 
+interface SubQuestion {
+  _id?: string;
+  subQuestionText: string;
+  marks: number;
+}
+
 interface Question {
   id: string;
-  type: string;
+  type: "mcq" | "single" | "short" | "essay";
   questionText: string;
   imageUrl?: string;
   options: string[];
-  correctAnswer: string;
+  correctAnswer: any;
   marks: number;
+  subQuestions?: SubQuestion[];
 }
 
 interface ClassSchedule {
@@ -64,7 +71,7 @@ export default function TeacherMyQuizzesPage() {
   
   const [selectedStudentSub, setSelectedStudentSub] = useState<any | null>(null);
 
-  const [essayMarksInput, setEssayMarksInput] = useState<{ [key: string]: { [qId: string]: number } }>({});
+  const [essayMarksInput, setEssayMarksInput] = useState<{ [key: string]: { [qId: string]: any } }>({});
   const [checkedPapers, setCheckedPapers] = useState<{ [subId: string]: boolean }>({});
 
   const fetchMyQuizzes = async () => {
@@ -249,7 +256,7 @@ export default function TeacherMyQuizzesPage() {
     setCheckedPapers({ ...checkedPapers, [subId]: true });
   };
 
-  const handleEssayMarkChange = (subId: string, qId: string, val: number) => {
+  const handleEssayMarkChange = (subId: string, qId: string, val: any) => {
     setEssayMarksInput({
       ...essayMarksInput,
       [subId]: {
@@ -289,7 +296,7 @@ export default function TeacherMyQuizzesPage() {
       });
 
       if (res.status === 200) {
-        alert("All student MCQ papers checked and marks successfully saved to database!");
+        alert("All student objective papers checked and marks successfully saved to database!");
         openSubmissionsModal(selectedQuizDetails);
       }
     } catch (err) {
@@ -297,7 +304,6 @@ export default function TeacherMyQuizzesPage() {
     }
   };
 
-  // පිළිතුරු පත්‍රය ලස්සන PDF එකක් ලෙස ඩවුන්ලෝඩ් (Print to PDF) කරගැනීමේ ශ්‍රිතය
   const handleDownloadPDFAnswerKey = (quiz: QuizItem) => {
     const printWindow = window.open('', '_blank');
     if (!printWindow) {
@@ -328,21 +334,42 @@ export default function TeacherMyQuizzesPage() {
     `;
 
     quiz.questions.forEach((q, idx) => {
+      let totalQMarks = q.marks;
+      if (q.type === 'essay' && q.subQuestions && q.subQuestions.length > 0) {
+        totalQMarks = q.subQuestions.reduce((s, sq) => s + sq.marks, 0);
+      }
+
       htmlContent += `
         <div class="question-box">
-          <div class="q-title">${idx + 1}. ${q.questionText} <span class="badge">${q.type.toUpperCase()} (${q.marks || 5} Marks)</span></div>
+          <div class="q-title">${idx + 1}. ${q.questionText} <span class="badge">${q.type.toUpperCase()} (${totalQMarks} Marks)</span></div>
       `;
-      if (q.type === 'mcq' && q.options && q.options.length > 0) {
+
+      if ((q.type === 'mcq' || q.type === 'single') && q.options && q.options.length > 0) {
         htmlContent += `<ul>`;
         q.options.forEach((opt, oIdx) => {
           htmlContent += `<li><strong>(${oIdx + 1})</strong> ${opt}</li>`;
         });
         htmlContent += `</ul>`;
       }
-      htmlContent += `
-          <div class="correct-ans">✅ Correct Answer: ${q.correctAnswer}</div>
-        </div>
-      `;
+
+      if (q.type === 'essay' && q.subQuestions && q.subQuestions.length > 0) {
+        htmlContent += `<ul>`;
+        q.subQuestions.forEach((sq, sqIdx) => {
+          htmlContent += `<li><strong>(${sqIdx + 1})</strong> ${sq.subQuestionText} [${sq.marks} marks]</li>`;
+        });
+        htmlContent += `</ul>`;
+      }
+
+      if (q.type === 'mcq') {
+        const correctStr = Array.isArray(q.correctAnswer) ? q.correctAnswer.join(', ') : String(q.correctAnswer || '');
+        htmlContent += `<div class="correct-ans">✅ Correct Answers: ${correctStr}</div>`;
+      } else if (q.type === 'single' || q.type === 'short') {
+        htmlContent += `<div class="correct-ans">✅ Correct Answer: ${String(q.correctAnswer || '')}</div>`;
+      } else {
+        htmlContent += `<div class="correct-ans">📝 Essay / Structured Question (Evaluated by Teacher)</div>`;
+      }
+
+      htmlContent += `</div>`;
     });
 
     htmlContent += `
@@ -364,7 +391,7 @@ export default function TeacherMyQuizzesPage() {
     return `http://localhost:5000${photoUrl}`;
   };
 
-  const isPureMCQQuiz = selectedQuizDetails?.questions?.every((q: any) => q.type === 'mcq' || q.type === 'short');
+  const isPureObjectiveQuiz = selectedQuizDetails?.questions?.every((q: any) => q.type === 'mcq' || q.type === 'single' || q.type === 'short');
 
   return (
     <div className={`p-4 sm:p-6 lg:p-8 min-h-screen transition-colors duration-300 ${darkMode ? "bg-slate-950 text-white" : "bg-slate-50 text-slate-900"}`}>
@@ -404,9 +431,54 @@ export default function TeacherMyQuizzesPage() {
                   const isChecked = checkedPapers[sub._id] || false;
                   const studentAnswers = sub.answers instanceof Map ? Object.fromEntries(sub.answers) : (sub.answers || {});
 
+                  const getSavedEssayMark = (qIdStr: string) => {
+                    if (!sub.essayMarks) return 0;
+                    if (typeof sub.essayMarks.get === 'function') {
+                      return sub.essayMarks.get(qIdStr) || 0;
+                    }
+                    return sub.essayMarks[qIdStr] || 0;
+                  };
+
+                  // ගණනය කළ මුළු ලකුණු පෙන්වීම සඳහා
+                  let calculatedTotalScore = 0;
+                  selectedQuizDetails.questions.forEach((q: any) => {
+                    const qId = q._id.toString();
+                    const studentAns = studentAnswers[qId];
+
+                    if (q.type === 'single' || q.type === 'short') {
+                      const cleanStudent = String(studentAns || "").trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+                      const cleanCorrect = String(q.correctAnswer || "").trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+                      if (cleanStudent === cleanCorrect) calculatedTotalScore += q.marks;
+                    } else if (q.type === 'mcq') {
+                      const correctArr = Array.isArray(q.correctAnswer) ? q.correctAnswer : [q.correctAnswer];
+                      if (Array.isArray(studentAns)) {
+                        const isAllCorrect = correctArr.every((a: string) => studentAns.includes(a)) && studentAns.every((a: string) => correctArr.includes(a));
+                        if (isAllCorrect) {
+                          calculatedTotalScore += q.marks;
+                        } else {
+                          const manualMcqMarks = (essayMarksInput[sub._id] || {})[qId] !== undefined ? Number((essayMarksInput[sub._id] || {})[qId]) : getSavedEssayMark(qId);
+                          calculatedTotalScore += manualMcqMarks || 0;
+                        }
+                      }
+                    }
+                  });
+
+                  // ගුරුවරයා ලබාදුන් රචනා ලකුණු එකතු කිරීම
+                  const currentEssayMarks = essayMarksInput[sub._id] || sub.essayMarks || {};
+                  Object.entries(currentEssayMarks).forEach(([qIdKey, val]: [string, any]) => {
+                    const targetQ = selectedQuizDetails.questions.find((q: any) => q._id.toString() === qIdKey);
+                    if (targetQ && targetQ.type === 'mcq') return;
+
+                    if (typeof val === 'object' && val !== null) {
+                      calculatedTotalScore += Object.values(val).reduce((s: number, m: any) => s + (Number(m) || 0), 0);
+                    } else {
+                      calculatedTotalScore += Number(val) || 0;
+                    }
+                  });
+
                   return (
-                    <div className={`p-5 rounded-2xl border ${darkMode ? "bg-slate-950 border-slate-800" : "bg-slate-50 border-slate-200"}`}>
-                      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
+                    <div className={`p-5 rounded-2xl border space-y-5 ${darkMode ? "bg-slate-950 border-slate-800" : "bg-slate-50 border-slate-200"}`}>
+                      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
                         <div className="flex items-center gap-3">
                           <div className="w-10 h-10 rounded-full overflow-hidden bg-slate-200 flex items-center justify-center border">
                             {student.profileImage ? (
@@ -420,70 +492,159 @@ export default function TeacherMyQuizzesPage() {
                             <p className="text-[11px] text-slate-400">{student.email} • {sub.timeTaken}</p>
                           </div>
                         </div>
-                        <span className="px-3 py-1 rounded-full text-xs font-bold bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
-                          Total Score: {sub.score} / {sub.maxScore} Marks
+                        <span className="px-3 py-1.5 rounded-full text-xs font-extrabold bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 flex items-center gap-1.5">
+                          <Award size={14} /> Total Score: {sub.isEvaluated ? sub.score : calculatedTotalScore} / {sub.maxScore} Marks
                         </span>
                       </div>
 
-                      {/* Check MCQ Button */}
+                      {/* Check Answers Button */}
                       {!isChecked ? (
                         <div className="my-3">
                           <button 
                             onClick={() => handleCheckMCQ(sub._id)}
                             className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-sm flex items-center gap-1.5"
                           >
-                            <CheckSquare size={16} /> Check MCQ
+                            <CheckSquare size={16} /> Check Paper & Mark Right/Wrong
                           </button>
                         </div>
                       ) : (
-                        <div className="space-y-3 pl-2 border-l-2 border-blue-500/40 my-3">
-                          <p className="text-xs font-bold text-emerald-500">✔ MCQ Checked against teacher's answer key:</p>
+                        <div className="space-y-4 pl-2 border-l-2 border-blue-500/40 my-3">
+                          <p className="text-xs font-bold text-emerald-500">✔ Auto-evaluation completed (Review right/wrong marks & give custom marks if needed):</p>
+                          
                           {selectedQuizDetails.questions.map((q: any, qIdx: number) => {
                             const qId = q._id.toString();
-                            const studentAns = String(studentAnswers[qId] || "No Answer Given").trim();
-                            const correctAns = String(q.correctAnswer || "").trim();
-                            const cleanStudent = studentAns.toLowerCase().replace(/[^a-z0-9]/g, '');
-                            const cleanCorrect = correctAns.toLowerCase().replace(/[^a-z0-9]/g, '');
+                            const studentAns = studentAnswers[qId];
 
-                            const isCorrect = (q.type === 'mcq' || q.type === 'short') && (
-                              cleanStudent === cleanCorrect
-                            );
+                            // MCQ / Single / Short නිවැරදි දැයි පරීක්ෂා කිරීම
+                            let isCorrect = false;
+                            if (q.type === 'single' || q.type === 'short') {
+                              const cleanStudent = String(studentAns || "").trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+                              const cleanCorrect = String(q.correctAnswer || "").trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+                              isCorrect = cleanStudent === cleanCorrect && cleanStudent !== "";
+                            } else if (q.type === 'mcq') {
+                              const correctArr = Array.isArray(q.correctAnswer) ? q.correctAnswer : [q.correctAnswer];
+                              if (Array.isArray(studentAns)) {
+                                isCorrect = correctArr.every((a: string) => studentAns.includes(a)) && studentAns.every((a: string) => correctArr.includes(a));
+                              }
+                            }
+
+                            // එක් එක් ප්‍රශ්නයට සිසුවා ලබාගත් ලකුණු ගණනය කිරීම
+                            let questionEarnedMarks = 0;
+                            if (q.type !== 'essay') {
+                              if (isCorrect) {
+                                questionEarnedMarks = q.marks;
+                              } else if (q.type === 'mcq') {
+                                const manualMark = (essayMarksInput[sub._id] || {})[qId];
+                                questionEarnedMarks = manualMark !== undefined ? Number(manualMark) : getSavedEssayMark(qId);
+                              }
+                            } else {
+                              if (q.subQuestions && Array.isArray(q.subQuestions) && q.subQuestions.length > 0) {
+                                const savedSub = sub.essayMarks?.get ? sub.essayMarks.get(qId) : (sub.essayMarks?.[qId] || {});
+                                const currentInputSub = (essayMarksInput[sub._id] || {})[qId] || savedSub || {};
+                                questionEarnedMarks = Object.values(currentInputSub).reduce((s: number, m: any) => s + (Number(m) || 0), 0);
+                              } else {
+                                const inputVal = (essayMarksInput[sub._id] || {})[qId];
+                                questionEarnedMarks = inputVal !== undefined ? Number(inputVal) : getSavedEssayMark(qId);
+                              }
+                            }
+
+                            const hasSubQ = q.subQuestions && Array.isArray(q.subQuestions) && q.subQuestions.length > 0;
 
                             return (
-                              <div key={qId} className={`p-3 rounded-xl border text-xs space-y-1 ${darkMode ? "bg-slate-900 border-slate-800" : "bg-white border-slate-200"}`}>
-                                <p className="font-bold">{qIdx + 1}. {q.questionText} <span className="opacity-60 text-[10px]">({q.type.toUpperCase()})</span></p>
-                                
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">
-                                  <div className="p-2.5 rounded-lg bg-slate-100 dark:bg-slate-800 border">
-                                    <span className="text-[10px] text-slate-400 block font-bold mb-0.5">Student Answer (Left):</span>
-                                    {q.type !== 'essay' ? (
-                                      <span className={isCorrect ? "text-emerald-500 font-bold flex items-center gap-1" : "text-rose-500 font-bold flex items-center gap-1"}>
+                              <div key={qId} className={`p-4 rounded-xl border text-xs space-y-2.5 ${darkMode ? "bg-slate-900 border-slate-800" : "bg-white border-slate-200"}`}>
+                                <div className="flex justify-between items-center">
+                                  <p className="font-bold text-sm">
+                                    {qIdx + 1}. {q.questionText} <span className="opacity-60 text-[10px]">({q.type.toUpperCase()})</span>
+                                  </p>
+                                  <div className="flex items-center gap-2">
+                                    <span className="px-2.5 py-1 rounded-lg text-xs font-extrabold bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+                                      Score: {questionEarnedMarks} / {hasSubQ ? q.subQuestions.reduce((s: number, sq: any) => s + sq.marks, 0) : q.marks} Marks
+                                    </span>
+
+                                    {q.type !== 'essay' && (
+                                      <span className={`px-2.5 py-1 rounded-lg text-xs font-bold flex items-center gap-1 ${
+                                        isCorrect ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" : "bg-rose-500/10 text-rose-500 border border-rose-500/20"
+                                      }`}>
                                         {isCorrect ? <Check size={14} /> : <X size={14} />}
-                                        {studentAns} {isCorrect ? "(Correct ✅)" : "(Incorrect ❌)"}
+                                        {isCorrect ? "Correct" : "Incorrect"}
                                       </span>
-                                    ) : (
-                                      <span className="text-slate-200 font-medium">{studentAns}</span>
                                     )}
+                                  </div>
+                                </div>
+                                
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2">
+                                  <div className="p-3 rounded-lg bg-slate-100 dark:bg-slate-800/80 border">
+                                    <span className="text-[10px] text-slate-400 block font-bold mb-1">Student Answer:</span>
+                                    <span className="text-slate-200 font-medium">
+                                      {Array.isArray(studentAns) ? studentAns.join(', ') : (typeof studentAns === 'object' && studentAns !== null ? JSON.stringify(studentAns) : (studentAns || "No Answer Given"))}
+                                    </span>
                                   </div>
 
                                   {q.type !== 'essay' && (
-                                    <div className="p-2.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
-                                      <span className="text-[10px] text-emerald-400 block font-bold mb-0.5">Teacher's Answer Key (Right):</span>
-                                      <span className="text-emerald-400 font-bold">{q.correctAnswer}</span>
+                                    <div className="p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
+                                      <span className="text-[10px] text-emerald-400 block font-bold mb-1">Teacher's Answer Key:</span>
+                                      <span className="text-emerald-400 font-bold">
+                                        {Array.isArray(q.correctAnswer) ? q.correctAnswer.join(', ') : String(q.correctAnswer || '')}
+                                      </span>
                                     </div>
                                   )}
                                 </div>
 
-                                {q.type === 'essay' && (
-                                  <div className="mt-2 pt-2 border-t flex items-center gap-3">
-                                    <span className="font-bold text-[11px]">Give Essay Marks (Max {q.marks || 5}):</span>
+                                {/* MCQ වැරදුණු විට ගුරුවරයාට අතින් ලකුණු ලබා දීමේ පහසුකම */}
+                                {q.type === 'mcq' && !isCorrect && (
+                                  <div className="mt-3 pt-2 border-t flex items-center justify-between bg-amber-500/5 p-2.5 rounded-xl border border-amber-500/20">
+                                    <span className="font-bold text-xs text-amber-500">Give Custom/Partial Marks (Max {q.marks} Marks):</span>
                                     <input 
                                       type="number"
-                                      max={q.marks || 5}
+                                      max={q.marks}
                                       min={0}
-                                      defaultValue={sub.essayMarks?.get ? sub.essayMarks.get(qId) : (sub.essayMarks?.[qId] || 0)}
-                                      onChange={(e) => handleEssayMarkChange(sub._id, qId, Number(e.target.value))}
-                                      className="w-20 p-1.5 rounded-lg border bg-slate-100 dark:bg-slate-800 text-center font-bold"
+                                      defaultValue={getSavedEssayMark(qId)}
+                                      onChange={(e) => {
+                                        handleEssayMarkChange(sub._id, qId, Number(e.target.value));
+                                      }}
+                                      className="w-24 p-2 rounded-lg border bg-slate-800 text-center font-extrabold text-white text-sm focus:ring-2 focus:ring-amber-500"
+                                    />
+                                  </div>
+                                )}
+
+                                {/* Essay with Sub-questions */}
+                                {q.type === 'essay' && hasSubQ && (
+                                  <div className="mt-3 pt-2 border-t space-y-2">
+                                    <span className="font-bold text-[11px] text-indigo-400 block">Give Marks for Essay Sub-Questions:</span>
+                                    {q.subQuestions.map((sq: any, sqIdx: number) => (
+                                      <div key={sq._id || sqIdx} className="flex justify-between items-center gap-2 bg-slate-800/40 p-2.5 rounded-lg">
+                                        <span>({sqIdx + 1}) {sq.subQuestionText} [Max {sq.marks}]</span>
+                                        <input 
+                                          type="number"
+                                          max={sq.marks}
+                                          min={0}
+                                          defaultValue={sub.essayMarks?.get ? sub.essayMarks.get(qId)?.[sqIdx] : (sub.essayMarks?.[qId]?.[sqIdx] || 0)}
+                                          onChange={(e) => {
+                                            const currentEssayObj: { [key: string]: any } = essayMarksInput[sub._id] || sub.essayMarks || {};
+                                            const currentSubMarks: { [key: number]: number } = { ...(currentEssayObj[qId] || {}) };
+                                            currentSubMarks[sqIdx] = Number(e.target.value);
+                                            handleEssayMarkChange(sub._id, qId, currentSubMarks);
+                                          }}
+                                          className="w-20 p-1.5 rounded border bg-slate-800 text-center font-bold text-white"
+                                        />
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+
+                                {/* Normal Essay without Sub-questions */}
+                                {q.type === 'essay' && !hasSubQ && (
+                                  <div className="mt-3 pt-2 border-t flex items-center justify-between bg-indigo-500/5 p-2.5 rounded-xl border border-indigo-500/20">
+                                    <span className="font-bold text-xs text-indigo-400">Give Essay Marks (Max {q.marks} Marks):</span>
+                                    <input 
+                                      type="number"
+                                      max={q.marks}
+                                      min={0}
+                                      defaultValue={getSavedEssayMark(qId)}
+                                      onChange={(e) => {
+                                        handleEssayMarkChange(sub._id, qId, Number(e.target.value));
+                                      }}
+                                      className="w-24 p-2 rounded-lg border bg-slate-800 text-center font-extrabold text-white text-sm focus:ring-2 focus:ring-indigo-500"
                                     />
                                   </div>
                                 )}
@@ -493,13 +654,20 @@ export default function TeacherMyQuizzesPage() {
                         </div>
                       )}
 
-                      {/* Send Button to save marks to database */}
-                      <div className="mt-4 flex justify-end">
+                      {/* Bottom Total Score Display & Save Button */}
+                      <div className="mt-6 pt-4 border-t flex flex-col sm:flex-row justify-between items-center gap-4">
+                        <div className="bg-emerald-500/10 border border-emerald-500/30 px-4 py-2.5 rounded-2xl flex items-center gap-2">
+                          <Award size={20} className="text-emerald-400" />
+                          <span className="text-xs font-bold text-emerald-400">
+                            Final Calculated Score: <strong className="text-sm">{sub.isEvaluated ? sub.score : calculatedTotalScore} / {sub.maxScore}</strong>
+                          </span>
+                        </div>
+
                         <button 
                           onClick={() => handleSendMarksToDB(sub._id)}
-                          className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-md flex items-center gap-2"
+                          className="px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl text-xs font-bold shadow-lg flex items-center gap-2 transition"
                         >
-                          <Send size={16} /> Send (Save to DB)
+                          <Send size={16} /> Save Marks to Database
                         </button>
                       </div>
                     </div>
@@ -515,12 +683,12 @@ export default function TeacherMyQuizzesPage() {
                   <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-3">
                     <p className="text-xs font-bold text-slate-400">Click on a student to review their paper:</p>
                     
-                    {isPureMCQQuiz && (
+                    {isPureObjectiveQuiz && (
                       <button 
                         onClick={handleCheckAllStudentMCQAndSend}
                         className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-md flex items-center gap-2"
                       >
-                        <CheckSquare size={16} /> Check All Student MCQ & Send Marks
+                        <CheckSquare size={16} /> Check All Objective Papers & Save Marks
                       </button>
                     )}
                   </div>
@@ -896,7 +1064,6 @@ export default function TeacherMyQuizzesPage() {
                 <div className={`border-t pt-4 ${darkMode ? "border-slate-800" : "border-slate-100"}`}>
                   <div className="flex justify-between items-center mb-3">
                     <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400">Questions & Answers Details:</h3>
-                    {/* ගුරුවරයාගේ පිළිතුරු පත්‍රය ලස්සන PDF එකක් ලෙස ඩවුන්ලෝඩ් කරගැනීමේ බටන් එක */}
                     <button
                       onClick={() => handleDownloadPDFAnswerKey(quiz)}
                       className="px-3 py-1.5 bg-teal-600 hover:bg-teal-700 text-white rounded-lg text-xs font-bold shadow-sm flex items-center gap-1.5 transition-colors"
@@ -906,51 +1073,92 @@ export default function TeacherMyQuizzesPage() {
                   </div>
 
                   <div className="space-y-3 max-h-72 overflow-y-auto pr-2">
-                    {quiz.questions.map((q, idx) => (
-                      <div key={`${quiz._id}-question-${idx}`} className={`p-4 rounded-xl border text-xs space-y-2 ${darkMode ? "bg-slate-950/50 border-slate-800" : "bg-slate-50 border-slate-200"}`}>
-                        <div className="flex justify-between items-start">
-                          <p className="font-semibold text-sm">
-                            {idx + 1}. {q.questionText}
-                          </p>
-                          <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
-                            {q.type} ({q.marks} marks)
-                          </span>
-                        </div>
+                    {quiz.questions.map((q, idx) => {
+                      let totalQMarks = q.marks;
+                      if (q.type === 'essay' && q.subQuestions && q.subQuestions.length > 0) {
+                        totalQMarks = q.subQuestions.reduce((s, sq) => s + sq.marks, 0);
+                      }
 
-                        {q.imageUrl && (
-                          <div className="mt-1">
-                            <span className="text-[10px] text-slate-400 flex items-center gap-1 mb-1">
-                              <ImageIcon size={12} /> Attached Image:
+                      return (
+                        <div key={`${quiz._id}-question-${idx}`} className={`p-4 rounded-xl border text-xs space-y-2 ${darkMode ? "bg-slate-950/50 border-slate-800" : "bg-slate-50 border-slate-200"}`}>
+                          <div className="flex justify-between items-start">
+                            <p className="font-semibold text-sm">
+                              {idx + 1}. {q.questionText}
+                            </p>
+                            <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+                              {q.type} ({totalQMarks} marks)
                             </span>
-                            <img 
-                              src={`http://localhost:5000${q.imageUrl}`} 
-                              alt="Question Visual" 
-                              className="max-h-32 rounded border border-slate-700 object-contain" 
-                              onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
-                            />
                           </div>
-                        )}
 
-                        {q.type === 'mcq' && q.options && q.options.length > 0 && (
-                          <div className="space-y-1 mt-2 pl-2 border-l-2 border-indigo-500/40">
-                            <p className="text-[11px] font-semibold text-slate-400">Options:</p>
-                            <ul className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
-                              {q.options.map((opt, optIdx) => (
-                                <li key={optIdx} className={`p-2 rounded border text-xs ${darkMode ? "bg-slate-900 border-slate-800 text-slate-300" : "bg-white border-slate-200 text-slate-700"}`}>
-                                  <span className="font-bold mr-1">({optIdx + 1})</span> {opt}
-                                </li>
-                              ))}
-                            </ul>
+                          {q.imageUrl && (
+                            <div className="mt-1">
+                              <span className="text-[10px] text-slate-400 flex items-center gap-1 mb-1">
+                                <ImageIcon size={12} /> Attached Image:
+                              </span>
+                              <img 
+                                src={`http://localhost:5000${q.imageUrl}`} 
+                                alt="Question Visual" 
+                                className="max-h-32 rounded border border-slate-700 object-contain" 
+                                onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
+                              />
+                            </div>
+                          )}
+
+                          {/* MCQ or Single Options */}
+                          {(q.type === 'mcq' || q.type === 'single') && q.options && q.options.length > 0 && (
+                            <div className="space-y-1 mt-2 pl-2 border-l-2 border-indigo-500/40">
+                              <p className="text-[11px] font-semibold text-slate-400">Options:</p>
+                              <ul className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                                {q.options.map((opt, optIdx) => {
+                                  const isCorrect = q.type === 'mcq' 
+                                    ? (Array.isArray(q.correctAnswer) && q.correctAnswer.includes(opt))
+                                    : (q.correctAnswer === opt);
+
+                                  return (
+                                    <li key={optIdx} className={`p-2 rounded border text-xs ${isCorrect ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400 font-bold" : (darkMode ? "bg-slate-900 border-slate-800 text-slate-300" : "bg-white border-slate-200 text-slate-700")}`}>
+                                      <span className="font-bold mr-1">({optIdx + 1})</span> {opt} {isCorrect && "✅"}
+                                    </li>
+                                  );
+                                })}
+                              </ul>
+                            </div>
+                          )}
+
+                          {/* Essay Sub-questions */}
+                          {q.type === 'essay' && q.subQuestions && q.subQuestions.length > 0 && (
+                            <div className="space-y-1 mt-2 pl-2 border-l-2 border-indigo-500/40">
+                              <p className="text-[11px] font-semibold text-slate-400">Sub-Questions:</p>
+                              <div className="space-y-1">
+                                {q.subQuestions.map((sq, sqIdx) => (
+                                  <div key={sq._id || sqIdx} className="p-2 rounded border text-xs bg-slate-900/40 flex justify-between items-center">
+                                    <span><strong>({sqIdx + 1})</strong> {sq.subQuestionText}</span>
+                                    <span className="text-indigo-400 font-bold">[{sq.marks} marks]</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          <div className="mt-2 pt-2 border-t border-slate-500/25 flex items-center justify-between">
+                            {q.type === 'mcq' && (
+                              <span className="font-mono bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 px-2.5 py-1 rounded inline-block text-[11px]">
+                                ✅ Correct Answers: <strong className="text-emerald-400">{Array.isArray(q.correctAnswer) ? q.correctAnswer.join(', ') : String(q.correctAnswer || '')}</strong>
+                              </span>
+                            )}
+                            {(q.type === 'single' || q.type === 'short') && (
+                              <span className="font-mono bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 px-2.5 py-1 rounded inline-block text-[11px]">
+                                ✅ Correct Answer: <strong className="text-emerald-400">{String(q.correctAnswer || '')}</strong>
+                              </span>
+                            )}
+                            {q.type === 'essay' && (
+                              <span className="font-mono bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 px-2.5 py-1 rounded inline-block text-[11px]">
+                                📝 Structured Essay Question (Evaluated by Teacher)
+                              </span>
+                            )}
                           </div>
-                        )}
-
-                        <div className="mt-2 pt-2 border-t border-slate-500/20">
-                          <span className="font-mono bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 px-2 py-1 rounded inline-block text-[11px]">
-                            ✅ Correct Answer: <strong className="text-emerald-400">{q.correctAnswer}</strong>
-                          </span>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
 

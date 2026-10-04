@@ -6,21 +6,30 @@ import React, { useEffect, useState, useMemo } from "react";
 import { CheckCircle, XCircle, Trash2, Image as ImageIcon, User, Eye, X } from "lucide-react";
 import axios from "axios";
 
+interface SubQuestion {
+  _id?: string;
+  subQuestionText: string;
+  marks: number;
+}
+
+interface Question {
+  id: string;
+  type: "mcq" | "single" | "short" | "essay";
+  questionText: string;
+  imageUrl?: string;
+  options: string[];
+  correctAnswer: any;
+  marks: number;
+  subQuestions?: SubQuestion[];
+}
+
 interface QuizSubmission {
   _id: string;
   teacherId: string | { _id: string; name: string; teacherId?: string; email?: string; profilePhoto?: string };
   title: string;
   description: string;
   duration: number;
-  questions: Array<{
-    id: string;
-    type: string;
-    questionText: string;
-    imageUrl?: string;
-    options: string[];
-    correctAnswer: string;
-    marks: number;
-  }>;
+  questions: Question[];
   status: "pending" | "approved" | "rejected";
   rejectReason?: string;
   createdAt: string;
@@ -57,7 +66,6 @@ export default function AdminQuizViewPage() {
       await axios.put(`http://localhost:5000/api/quiz/admin/${quizId}/clear-dot`, {}, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      // Instantly remove the dot from the local state.
       setQuizzes(prev => prev.map(q => q._id === quizId ? { ...q, isNewForTable: false } : q));
     } catch (error) {
       console.error("Error clearing quiz dot:", error);
@@ -174,51 +182,92 @@ export default function AdminQuizViewPage() {
             </div>
 
             <div className="space-y-3 overflow-y-auto pr-1 flex-1">
-              {selectedQuizForQuestions.questions.map((q, idx) => (
-                <div key={q.id} className="p-4 bg-gray-50 dark:bg-gray-900 border dark:border-gray-700 rounded-lg text-sm space-y-2">
-                  <div className="flex justify-between items-start">
-                    <p className="font-medium text-gray-900 dark:text-gray-100">
-                      {idx + 1}. {q.questionText}
-                    </p>
-                    <span className="text-xs font-semibold bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded uppercase flex-shrink-0 ml-2">
-                      {q.type} ({q.marks} marks)
-                    </span>
-                  </div>
+              {selectedQuizForQuestions.questions.map((q, idx) => {
+                let totalQMarks = q.marks;
+                if (q.type === 'essay' && q.subQuestions) {
+                  totalQMarks = q.subQuestions.reduce((s, sq) => s + sq.marks, 0);
+                }
 
-                  {q.imageUrl && (
-                    <div className="mt-2">
-                      <span className="text-xs text-gray-500 flex items-center gap-1 mb-1">
-                        <ImageIcon size={14} /> Attached Image:
+                return (
+                  <div key={q.id || idx} className="p-4 bg-gray-50 dark:bg-gray-900 border dark:border-gray-700 rounded-lg text-sm space-y-2">
+                    <div className="flex justify-between items-start">
+                      <p className="font-medium text-gray-900 dark:text-gray-100">
+                        {idx + 1}. {q.questionText}
+                      </p>
+                      <span className="text-xs font-semibold bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded uppercase flex-shrink-0 ml-2">
+                        {q.type} ({totalQMarks} marks)
                       </span>
-                      <img 
-                        src={`http://localhost:5000${q.imageUrl}`} 
-                        alt="Question Visual" 
-                        className="max-h-40 rounded border border-gray-700 object-contain" 
-                        onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
-                      />
                     </div>
-                  )}
 
-                  {q.type === 'mcq' && q.options && q.options.length > 0 && (
-                    <div className="space-y-1 mt-2 pl-2 border-l-2 border-blue-400">
-                      <p className="text-xs font-semibold text-gray-600 dark:text-gray-400">Options:</p>
-                      <ul className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
-                        {q.options.map((opt, optIdx) => (
-                          <li key={optIdx} className="text-xs bg-white dark:bg-gray-800 p-2 rounded border dark:border-gray-700 text-gray-700 dark:text-gray-300">
-                            <span className="font-bold mr-1">({optIdx + 1})</span> {opt}
-                          </li>
-                        ))}
-                      </ul>
+                    {q.imageUrl && (
+                      <div className="mt-2">
+                        <span className="text-xs text-gray-500 flex items-center gap-1 mb-1">
+                          <ImageIcon size={14} /> Attached Image:
+                        </span>
+                        <img 
+                          src={`http://localhost:5000${q.imageUrl}`} 
+                          alt="Question Visual" 
+                          className="max-h-40 rounded border border-gray-700 object-contain" 
+                          onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
+                        />
+                      </div>
+                    )}
+
+                    {/* MCQ or Single Options */}
+                    {(q.type === 'mcq' || q.type === 'single') && q.options && q.options.length > 0 && (
+                      <div className="space-y-1 mt-2 pl-2 border-l-2 border-blue-400">
+                        <p className="text-xs font-semibold text-gray-600 dark:text-gray-400">Options:</p>
+                        <ul className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                          {q.options.map((opt, optIdx) => {
+                            const isCorrect = q.type === 'mcq' 
+                              ? (Array.isArray(q.correctAnswer) && q.correctAnswer.includes(opt))
+                              : (q.correctAnswer === opt);
+
+                            return (
+                              <li key={optIdx} className={`text-xs p-2 rounded border dark:border-gray-700 ${isCorrect ? "bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300 font-bold" : "bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300"}`}>
+                                <span className="font-bold mr-1">({optIdx + 1})</span> {opt} {isCorrect && "✅"}
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      </div>
+                    )}
+
+                    {/* Essay Sub-questions */}
+                    {q.type === 'essay' && q.subQuestions && (
+                      <div className="space-y-1 mt-2 pl-2 border-l-2 border-blue-400">
+                        <p className="text-xs font-semibold text-gray-600 dark:text-gray-400">Sub-Questions:</p>
+                        <div className="space-y-1">
+                          {q.subQuestions.map((sq, sqIdx) => (
+                            <div key={sq._id || sqIdx} className="text-xs bg-white dark:bg-gray-800 p-2 rounded border dark:border-gray-700 flex justify-between items-center text-gray-700 dark:text-gray-300">
+                              <span><strong>({sqIdx + 1})</strong> {sq.subQuestionText}</span>
+                              <span className="text-blue-600 dark:text-blue-400 font-bold">[{sq.marks} marks]</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="mt-2 pt-2 border-t dark:border-gray-800">
+                      {q.type === 'mcq' && (
+                        <p className="text-xs text-gray-700 dark:text-gray-300 font-mono bg-gray-200 dark:bg-gray-800 border dark:border-gray-700 px-2 py-1 rounded inline-block">
+                          🔒 Correct Answers: <span className="font-semibold text-gray-900 dark:text-white">{Array.isArray(q.correctAnswer) ? q.correctAnswer.join(', ') : q.correctAnswer}</span>
+                        </p>
+                      )}
+                      {(q.type === 'single' || q.type === 'short') && (
+                        <p className="text-xs text-gray-700 dark:text-gray-300 font-mono bg-gray-200 dark:bg-gray-800 border dark:border-gray-700 px-2 py-1 rounded inline-block">
+                          🔒 Correct Answer: <span className="font-semibold text-gray-900 dark:text-white">{q.correctAnswer}</span>
+                        </p>
+                      )}
+                      {q.type === 'essay' && (
+                        <p className="text-xs text-gray-700 dark:text-gray-300 font-mono bg-gray-200 dark:bg-gray-800 border dark:border-gray-700 px-2 py-1 rounded inline-block">
+                          📝 Structured Essay Question (Evaluated by Teacher)
+                        </p>
+                      )}
                     </div>
-                  )}
-
-                  <div className="mt-2 pt-2 border-t dark:border-gray-800">
-                    <p className="text-xs text-gray-700 dark:text-gray-300 font-mono bg-gray-200 dark:bg-gray-800 border dark:border-gray-700 px-2 py-1 rounded inline-block">
-                      🔒 Correct Answer: <span className="font-semibold text-gray-900 dark:text-white">{q.correctAnswer}</span>
-                    </p>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
 
             <div className="flex justify-end pt-2 border-t dark:border-gray-700">

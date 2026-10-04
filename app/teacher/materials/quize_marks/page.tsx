@@ -116,7 +116,6 @@ export default function TeacherQuizMarksPage() {
     }
   };
 
-
   // Send All to Students Function
   const handleSendAllToStudents = async () => {
     if (!selectedQuiz) return;
@@ -215,13 +214,57 @@ export default function TeacherQuizMarksPage() {
                 const studentAns = String(studentAnswers[qId] || "No Answer Given").trim();
                 const correctAns = String(q.correctAnswer || "").trim();
                 
-                const cleanStudent = studentAns.toLowerCase().replace(/[^a-z0-9]/g, '');
-                const cleanCorrect = correctAns.toLowerCase().replace(/[^a-z0-9]/g, '');
-                const isCorrect = (q.type === 'mcq' || q.type === 'short') && (cleanStudent === cleanCorrect);
+                // නිවැරදි/වැරදි බව පරීක්ෂා කිරීම
+                let isCorrect = false;
+                if (q.type === 'single' || q.type === 'short') {
+                  const cleanStudent = studentAns.toLowerCase().replace(/[^a-z0-9]/g, '');
+                  const cleanCorrect = correctAns.toLowerCase().replace(/[^a-z0-9]/g, '');
+                  isCorrect = cleanStudent === cleanCorrect && cleanStudent !== "";
+                } else if (q.type === 'mcq') {
+                  const correctArr = Array.isArray(q.correctAnswer) ? q.correctAnswer : [q.correctAnswer];
+                  // studentAns මෙහි String හෝ Array විය හැක
+                  if (Array.isArray(studentAns)) {
+                    isCorrect = correctArr.every((a: string) => studentAns.includes(a)) && studentAns.every((a: string) => correctArr.includes(a));
+                  }
+                }
+
+                // ප්‍රශ්නය සඳහා උපරිම ලකුණු ගණනය කිරීම
+                let maxQMarks = q.marks || 5;
+                if (q.type === 'essay' && q.subQuestions && q.subQuestions.length > 0) {
+                  maxQMarks = q.subQuestions.reduce((s: number, sq: any) => s + sq.marks, 0);
+                }
+
+                // සිසුවා ලබාගත් ලකුණු ගණනය කිරීම (Earned Marks)
+                let earnedQMarks = 0;
+                if (q.type !== 'essay') {
+                  if (isCorrect) {
+                    earnedQMarks = q.marks;
+                  } else {
+                    // ගුරුවරයා අතින් ලකුණු ලබා දී ඇත්නම් (essayMarks map හෝ object එකෙන් ලබා ගැනීම)
+                    const essayMarksObj = selectedStudentSub.essayMarks instanceof Map ? Object.fromEntries(selectedStudentSub.essayMarks) : (selectedStudentSub.essayMarks || {});
+                    earnedQMarks = Number(essayMarksObj[qId]) || 0;
+                  }
+                } else {
+                  const essayMarksObj = selectedStudentSub.essayMarks instanceof Map ? Object.fromEntries(selectedStudentSub.essayMarks) : (selectedStudentSub.essayMarks || {});
+                  const val = essayMarksObj[qId];
+                  if (typeof val === 'object' && val !== null) {
+                    earnedQMarks = Object.values(val).reduce((s: number, m: any) => s + (Number(m) || 0), 0);
+                  } else {
+                    earnedQMarks = Number(val) || 0;
+                  }
+                }
 
                 return (
-                  <div key={qId} className={`p-4 rounded-2xl border text-xs space-y-2 ${darkMode ? "bg-slate-950 border-slate-800" : "bg-slate-50 border-slate-200"}`}>
-                    <p className="font-bold text-sm">{qIdx + 1}. {q.questionText} <span className="opacity-60 text-[10px]">({q.type.toUpperCase()} - {q.marks || 5} Marks)</span></p>
+                  <div key={qId} className={`p-4 rounded-2xl border text-xs space-y-2.5 ${darkMode ? "bg-slate-950 border-slate-800" : "bg-slate-50 border-slate-200"}`}>
+                    <div className="flex justify-between items-center">
+                      <p className="font-bold text-sm">
+                        {qIdx + 1}. {q.questionText} <span className="opacity-60 text-[10px]">({q.type.toUpperCase()})</span>
+                      </p>
+                      {/* එක් එක් ප්‍රශ්නය සඳහා ලකුණු ප්‍රදර්ශනය කිරීම */}
+                      <span className="px-2.5 py-1 rounded-lg text-xs font-extrabold bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+                        Score: {earnedQMarks} / {maxQMarks} Marks
+                      </span>
+                    </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2">
                       <div className="p-3 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
@@ -229,17 +272,21 @@ export default function TeacherQuizMarksPage() {
                         {q.type !== 'essay' ? (
                           <span className={isCorrect ? "text-emerald-500 font-bold flex items-center gap-1.5 text-sm" : "text-rose-500 font-bold flex items-center gap-1.5 text-sm"}>
                             {isCorrect ? <Check size={16} /> : <X size={16} />}
-                            {studentAns} {isCorrect ? "(Correct ✅)" : "(Incorrect ❌)"}
+                            {Array.isArray(studentAns) ? studentAns.join(', ') : studentAns} {isCorrect ? "(Correct ✅)" : "(Incorrect ❌)"}
                           </span>
                         ) : (
-                          <span className="text-slate-200 font-medium text-sm">{studentAns}</span>
+                          <span className="text-slate-200 font-medium text-sm">
+                            {typeof studentAns === 'object' && studentAns !== null ? JSON.stringify(studentAns) : studentAns}
+                          </span>
                         )}
                       </div>
 
                       {q.type !== 'essay' && (
                         <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
                           <span className="text-[10px] text-emerald-400 block font-bold mb-1">Teacher's Answer Key (Right):</span>
-                          <span className="text-emerald-400 font-bold text-sm">{q.correctAnswer}</span>
+                          <span className="text-emerald-400 font-bold text-sm">
+                            {Array.isArray(q.correctAnswer) ? q.correctAnswer.join(', ') : q.correctAnswer}
+                          </span>
                         </div>
                       )}
                     </div>
