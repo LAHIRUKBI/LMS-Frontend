@@ -20,7 +20,9 @@ import {
   Download,
   MapPin,
   Eye,
-  X
+  X,
+  ChevronLeft,
+  ChevronRight
 } from "lucide-react";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -60,10 +62,14 @@ export default function AdminStudentView() {
   const [error, setError] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
 
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 5; // පිටුවකට සිසුන් 5 දෙනෙකු පමණක් පෙන්වීමට
+
   // Popup States for Deletion & Detailed View Modal
   const [singleDeleteStudent, setSingleDeleteStudent] = useState<Student | null>(null);
   const [isDeleteAllModalOpen, setIsDeleteAllModalOpen] = useState(false);
-  const [viewingStudent, setViewingStudent] = useState<Student | null>(null); // 👈 සිසුවාගේ සියලු විස්තර එකවර පෙන්වන Modal එක සඳහා
+  const [viewingStudent, setViewingStudent] = useState<Student | null>(null);
 
   useEffect(() => {
     fetchStudents();
@@ -215,6 +221,16 @@ export default function AdminStudentView() {
     student.email.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  // Pagination Logic
+  const totalPages = Math.ceil(filteredStudents.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const currentStudents = filteredStudents.slice(startIndex, startIndex + itemsPerPage);
+
+  // Search වෙනස් වන විට මුල් පිටුවට (Page 1) රීසෙට් කිරීම
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm]);
+
   // Setting the Profile Image URL
   const getProfileImageUrl = (url: string) => {
     if (!url) return null;
@@ -231,7 +247,7 @@ export default function AdminStudentView() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 dark:bg-slate-950 p-4 sm:p-6 lg:p-8 transition-colors duration-500 font-sans overflow-x-hidden">
+    <div className="min-h-screen bg-slate-50/50 dark:bg-slate-950 p-4 sm:p-6 lg:p-8 transition-colors duration-500 font-sans overflow-x-hidden">
       
       {/* Delete Single Student Confirmation Popup */}
       <StudentDeleteConfirmPopup
@@ -251,7 +267,7 @@ export default function AdminStudentView() {
         message="Are you sure you want to delete all student records permanently? This action is irreversible."
       />
 
-      {/* 🌟 Full Student Details View Modal (සියලුම විස්තර එකවර කියවා බලා ගැනීමට) */}
+      {/* Full Student Details View Modal */}
       {viewingStudent && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
           <div className="w-full max-w-2xl bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border dark:border-slate-800 p-6 space-y-5 my-8 max-h-[90vh] overflow-y-auto custom-scrollbar">
@@ -341,7 +357,7 @@ export default function AdminStudentView() {
                 </div>
               </div>
 
-              {/* Guardian Details (If applicable) */}
+              {/* Guardian Details */}
               {viewingStudent.hasGuardian && (
                 <div className="p-3.5 rounded-2xl bg-purple-50/50 dark:bg-purple-500/10 border border-purple-200/50 dark:border-purple-500/20 space-y-1.5">
                   <h4 className="font-bold text-purple-700 dark:text-purple-400 uppercase text-[11px]">Guardian Details</h4>
@@ -375,166 +391,166 @@ export default function AdminStudentView() {
         </div>
       )}
 
-      <div className="max-w-7xl mx-auto space-y-6 w-full">
+      <div className="max-w-7xl mx-auto space-y-5 w-full">
         
         {/* Header Section */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
-            <h1 className="text-2xl font-bold text-slate-800 dark:text-white transition-colors">Registered Students</h1>
-            <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 transition-colors">Manage and view all students in the system.</p>
+            <h1 className="text-xl font-bold text-slate-800 dark:text-white transition-colors">Registered Students</h1>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 transition-colors">Manage and view all students in the system.</p>
           </div>
           
-          <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
-            <div className="relative w-full sm:w-64 group">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors" size={18} />
+          <div className="flex flex-wrap items-center gap-2.5 w-full sm:w-auto">
+            <div className="relative w-full sm:w-56 group">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-500 transition-colors" size={16} />
               <input 
                 type="text" 
-                placeholder="Search by name or email..." 
+                placeholder="Search name/email..." 
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 dark:text-white transition-all shadow-sm"
+                className="w-full pl-9 pr-3.5 py-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 dark:text-white transition-all shadow-sm"
               />
             </div>
 
             {/* Download All Students PDF Button */}
             <button
               onClick={handleDownloadAllStudentsPDF}
-              className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-xl font-semibold text-xs transition-all shadow-sm"
+              className="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-1.5 rounded-xl font-semibold text-xs transition-all shadow-sm"
             >
-              <Download size={14} /> Download All Student Info
+              <Download size={13} /> Export All
             </button>
 
             {/* Delete All Students Button */}
             <button
               onClick={() => setIsDeleteAllModalOpen(true)}
-              className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-xl font-semibold text-xs transition-all shadow-sm"
+              className="flex items-center gap-1.5 bg-rose-600 hover:bg-rose-700 text-white px-3.5 py-1.5 rounded-xl font-semibold text-xs transition-all shadow-sm"
             >
-              <Trash2 size={14} /> Delete All Student
+              <Trash2 size={13} /> Delete All
             </button>
           </div>
         </div>
 
         {error && (
-          <div className="bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 text-red-600 dark:text-red-400 p-4 rounded-xl text-sm font-medium">
+          <div className="bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 text-red-600 dark:text-red-400 p-3 rounded-xl text-xs font-medium">
             {error}
           </div>
         )}
 
-        {/* Table Section */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm overflow-hidden transition-colors duration-500">
-          <div className="w-full max-w-full overflow-x-hidden">
+        {/* Table Section (Compact & Cute Styling) */}
+        <div className="bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800/80 rounded-2xl shadow-sm overflow-hidden transition-colors duration-500">
+          <div className="w-full max-w-full overflow-x-auto">
             <table className="w-full text-left border-collapse table-auto">
               <thead>
-                <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800 transition-colors">
-                  <th className="px-4 py-4 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Student</th>
-                  <th className="px-4 py-4 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Contact & Parents</th>
-                  <th className="px-4 py-4 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Academic & Medium</th>
-                  <th className="px-4 py-4 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Location & Timezone</th>
-                  <th className="px-4 py-4 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Joined Date</th>
-                  <th className="px-4 py-4 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-right">Actions</th>
+                <tr className="bg-slate-50/75 dark:bg-slate-800/40 border-b border-slate-200 dark:border-slate-800 text-[11px]">
+                  <th className="px-3.5 py-3 font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Student</th>
+                  <th className="px-3.5 py-3 font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Contact & Parents</th>
+                  <th className="px-3.5 py-3 font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Academic & Medium</th>
+                  <th className="px-3.5 py-3 font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Location & Timezone</th>
+                  <th className="px-3.5 py-3 font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Joined Date</th>
+                  <th className="px-3.5 py-3 font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                {filteredStudents.length > 0 ? (
-                  filteredStudents.map((student) => (
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 text-xs">
+                {currentStudents.length > 0 ? (
+                  currentStudents.map((student) => (
                     <tr 
                       key={student._id} 
                       onClick={() => student.isNewForTable && handleClearRowDot(student._id)}
-                      className={`hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors group relative ${student.isNewForTable ? "cursor-pointer bg-red-50/30 dark:bg-red-900/10" : ""}`}
+                      className={`hover:bg-slate-50/50 dark:hover:bg-slate-800/20 transition-colors group relative ${student.isNewForTable ? "cursor-pointer bg-red-50/30 dark:bg-red-900/10" : ""}`}
                     >
                       {/* Name & Image */}
-                      <td className="px-4 py-4">
-                        <div className="flex items-center gap-3">
+                      <td className="px-3.5 py-3">
+                        <div className="flex items-center gap-2.5">
                           {student.isNewForTable && (
                             <span 
-                              className="absolute -left-2 top-1/2 -translate-y-1/2 flex h-3 w-3"
+                              className="absolute -left-1 top-1/2 -translate-y-1/2 flex h-2.5 w-2.5"
                               title="New Student"
                             >
                               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                              <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500 shadow-sm"></span>
+                              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-rose-500 shadow-sm"></span>
                             </span>
                           )}
-                          <div className="w-9 h-9 rounded-full overflow-hidden bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex flex-shrink-0 items-center justify-center">
+                          <div className="w-8 h-8 rounded-full overflow-hidden bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 flex flex-shrink-0 items-center justify-center shadow-xs">
                             {student.profileImage ? (
                               <img src={getProfileImageUrl(student.profileImage) || ""} alt={student.name} className="w-full h-full object-cover" />
                             ) : (
-                              <User size={18} className="text-slate-400" />
+                              <User size={15} className="text-slate-400" />
                             )}
                           </div>
                           <div className="min-w-0">
-                            <p className="font-semibold text-slate-800 dark:text-white text-xs truncate max-w-[120px] sm:max-w-[160px]">{student.name}</p>
-                            <span className={`text-[9px] px-1.5 py-0.2 rounded-full mt-0.5 inline-block ${student.authProvider === 'google' ? 'bg-orange-50 text-orange-600 dark:bg-orange-500/10 dark:text-orange-400 border border-orange-100 dark:border-orange-500/20' : 'bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400 border border-blue-100 dark:border-blue-500/20'}`}>
+                            <p className="font-bold text-slate-800 dark:text-white text-xs truncate max-w-[120px] sm:max-w-[150px]">{student.name}</p>
+                            <span className={`text-[8px] px-1.5 py-0.2 rounded-md font-medium mt-0.5 inline-block ${student.authProvider === 'google' ? 'bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400 border border-amber-100 dark:border-amber-500/20' : 'bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400 border border-blue-100 dark:border-blue-500/20'}`}>
                               {student.authProvider === 'google' ? 'Google' : 'Email'}
                             </span>
                           </div>
                         </div>
                       </td>
 
-                      {/* Contact Info & Parents / Guardian Details */}
-                      <td className="px-4 py-4">
-                        <div className="space-y-1 text-xs">
-                          <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-300 truncate max-w-[150px] sm:max-w-[200px]" title={student.email}>
-                            <Mail size={13} className="text-slate-400 flex-shrink-0" />
+                      {/* Contact Info & Parents */}
+                      <td className="px-3.5 py-3">
+                        <div className="space-y-0.5 text-[11px]">
+                          <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-300 truncate max-w-[140px] sm:max-w-[180px]" title={student.email}>
+                            <Mail size={12} className="text-slate-400 shrink-0" />
                             <span className="truncate">{student.email}</span>
                           </div>
                           <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-300">
-                            <Phone size={13} className="text-slate-400 flex-shrink-0" />
-                            <span>{student.phone || <span className="text-slate-400 italic">No phone</span>}</span>
+                            <Phone size={12} className="text-slate-400 shrink-0" />
+                            <span>{student.phone || <span className="text-slate-400 italic text-[10px]">No phone</span>}</span>
                           </div>
                           {student.fatherName && (
-                            <div className="flex items-center gap-1 text-[11px] text-amber-600 dark:text-amber-400 font-medium truncate max-w-[160px]" title={`Father: ${student.fatherName}`}>
-                              <Users size={12} className="flex-shrink-0" />
-                              <span className="truncate">Father: {student.fatherName}</span>
+                            <div className="flex items-center gap-1 text-[10px] text-amber-600 dark:text-amber-400 font-medium truncate max-w-[150px]" title={`Father: ${student.fatherName}`}>
+                              <Users size={11} className="shrink-0" />
+                              <span className="truncate">F: {student.fatherName}</span>
                             </div>
                           )}
                           {student.motherName && (
-                            <div className="flex items-center gap-1 text-[11px] text-pink-600 dark:text-pink-400 font-medium truncate max-w-[160px]" title={`Mother: ${student.motherName}`}>
-                              <Users size={12} className="flex-shrink-0" />
-                              <span className="truncate">Mother: {student.motherName}</span>
+                            <div className="flex items-center gap-1 text-[10px] text-pink-600 dark:text-pink-400 font-medium truncate max-w-[150px]" title={`Mother: ${student.motherName}`}>
+                              <Users size={11} className="shrink-0" />
+                              <span className="truncate">M: {student.motherName}</span>
                             </div>
                           )}
                           {student.hasGuardian && student.guardianName && (
-                            <div className="flex items-center gap-1 text-[11px] text-purple-600 dark:text-purple-400 font-medium truncate max-w-[160px]" title={`Guardian: ${student.guardianName}`}>
-                              <Users size={12} className="flex-shrink-0" />
-                              <span className="truncate">Guardian: {student.guardianName}</span>
+                            <div className="flex items-center gap-1 text-[10px] text-purple-600 dark:text-purple-400 font-medium truncate max-w-[150px]" title={`Guardian: ${student.guardianName}`}>
+                              <Users size={11} className="shrink-0" />
+                              <span className="truncate">G: {student.guardianName}</span>
                             </div>
                           )}
                         </div>
                       </td>
 
-                      {/* Academic Info, Medium & Home Address */}
-                      <td className="px-4 py-4">
-                        <div className="space-y-1 text-xs">
+                      {/* Academic Info */}
+                      <td className="px-3.5 py-3">
+                        <div className="space-y-0.5 text-[11px]">
                           <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-300">
-                            <GraduationCap size={13} className="text-indigo-400 flex-shrink-0" />
-                            <span>{student.grade || <span className="text-slate-400 italic">N/A</span>}</span>
+                            <GraduationCap size={12} className="text-indigo-400 shrink-0" />
+                            <span>{student.grade || <span className="text-slate-400 italic text-[10px]">N/A</span>}</span>
                           </div>
-                          <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-300 truncate max-w-[130px]" title={student.school}>
-                            <Building size={13} className="text-indigo-400 flex-shrink-0" />
-                            <span className="truncate">{student.school || <span className="text-slate-400 italic">N/A</span>}</span>
+                          <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-300 truncate max-w-[120px]" title={student.school}>
+                            <Building size={12} className="text-indigo-400 shrink-0" />
+                            <span className="truncate">{student.school || <span className="text-slate-400 italic text-[10px]">N/A</span>}</span>
                           </div>
-                          <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-300 truncate max-w-[150px]" title={student.address}>
-                            <MapPin size={13} className="text-red-500 flex-shrink-0" />
-                            <span className="truncate">{student.address || <span className="text-slate-400 italic">No address</span>}</span>
+                          <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-300 truncate max-w-[130px]" title={student.address}>
+                            <MapPin size={12} className="text-rose-500 shrink-0" />
+                            <span className="truncate">{student.address || <span className="text-slate-400 italic text-[10px]">No address</span>}</span>
                           </div>
                           {student.medium && (
-                            <span className="inline-block text-[9px] px-1.5 py-0.2 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-500/20 rounded-full font-medium">
+                            <span className="inline-block text-[8px] px-1.5 py-0.2 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-500/20 rounded-md font-medium">
                               {student.medium}
                             </span>
                           )}
                         </div>
                       </td>
 
-                      {/* Country & TimeZone */}
-                      <td className="px-4 py-4">
-                        <div className="space-y-1 text-xs">
+                      {/* Country & Timezone */}
+                      <td className="px-3.5 py-3">
+                        <div className="space-y-0.5 text-[11px]">
                           <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-300">
-                            <Globe size={13} className="text-teal-500 flex-shrink-0" />
-                            <span className="truncate">{student.country || <span className="text-slate-400 italic">N/A</span>}</span>
+                            <Globe size={12} className="text-teal-500 shrink-0" />
+                            <span className="truncate">{student.country || <span className="text-slate-400 italic text-[10px]">N/A</span>}</span>
                           </div>
                           {student.timeZone && (
-                            <div className="flex items-center gap-1 text-[11px] text-slate-500 dark:text-slate-400 truncate max-w-[120px]" title={student.timeZone}>
-                              <Clock size={12} className="text-amber-500 flex-shrink-0" />
+                            <div className="flex items-center gap-1 text-[10px] text-slate-500 dark:text-slate-400 truncate max-w-[110px]" title={student.timeZone}>
+                              <Clock size={11} className="text-amber-500 shrink-0" />
                               <span className="truncate">{student.timeZone}</span>
                             </div>
                           )}
@@ -542,37 +558,36 @@ export default function AdminStudentView() {
                       </td>
 
                       {/* Joined Date */}
-                      <td className="px-4 py-4">
-                        <div className="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-300 whitespace-nowrap">
-                          <Calendar size={13} className="text-slate-400 flex-shrink-0" />
+                      <td className="px-3.5 py-3">
+                        <div className="flex items-center gap-1.5 text-[11px] text-slate-600 dark:text-slate-300 whitespace-nowrap">
+                          <Calendar size={12} className="text-slate-400 shrink-0" />
                           <span>{new Date(student.createdAt).toLocaleDateString()}</span>
                         </div>
                       </td>
 
-                      {/* Actions (View Full Details, Download Info & Delete Button) */}
-                      <td className="px-4 py-4 text-right whitespace-nowrap">
-                        <div className="flex items-center justify-end gap-1.5">
-                          {/* 🌟 View Details Button */}
+                      {/* Actions */}
+                      <td className="px-3.5 py-3 text-right whitespace-nowrap">
+                        <div className="flex items-center justify-end gap-1">
                           <button
                             onClick={() => setViewingStudent(student)}
                             title="View Full Details"
-                            className="flex items-center gap-1 px-2.5 py-1.5 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-500/20 rounded-lg text-[11px] font-semibold transition-colors"
+                            className="flex items-center gap-1 px-2 py-1 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-500/20 rounded-lg text-[10px] font-bold transition-colors"
                           >
-                            <Eye size={13} /> View
+                            <Eye size={12} /> View
                           </button>
                           <button
                             onClick={() => handleDownloadStudentPDF(student)}
                             title="Download Student Info"
-                            className="flex items-center gap-1 px-2.5 py-1.5 bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-500/20 rounded-lg text-[11px] font-semibold transition-colors"
+                            className="flex items-center gap-1 px-2 py-1 bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-500/20 rounded-lg text-[10px] font-bold transition-colors"
                           >
-                            <Download size={13} /> Info
+                            <Download size={12} /> PDF
                           </button>
                           <button
                             onClick={() => setSingleDeleteStudent(student)}
                             title="Delete Student"
-                            className="p-1.5 text-slate-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition-colors"
+                            className="p-1.5 text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded-lg transition-colors"
                           >
-                            <Trash2 size={15} />
+                            <Trash2 size={13} />
                           </button>
                         </div>
                       </td>
@@ -581,9 +596,9 @@ export default function AdminStudentView() {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={6} className="px-6 py-12 text-center text-slate-500 dark:text-slate-400">
-                      <div className="flex flex-col items-center gap-2">
-                        <User size={32} className="text-slate-300 dark:text-slate-600" />
+                    <td colSpan={6} className="px-6 py-10 text-center text-slate-500 dark:text-slate-400 text-xs">
+                      <div className="flex flex-col items-center gap-1.5">
+                        <User size={28} className="text-slate-300 dark:text-slate-600" />
                         <p>No student was found.</p>
                       </div>
                     </td>
@@ -592,6 +607,40 @@ export default function AdminStudentView() {
               </tbody>
             </table>
           </div>
+
+          {/* Cute Pagination Footer Bar */}
+          {filteredStudents.length > 0 && (
+            <div className="flex flex-col sm:flex-row items-center justify-between px-4 py-3 bg-slate-50/50 dark:bg-slate-800/20 border-t border-slate-200 dark:border-slate-800 gap-3 text-xs">
+              <div className="text-slate-500 dark:text-slate-400 text-[11px]">
+                Showing <span className="font-bold text-slate-700 dark:text-slate-200">{filteredStudents.length > 0 ? startIndex + 1 : 0}</span> to <span className="font-bold text-slate-700 dark:text-slate-200">{Math.min(startIndex + itemsPerPage, filteredStudents.length)}</span> of <span className="font-bold text-slate-700 dark:text-slate-200">{filteredStudents.length}</span> students
+              </div>
+
+              <div className="flex items-center gap-1.5">
+                {/* Previous Button */}
+                <button
+                  onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                  disabled={currentPage === 1}
+                  className="flex items-center gap-1 px-3 py-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-slate-700 dark:text-slate-200 font-semibold disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-100 dark:hover:bg-slate-800 transition-all shadow-2xs text-[11px]"
+                >
+                  <ChevronLeft size={14} /> Previous
+                </button>
+
+                <div className="px-3 py-1.5 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-500/20 rounded-xl font-bold text-[11px]">
+                  {currentPage} / {totalPages || 1}
+                </div>
+
+                {/* Next Button */}
+                <button
+                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                  disabled={currentPage === totalPages || totalPages === 0}
+                  className="flex items-center gap-1 px-3 py-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-slate-700 dark:text-slate-200 font-semibold disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-100 dark:hover:bg-slate-800 transition-all shadow-2xs text-[11px]"
+                >
+                  Next <ChevronRight size={14} />
+                </button>
+              </div>
+            </div>
+          )}
+
         </div>
 
       </div>
