@@ -283,8 +283,7 @@ export default function TeacherMyQuizzesPage() {
     });
   };
 
-  // Save Marks to Database බටන් එක එබූ විට ක්‍රියාත්මක වන කොටස (Components පිටුවේ ඇති popup එක පෙන්වා ස්වයංක්‍රීයව Student Submissions මොඩලයට යාම)
-  const handleSendMarksToDB = async (subId: string) => {
+  const handleSendMarksToDB = async (subId: string, currentCalculatedScore?: number) => {
     try {
       const token = localStorage.getItem("token");
       const marks = essayMarksInput[subId] || {};
@@ -293,20 +292,20 @@ export default function TeacherMyQuizzesPage() {
       const res = await axios.post(`http://localhost:5000/api/quiz/evaluate-essay`, {
         submissionId: subId,
         essayMarks: marks,
-        teacherCorrections: corrections
+        teacherCorrections: corrections,
+        overrideScore: currentCalculatedScore
       }, {
         headers: { Authorization: `Bearer ${token}` }
       });
 
-      // ලස්සන popup message එක පෙන්වීම
       setShowSaveSuccessPopup(true);
 
-      setSelectedQuizSubmissions(selectedQuizSubmissions.map(s => s._id === subId ? res.data.sub : s));
+      const updatedSub = res.data.sub;
+      setSelectedQuizSubmissions(selectedQuizSubmissions.map(s => s._id === subId ? updatedSub : s));
       if (selectedStudentSub && selectedStudentSub._id === subId) {
-        setSelectedStudentSub(res.data.sub);
+        setSelectedStudentSub(updatedSub);
       }
 
-      // තත්පර 2 කින් පමණ popup එක automatically ඉවත් වී Student Submissions ලැයිස්තු දසුනට (Student list view) යැවීම
       setTimeout(() => {
         setShowSaveSuccessPopup(false);
         setSelectedStudentSub(null);
@@ -475,9 +474,9 @@ export default function TeacherMyQuizzesPage() {
                   const getSavedEssayMark = (qIdStr: string) => {
                     if (!sub.essayMarks) return 0;
                     if (typeof sub.essayMarks.get === 'function') {
-                      return sub.essayMarks.get(qIdStr) || 0;
+                      return Number(sub.essayMarks.get(qIdStr)) || 0;
                     }
-                    return sub.essayMarks[qIdStr] || 0;
+                    return Number(sub.essayMarks[qIdStr]) || 0;
                   };
 
                   let calculatedTotalScore = 0;
@@ -485,34 +484,48 @@ export default function TeacherMyQuizzesPage() {
                     const qId = q._id.toString();
                     const studentAns = studentAnswers[qId];
 
-                    if (q.type === 'single' || q.type === 'short') {
+                    if (q.type === 'single') {
                       const cleanStudent = String(studentAns || "").trim().toLowerCase().replace(/[^a-z0-9]/g, '');
                       const cleanCorrect = String(q.correctAnswer || "").trim().toLowerCase().replace(/[^a-z0-9]/g, '');
                       if (cleanCorrect && cleanStudent === cleanCorrect) {
-                        calculatedTotalScore += q.marks;
-                      } else if (!cleanCorrect) {
-                        // Short Answer එකට teacher answer key එකක් දී නැත්නම් අතින් දෙන ලකුණු හෝ ගනු ලැබේ
+                        calculatedTotalScore += Number(q.marks) || 0;
+                      } else {
+                        const manualVal = (essayMarksInput[sub._id] || {})[qId] !== undefined ? Number((essayMarksInput[sub._id] || {})[qId]) : 0;
+                        calculatedTotalScore += manualVal;
+                      }
+                    } else if (q.type === 'short') {
+                      const cleanCorrect = String(q.correctAnswer || "").trim();
+                      if (cleanCorrect) {
+                        const cleanStudent = String(studentAns || "").trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+                        const cleanRef = cleanCorrect.toLowerCase().replace(/[^a-z0-9]/g, '');
+                        if (cleanStudent === cleanRef) {
+                          calculatedTotalScore += Number(q.marks) || 0;
+                        } else {
+                          const manualVal = (essayMarksInput[sub._id] || {})[qId] !== undefined ? Number((essayMarksInput[sub._id] || {})[qId]) : 0;
+                          calculatedTotalScore += manualVal;
+                        }
+                      } else {
                         const manualVal = (essayMarksInput[sub._id] || {})[qId] !== undefined ? Number((essayMarksInput[sub._id] || {})[qId]) : getSavedEssayMark(qId);
-                        calculatedTotalScore += manualVal || 0;
+                        calculatedTotalScore += manualVal;
                       }
                     } else if (q.type === 'mcq') {
                       const correctArr = Array.isArray(q.correctAnswer) ? q.correctAnswer : [q.correctAnswer];
                       if (Array.isArray(studentAns)) {
                         const isAllCorrect = correctArr.every((a: string) => studentAns.includes(a)) && studentAns.every((a: string) => correctArr.includes(a));
                         if (isAllCorrect) {
-                          calculatedTotalScore += q.marks;
+                          calculatedTotalScore += Number(q.marks) || 0;
                         } else {
-                          const manualMcqMarks = (essayMarksInput[sub._id] || {})[qId] !== undefined ? Number((essayMarksInput[sub._id] || {})[qId]) : getSavedEssayMark(qId);
-                          calculatedTotalScore += manualMcqMarks || 0;
+                          const manualMcqMarks = (essayMarksInput[sub._id] || {})[qId] !== undefined ? Number((essayMarksInput[sub._id] || {})[qId]) : 0;
+                          calculatedTotalScore += manualMcqMarks;
                         }
                       }
                     }
                   });
 
-                  const currentEssayMarks = essayMarksInput[sub._id] || sub.essayMarks || {};
+                  const currentEssayMarks = essayMarksInput[sub._id] || {};
                   Object.entries(currentEssayMarks).forEach(([qIdKey, val]: [string, any]) => {
                     const targetQ = selectedQuizDetails.questions.find((q: any) => q._id.toString() === qIdKey);
-                    if (targetQ && targetQ.type === 'mcq') return;
+                    if (targetQ && (targetQ.type === 'mcq' || targetQ.type === 'single' || targetQ.type === 'short')) return;
 
                     if (typeof val === 'object' && val !== null) {
                       calculatedTotalScore += Object.values(val).reduce((s: number, m: any) => s + (Number(m) || 0), 0);
@@ -520,6 +533,10 @@ export default function TeacherMyQuizzesPage() {
                       calculatedTotalScore += Number(val) || 0;
                     }
                   });
+
+                  const displayTotalScore = sub.isEvaluated && (!essayMarksInput[sub._id] || Object.keys(essayMarksInput[sub._id]).length === 0) 
+                    ? (Number(sub.score) || 0) 
+                    : calculatedTotalScore;
 
                   return (
                     <div className={`p-5 rounded-2xl border space-y-5 ${darkMode ? "bg-slate-950 border-slate-800" : "bg-slate-50 border-slate-200"}`}>
@@ -538,7 +555,7 @@ export default function TeacherMyQuizzesPage() {
                           </div>
                         </div>
                         <span className="px-3 py-1.5 rounded-full text-xs font-extrabold bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 flex items-center gap-1.5">
-                          <Award size={14} /> Total Score: {sub.isEvaluated ? sub.score : calculatedTotalScore} / {sub.maxScore} Marks
+                          <Award size={14} /> Total Score: {displayTotalScore} / {sub.maxScore} Marks
                         </span>
                       </div>
 
@@ -571,7 +588,7 @@ export default function TeacherMyQuizzesPage() {
                                 const cleanRef = cleanCorrect.toLowerCase().replace(/[^a-z0-9]/g, '');
                                 isCorrect = cleanStudent === cleanRef;
                               } else {
-                                isCorrect = false; // Answer Key එකක් නැත, ගුරුවරයා අතින් ලකුණු දිය යුතුය
+                                isCorrect = false;
                               }
                             } else if (q.type === 'mcq') {
                               const correctArr = Array.isArray(q.correctAnswer) ? q.correctAnswer : [q.correctAnswer];
@@ -601,13 +618,10 @@ export default function TeacherMyQuizzesPage() {
 
                             const hasSubQ = q.subQuestions && Array.isArray(q.subQuestions) && q.subQuestions.length > 0;
 
-                            // 👈 මෙහිදී Essay හෝ Short/Essay ප්‍රශ්න සඳහා සිසුවාගේ වැරදි පිළිතුරු වලට නිවැරදි දේවල් කුමක්දැයි ලිවීමට Text Box එක සකසා ඇත.
-                            // එසේම Sub-Questions වල පිළිතුරු JSON ආකාරයට අවුල් සහගතව පෙන්වීම වෙනුවට ලස්සනට සකසා ඇත.
                             let formattedStudentAnswer = "";
                             if (Array.isArray(studentAns)) {
                               formattedStudentAnswer = studentAns.join(', ');
                             } else if (typeof studentAns === 'object' && studentAns !== null) {
-                              // Sub-questions වල පිළිතුරු {"0":"...", "1":"..."} ලෙස තිබේ නම් ඒවා පිරිසිදු ලැයිස්තුවක් ලෙස පෙන්වීම
                               formattedStudentAnswer = Object.entries(studentAns)
                                 .map(([k, v]) => `Part (${Number(k) + 1}): ${v}`)
                                 .join(' | ');
@@ -655,7 +669,6 @@ export default function TeacherMyQuizzesPage() {
                                   )}
                                 </div>
 
-                                {/* Short Answer සඳහා Answer Key එකක් නොමැති නම් හෝ වැරදුණු විට ගුරුවරයාට ලකුණු දීමේ පහසුකම */}
                                 {q.type === 'short' && (
                                   <div className="mt-3 pt-2 border-t flex items-center justify-between bg-amber-500/5 p-2.5 rounded-xl border border-amber-500/20">
                                     <span className="font-bold text-xs text-amber-500">Give Short Answer Marks (Max {q.marks} Marks):</span>
@@ -688,7 +701,6 @@ export default function TeacherMyQuizzesPage() {
                                   </div>
                                 )}
 
-                                {/* Essay with Sub-questions */}
                                 {q.type === 'essay' && hasSubQ && (
                                   <div className="mt-3 pt-2 border-t space-y-2">
                                     <span className="font-bold text-[11px] text-indigo-400 block">Give Marks for Essay Sub-Questions:</span>
@@ -713,7 +725,6 @@ export default function TeacherMyQuizzesPage() {
                                   </div>
                                 )}
 
-                                {/* Normal Essay without Sub-questions */}
                                 {q.type === 'essay' && !hasSubQ && (
                                   <div className="mt-3 pt-2 border-t flex items-center justify-between bg-indigo-500/5 p-2.5 rounded-xl border border-indigo-500/20">
                                     <span className="font-bold text-xs text-indigo-400">Give Essay Marks (Max {q.marks} Marks):</span>
@@ -730,7 +741,6 @@ export default function TeacherMyQuizzesPage() {
                                   </div>
                                 )}
 
-                                {/* 👈 ESSAY සහ අනෙකුත් ප්‍රශ්න සඳහා වැරදි උත්තර ලියා තිබේ නම් නිවැරදි දේවල් කුමක්දැයි සදහන් කිරීමට Text Box එක */}
                                 <div className="mt-3 pt-2 border-t">
                                   <label className="block text-[11px] font-bold text-slate-400 mb-1">
                                     Teacher's Correction / What is correct for this question (Feedback for student):
@@ -754,12 +764,12 @@ export default function TeacherMyQuizzesPage() {
                         <div className="bg-emerald-500/10 border border-emerald-500/30 px-4 py-2.5 rounded-2xl flex items-center gap-2">
                           <Award size={20} className="text-emerald-400" />
                           <span className="text-xs font-bold text-emerald-400">
-                            Final Calculated Score: <strong className="text-sm">{sub.isEvaluated ? sub.score : calculatedTotalScore} / {sub.maxScore}</strong>
+                            Final Calculated Score: <strong className="text-sm">{displayTotalScore} / {sub.maxScore}</strong>
                           </span>
                         </div>
 
                         <button 
-                          onClick={() => handleSendMarksToDB(sub._id)}
+                          onClick={() => handleSendMarksToDB(sub._id, displayTotalScore)}
                           className="px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl text-xs font-bold shadow-lg flex items-center gap-2 transition"
                         >
                           <Send size={16} /> Save Marks to Database
@@ -868,7 +878,9 @@ export default function TeacherMyQuizzesPage() {
                       <div className="flex items-center justify-between cursor-pointer" onClick={() => toggleClassSelection(cls._id)}>
                         <div>
                           <div className="flex items-center gap-2">
-                            <span className="font-bold text-sm">Grade {cls.grade}</span>
+                            <span className="font-bold text-sm">
+                              {cls.grade === 'Other' ? cls.customGradeName : `Grade ${cls.grade}`}
+                            </span>
                             <span className="text-xs opacity-70">({cls.medium} - {cls.mode})</span>
                           </div>
                           <p className="text-xs opacity-60 mt-0.5">{cls.day} | {cls.startTime} - {cls.endTime}</p>
@@ -1113,7 +1125,7 @@ export default function TeacherMyQuizzesPage() {
                             <div className="flex justify-between items-start gap-2">
                               <div>
                                 <div className="font-bold text-indigo-400 text-sm">
-                                  {cls?.grade ? `Grade ${cls.grade}` : (cls?.name || "Class")} - {cls?.medium || ""} ({cls?.mode || ""})
+                                  {cls?.grade === 'Other' ? cls.customGradeName : (cls?.grade ? `Grade ${cls.grade}` : (cls?.name || "Class"))} - {cls?.medium || ""} ({cls?.mode || ""})
                                 </div>
                                 <div className="text-[11px] opacity-70 mt-0.5">
                                   {cls?.day || ""} {cls?.startTime ? `| ${cls.startTime} - ${cls?.endTime}` : ""}
@@ -1132,7 +1144,7 @@ export default function TeacherMyQuizzesPage() {
                                 <button
                                   onClick={() => handleRemoveClassFromQuiz(quiz, classIdVal)}
                                   title="Remove from this class"
-                                  className="p-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-500 transition-colors"
+                                  className="p-1.5 rounded-lg bg-rose-500/15 hover:bg-rose-500/20 text-rose-500 transition-colors"
                                 >
                                   <Trash2 size={13} />
                                 </button>
