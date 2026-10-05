@@ -5,7 +5,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import axios from "axios";
-import { Calendar, Clock, BookOpen, User, Loader2, ShieldAlert, Monitor, UserCheck, UserX, Trash2, Search, GraduationCap, Image as ImageIcon, Edit3, X, Check, FileText, CreditCard, ExternalLink, Briefcase, Phone, Users, ChevronLeft, ChevronRight, Bell, ChevronDown, ChevronUp } from "lucide-react";
+import { Calendar, Clock, BookOpen, User, Loader2, ShieldAlert, Monitor, UserCheck, UserX, Trash2, Search, GraduationCap, Image as ImageIcon, Edit3, X, Check, CreditCard, ExternalLink, Users, ChevronLeft, ChevronRight, Bell, ChevronDown, ChevronUp, Link as LinkIcon, FileText } from "lucide-react";
 import { useTheme } from "@/app/context/ThemeContext";
 
 export default function AdminClassViewPage() {
@@ -385,6 +385,14 @@ export default function AdminClassViewPage() {
                     </div>
                   </div>
 
+                  {/* Section displaying the family background description */}
+                  {freeCardData.familyBackground && (
+                    <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-1">
+                      <span className="text-slate-400 font-bold uppercase text-[9px]">Family Background / Reason:</span>
+                      <p className="text-[11px] text-slate-700 dark:text-slate-300 italic whitespace-pre-wrap">{freeCardData.familyBackground}</p>
+                    </div>
+                  )}
+
                   {freeCardData.files && freeCardData.files.length > 0 && (
                     <div className="space-y-1">
                       <span className="text-slate-400 font-bold uppercase text-[9px]">Documents ({freeCardData.files.length}):</span>
@@ -481,7 +489,7 @@ export default function AdminClassViewPage() {
                   }`}
                 >
 
-                  {/* Teacher Info Banner (Compact & Cute) */}
+                  {/* Teacher Info Banner */}
                   <div className={`rounded-xl px-3 py-2.5 border flex flex-col sm:flex-row items-center justify-between gap-3 shadow-2xs ${
                     darkMode ? "bg-slate-800/80 border-slate-700/80 text-white" : "bg-slate-50 border-slate-200 text-slate-900"
                   }`}>
@@ -506,7 +514,6 @@ export default function AdminClassViewPage() {
                         <div className="flex items-center gap-1.5">
                           <h3 className="font-extrabold text-xs sm:text-sm tracking-tight">{teacher?.name}</h3>
                           
-                          {/* Pending Badge */}
                           {pendingCount > 0 && (
                             <div className="relative">
                               <button
@@ -517,7 +524,6 @@ export default function AdminClassViewPage() {
                                 <Bell size={9} /> {pendingCount} Pending
                               </button>
 
-                              {/* Interactive Pending Dropdown Popup */}
                               {activePendingPopup === teacherId && (
                                 <div className={`absolute left-0 mt-1.5 w-64 rounded-xl shadow-xl z-50 p-2.5 space-y-1.5 border text-xs ${
                                   darkMode ? "bg-slate-900 border-slate-700 text-white" : "bg-white border-slate-200 text-slate-900"
@@ -544,7 +550,7 @@ export default function AdminClassViewPage() {
                                         >
                                           <p className="font-bold group-hover:text-blue-600">👤 {studentName}</p>
                                           <p className="text-[9px] opacity-70 truncate mt-0.5">
-                                            📚 <span className="text-teal-600 dark:text-teal-400 font-semibold">{classObj.grade} - {classObj.medium} ({classObj.day})</span>
+                                            📚 <span className="text-teal-600 dark:text-teal-400 font-semibold">{classObj.grade === 'Other' ? classObj.customGradeName : classObj.grade} - {classObj.medium} ({classObj.day})</span>
                                           </p>
                                         </div>
                                       );
@@ -564,12 +570,10 @@ export default function AdminClassViewPage() {
                     </div>
 
                     <div className="flex items-center gap-2">
-                      {/* Total Classes Badge */}
                       <div className="bg-blue-600 text-white px-3 py-1 rounded-lg text-[11px] font-bold shadow-2xs flex items-center gap-1">
                         <GraduationCap size={12} /> Classes: {classesList.length}
                       </div>
 
-                      {/* Collapse / Expand Toggle Button */}
                       <button
                         onClick={() => handleToggleCollapse(teacherId)}
                         className={`p-1.5 rounded-lg border transition-all flex items-center gap-1 text-[11px] font-bold ${
@@ -597,7 +601,6 @@ export default function AdminClassViewPage() {
                               className={`p-1 rounded-md disabled:opacity-40 disabled:cursor-not-allowed transition-all border text-[11px] ${
                                 darkMode ? "bg-slate-800 border-slate-700 text-slate-300" : "bg-slate-100 border-slate-200 text-slate-700"
                               }`}
-                              title="Previous"
                             >
                               <ChevronLeft size={12} />
                             </button>
@@ -610,7 +613,6 @@ export default function AdminClassViewPage() {
                               className={`p-1 rounded-md disabled:opacity-40 disabled:cursor-not-allowed transition-all border text-[11px] ${
                                 darkMode ? "bg-slate-800 border-slate-700 text-slate-300" : "bg-slate-100 border-slate-200 text-slate-700"
                               }`}
-                              title="Next"
                             >
                               <ChevronRight size={12} />
                             </button>
@@ -657,7 +659,6 @@ export default function AdminClassViewPage() {
                                       setEditCoverImage(null);
                                     }}
                                     className="absolute top-1.5 right-1.5 bg-slate-900/70 hover:bg-slate-900 text-white px-2 py-1 rounded-lg text-[10px] font-bold flex items-center gap-1 backdrop-blur-sm transition-all"
-                                    title="Edit Info"
                                   >
                                     <Edit3 size={11} /> Edit
                                   </button>
@@ -666,7 +667,7 @@ export default function AdminClassViewPage() {
                                 <div className="flex flex-wrap items-center justify-between gap-1.5">
                                   <div className="flex flex-wrap items-center gap-1.5">
                                     <span className="px-2.5 py-0.5 bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 rounded-lg text-[10px] font-extrabold">
-                                      {cls.grade}
+                                      {cls.grade === 'Other' ? cls.customGradeName : cls.grade}
                                     </span>
                                     <span className="px-2.5 py-0.5 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 rounded-lg text-[10px] font-extrabold">
                                       {cls.medium}
@@ -683,12 +684,45 @@ export default function AdminClassViewPage() {
 
                                 <div className="flex flex-wrap items-center gap-3 text-[11px] font-bold opacity-80">
                                   <div className="flex items-center gap-1">
-                                    <Calendar size={12} className="text-blue-500" /> <span>{cls.day}</span>
+                                    <Calendar size={12} className="text-blue-500" /> <span>Every {cls.day}</span>
                                   </div>
                                   <div className="flex items-center gap-1">
                                     <Clock size={12} className="text-orange-500" /> <span>{cls.startTime} - {cls.endTime}</span>
                                   </div>
                                 </div>
+
+                                {/* Online Link / Offline Institute Info Display for Admin */}
+                                {cls.mode === 'Online' ? (
+                                  <div className="text-[11px]">
+                                    {cls.provideLater || !cls.onlineLink ? (
+                                      <span className="inline-block px-2.5 py-0.5 bg-amber-50 dark:bg-amber-500/10 text-amber-600 rounded-lg font-bold">Online Link: Provide Later</span>
+                                    ) : (
+                                      <div className="p-2 rounded-lg border bg-blue-50/50 dark:bg-slate-900/60 border-blue-200 dark:border-slate-800 space-y-1">
+                                        <a 
+                                          href={cls.onlineLink} 
+                                          target="_blank" 
+                                          rel="noopener noreferrer" 
+                                          className="px-2.5 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-[10px] font-bold inline-flex items-center gap-1 transition-all shadow-sm"
+                                        >
+                                          <LinkIcon size={11} /> Open Meeting Link
+                                        </a>
+
+                                        {cls.linkDisplayMode === 'immediate' ? (
+                                          <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold mt-1">🟢 Open Immediately</p>
+                                        ) : cls.linkStartDateTime && cls.linkEndDateTime ? (
+                                          <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1">
+                                            ⏳ {new Date(cls.linkStartDateTime).toLocaleString()} - {new Date(cls.linkEndDateTime).toLocaleString()}
+                                          </p>
+                                        ) : null}
+                                      </div>
+                                    )}
+                                  </div>
+                                ) : (
+                                  <div className="text-[11px] space-y-0.5 text-slate-500 dark:text-slate-400">
+                                    {cls.instituteName && <p>🏢 {cls.instituteName}</p>}
+                                    {cls.instituteAddress && <p>📍 {cls.instituteAddress}</p>}
+                                  </div>
+                                )}
 
                                 {cls.description ? (
                                   <p className={`text-[11px] italic p-2 rounded-lg border ${
