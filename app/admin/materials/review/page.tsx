@@ -18,7 +18,9 @@ import {
   FileText,
   BookOpen,
   Calendar,
-  Clock
+  Clock,
+  ChevronDown,
+  ChevronUp
 } from "lucide-react";
 import { useTheme } from "@/app/context/ThemeContext";
 import DeleteConfirmPopup from "@/app/components/MeterialsDeleteConfirmPopup";
@@ -32,11 +34,46 @@ export default function ReviewMaterialsPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
 
+  // Per-teacher specific states (collapsible and type filter), persisted in localStorage or state
+  const [collapsedTeachers, setCollapsedTeachers] = useState<{ [key: string]: boolean }>({});
+  const [teacherTypeFilters, setTeacherTypeFilters] = useState<{ [key: string]: string }>({});
+
   // Modals States for Rejection and Deletion
   const [rejectItem, setRejectItem] = useState<any>(null);
   const [rejectReason, setRejectReason] = useState("");
 
   const [deleteItem, setDeleteItem] = useState<any>(null);
+
+  // Load saved collapse and filter states from localStorage on mount
+  useEffect(() => {
+    try {
+      const savedCollapsed = localStorage.getItem("review_collapsed_teachers");
+      if (savedCollapsed) setCollapsedTeachers(JSON.parse(savedCollapsed));
+
+      const savedTypeFilters = localStorage.getItem("review_teacher_type_filters");
+      if (savedTypeFilters) setTeacherTypeFilters(JSON.parse(savedTypeFilters));
+    } catch (e) {
+      console.error("Error loading UI states from localStorage", e);
+    }
+  }, []);
+
+  // Save collapsed state changes to localStorage
+  const toggleTeacherCollapse = (teacherId: string) => {
+    setCollapsedTeachers(prev => {
+      const updated = { ...prev, [teacherId]: !prev[teacherId] };
+      localStorage.setItem("review_collapsed_teachers", JSON.stringify(updated));
+      return updated;
+    });
+  };
+
+  // Save type filter changes to localStorage
+  const handleTeacherTypeFilterChange = (teacherId: string, type: string) => {
+    setTeacherTypeFilters(prev => {
+      const updated = { ...prev, [teacherId]: type };
+      localStorage.setItem("review_teacher_type_filters", JSON.stringify(updated));
+      return updated;
+    });
+  };
 
   // Fetch all review materials for admin
   const fetchMaterials = async () => {
@@ -102,7 +139,7 @@ export default function ReviewMaterialsPage() {
     }
   };
 
-  // 1. Data Filter based on search term and status
+  // 1. Data Filter based on global search term and status
   const filteredMaterials = useMemo(() => {
     return materials.filter(m => {
       const matchesSearch = m.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -225,198 +262,276 @@ export default function ReviewMaterialsPage() {
           </div>
         ) : (
           <div className="space-y-4">
-            {Object.values(groupedMaterials).map((group: any) => (
-              <div key={group.teacherInfo._id} className={`rounded-xl border p-3 sm:p-4 transition-all shadow-sm ${darkMode ? "bg-slate-900/80 border-slate-800" : "bg-white border-slate-200"}`}>
+            {Object.values(groupedMaterials).map((group: any) => {
+              const teacherId = group.teacherInfo._id;
+              const isCollapsed = collapsedTeachers[teacherId] || false;
+              const activeTypeFilter = teacherTypeFilters[teacherId] || "all";
 
-                {/* Teacher Header Bar */}
-                <div className="flex items-center justify-between pb-2.5 mb-3 border-b border-slate-100 dark:border-slate-800/80">
-                  <div className="flex items-center gap-2.5">
-                    <div className={`w-8 h-8 rounded-full overflow-hidden flex items-center justify-center border shadow-sm ${darkMode ? "border-slate-700 bg-slate-800" : "border-white bg-slate-200"}`}>
-                      {group.teacherInfo.profilePhoto ? (
-                        <img
-                          src={`http://localhost:5000/profile_photos/${group.teacherInfo.profilePhoto}`}
-                          alt={group.teacherInfo.name}
-                          className="w-full h-full object-cover"
-                        />
+              // Calculate counts for this teacher's items
+              const totalCount = group.items.length;
+              const pdfCount = group.items.filter((m: any) => m.type === 'pdf').length;
+              const videoCount = group.items.filter((m: any) => m.type === 'video').length;
+              const paperCount = group.items.filter((m: any) => m.type === 'paper').length;
+              
+              // Count how many items are pending or new
+              const pendingCount = group.items.filter((m: any) => m.status === 'pending' || m.isNewForTable).length;
+
+              // Filter items based on selected type filter for this specific teacher
+              const displayedItems = group.items.filter((m: any) => {
+                if (activeTypeFilter === "pdf") return m.type === 'pdf';
+                if (activeTypeFilter === "video") return m.type === 'video';
+                if (activeTypeFilter === "paper") return m.type === 'paper';
+                return true;
+              });
+
+              return (
+                <div key={teacherId} className={`rounded-xl border p-3 sm:p-4 transition-all shadow-sm ${darkMode ? "bg-slate-900/80 border-slate-800" : "bg-white border-slate-200"}`}>
+
+                  {/* Teacher Header Bar */}
+                  <div className="flex flex-col md:flex-row md:items-center justify-between pb-2.5 mb-3 border-b border-slate-100 dark:border-slate-800/80 gap-3">
+                    <div className="flex items-center gap-2.5">
+                      <div className={`w-8 h-8 rounded-full overflow-hidden flex items-center justify-center border shadow-sm ${darkMode ? "border-slate-700 bg-slate-800" : "border-white bg-slate-200"}`}>
+                        {group.teacherInfo.profilePhoto ? (
+                          <img
+                            src={`http://localhost:5000/profile_photos/${group.teacherInfo.profilePhoto}`}
+                            alt={group.teacherInfo.name}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <User size={14} className={darkMode ? "text-slate-400" : "text-gray-500"} />
+                        )}
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <h3 className={`text-xs font-bold ${darkMode ? "text-white" : "text-slate-900"}`}>
+                            {group.teacherInfo.name || "Unknown Teacher"}
+                          </h3>
+                          <span className={`text-[8px] px-1.5 py-0.2 rounded-full font-bold uppercase tracking-wider ${darkMode ? "bg-indigo-500/20 text-indigo-300 border border-indigo-500/30" : "bg-indigo-50 text-indigo-700 border border-indigo-100"}`}>
+                            {totalCount} {totalCount === 1 ? 'Item' : 'Items'}
+                          </span>
+
+                          {/* Pending / New Badge (Visible even when collapsed) */}
+                          {pendingCount > 0 && (
+                            <span className="text-[8px] px-1.5 py-0.2 rounded-full font-bold uppercase tracking-wider bg-red-500/20 text-red-500 border border-red-500/30 flex items-center gap-1 animate-pulse">
+                              <span className="w-1.5 h-1.5 rounded-full bg-red-500"></span>
+                              {pendingCount} Pending
+                            </span>
+                          )}
+                        </div>
+                        <p className={`text-[9px] font-medium ${darkMode ? "text-slate-400" : "text-slate-500"}`}>
+                          ID: {group.teacherInfo.teacherId || "N/A"} • {group.teacherInfo.email || "N/A"}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Filter Buttons & Collapse Toggle */}
+                    <div className="flex items-center justify-between md:justify-end gap-2 flex-wrap">
+                      <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-950 p-1 rounded-lg border border-slate-200 dark:border-slate-800">
+                        <button
+                          onClick={() => handleTeacherTypeFilterChange(teacherId, "all")}
+                          className={`px-2 py-1 text-[10px] font-bold rounded-md transition-all ${activeTypeFilter === "all" ? "bg-indigo-600 text-white shadow-sm" : darkMode ? "text-slate-400 hover:text-white" : "text-slate-600 hover:text-slate-900"}`}
+                        >
+                          All ({totalCount})
+                        </button>
+                        <button
+                          onClick={() => handleTeacherTypeFilterChange(teacherId, "pdf")}
+                          className={`px-2 py-1 text-[10px] font-bold rounded-md transition-all ${activeTypeFilter === "pdf" ? "bg-indigo-600 text-white shadow-sm" : darkMode ? "text-slate-400 hover:text-white" : "text-slate-600 hover:text-slate-900"}`}
+                        >
+                          PDFs ({pdfCount})
+                        </button>
+                        <button
+                          onClick={() => handleTeacherTypeFilterChange(teacherId, "video")}
+                          className={`px-2 py-1 text-[10px] font-bold rounded-md transition-all ${activeTypeFilter === "video" ? "bg-indigo-600 text-white shadow-sm" : darkMode ? "text-slate-400 hover:text-white" : "text-slate-600 hover:text-slate-900"}`}
+                        >
+                          Videos ({videoCount})
+                        </button>
+                        <button
+                          onClick={() => handleTeacherTypeFilterChange(teacherId, "paper")}
+                          className={`px-2 py-1 text-[10px] font-bold rounded-md transition-all ${activeTypeFilter === "paper" ? "bg-indigo-600 text-white shadow-sm" : darkMode ? "text-slate-400 hover:text-white" : "text-slate-600 hover:text-slate-900"}`}
+                        >
+                          Papers ({paperCount})
+                        </button>
+                      </div>
+
+                      {/* Collapse Toggle Button */}
+                      <button
+                        onClick={() => toggleTeacherCollapse(teacherId)}
+                        className={`p-1.5 rounded-lg border transition-all ${darkMode ? "bg-slate-800 border-slate-700 text-slate-300 hover:bg-slate-700" : "bg-slate-100 border-slate-200 text-slate-600 hover:bg-slate-200"}`}
+                        title={isCollapsed ? "Expand Section" : "Collapse Section"}
+                      >
+                        {isCollapsed ? <ChevronDown size={15} /> : <ChevronUp size={15} />}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Compact Grid Cards Container (Hidden if collapsed) */}
+                  {!isCollapsed && (
+                    <div className="max-h-[580px] overflow-y-auto overflow-x-hidden pr-2 scrollbar-thin animate-in fade-in duration-200">
+                      {displayedItems.length === 0 ? (
+                        <div className={`p-6 text-center text-xs italic ${darkMode ? "text-slate-500" : "text-slate-400"}`}>
+                          No items match the selected filter category.
+                        </div>
                       ) : (
-                        <User size={14} className={darkMode ? "text-slate-400" : "text-gray-500"} />
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3.5">
+                          {displayedItems.map((m: any) => (
+                            <div
+                              key={m._id}
+                              onClick={() => m.isNewForTable && handleClearCardDot(m._id)}
+                              className={`group flex flex-col justify-between rounded-xl border p-3.5 transition-all hover:shadow-md relative ${
+                                // If it is a new material, apply a red background.
+                                m.isNewForTable ? (darkMode ? "bg-red-950/20 border-red-900/50 cursor-pointer" : "bg-red-50/50 border-red-200 cursor-pointer") : ""
+                                } ${!m.isNewForTable && darkMode ? "bg-slate-950/60 border-slate-800 hover:border-slate-700" : ""
+                                } ${!m.isNewForTable && !darkMode ? "bg-slate-50/70 border-slate-200/80 hover:bg-white hover:border-slate-300" : ""
+                                }`}
+                            >
+
+                              {/* The red dot (with a pulse animation, located at the top right corner of the card) */}
+                              {m.isNewForTable && (
+                                <span className="absolute -top-1.5 -right-1.5 flex h-4 w-4 z-10" title="New Material">
+                                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                                  <span className="relative inline-flex rounded-full h-4 w-4 bg-red-500 shadow-sm border-2 border-white dark:border-slate-900"></span>
+                                </span>
+                              )}
+                              <div className="space-y-2">
+                                {/* Thumbnail / Media Preview with Cover Image Support */}
+                                <a
+                                  href={`http://localhost:5000${m.fileUrl}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  title="Click to view full screen"
+                                  className={`relative aspect-video w-full rounded-lg overflow-hidden border block transition-transform group-hover:scale-[1.01] shadow-sm ${darkMode ? "border-slate-800 bg-slate-900" : "border-slate-200 bg-slate-100"
+                                    }`}
+                                >
+                                  {m.type === 'video' ? (
+                                    <>
+                                      <video
+                                        src={`http://localhost:5000${m.fileUrl}#t=0.1`}
+                                        className="w-full h-full object-cover"
+                                        preload="metadata"
+                                        muted
+                                        playsInline
+                                      />
+                                      <div className="absolute inset-0 bg-black/30 group-hover/thumb:bg-black/50 flex items-center justify-center transition-colors">
+                                        <PlayCircle size={22} className="text-white drop-shadow" />
+                                      </div>
+                                      <span className="absolute top-1 right-1 bg-black/60 backdrop-blur-sm text-white text-[8px] px-1.5 py-0.5 rounded font-bold uppercase">
+                                        Video
+                                      </span>
+                                    </>
+                                  ) : m.coverImage ? (
+                                    <>
+                                      <img
+                                        src={`http://localhost:5000${m.coverImage}`}
+                                        alt={m.title}
+                                        className="w-full h-full object-cover"
+                                      />
+                                      <span className="absolute top-1 right-1 bg-black/60 backdrop-blur-sm text-white text-[8px] px-1.5 py-0.5 rounded font-bold uppercase">
+                                        {m.type}
+                                      </span>
+                                    </>
+                                  ) : (
+                                    <div className="w-full h-full flex flex-col items-center justify-center">
+                                      {m.type === 'pdf' ? (
+                                        <FileText size={22} className="text-emerald-500 mb-1" />
+                                      ) : (
+                                        <BookOpen size={22} className="text-blue-500 mb-1" />
+                                      )}
+                                      <span className={`text-[9px] font-bold uppercase tracking-wider ${darkMode ? "text-slate-400" : "text-slate-600"}`}>
+                                        {m.type === 'paper' ? 'Paper' : 'PDF'}
+                                      </span>
+                                    </div>
+                                  )}
+                                </a>
+
+                                {/* Title & Badges */}
+                                <h4 className={`text-xs font-bold line-clamp-2 ${darkMode ? "text-slate-100" : "text-slate-800"}`} title={m.title}>
+                                  {m.title}
+                                </h4>
+
+                                <div className="flex flex-wrap items-center gap-1">
+                                  <span className={`text-[9px] uppercase font-bold px-1.5 py-0.5 rounded border ${m.type === 'video' ? darkMode ? "bg-indigo-500/10 text-indigo-400 border-indigo-500/20" : "bg-indigo-50 text-indigo-700 border-indigo-200"
+                                    : m.type === 'pdf' ? darkMode ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" : "bg-emerald-50 text-emerald-700 border-emerald-200"
+                                      : darkMode ? "bg-blue-500/10 text-blue-400 border-blue-500/20" : "bg-blue-50 text-blue-700 border-blue-200"
+                                    }`}>
+                                    {m.type}
+                                  </span>
+                                  <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded border ${darkMode ? "bg-slate-800 text-slate-300 border-slate-700" : "bg-white text-slate-600 border-slate-200"}`}>
+                                    {m.subject}
+                                  </span>
+                                  {m.grade && (
+                                    <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded border ${darkMode ? "bg-slate-800 text-slate-300 border-slate-700" : "bg-white text-slate-600 border-slate-200"}`}>
+                                      {m.grade}
+                                    </span>
+                                  )}
+                                </div>
+
+                                {/* A scroll has been added along with the description. (Max Height: 24) */}
+                                {m.description && (
+                                  <div className={`mt-2 p-2 rounded-lg border text-[11px] font-normal leading-relaxed max-h-24 overflow-y-auto scrollbar-thin ${darkMode ? "bg-slate-900/90 border-slate-800 text-slate-300 scrollbar-thumb-slate-700" : "bg-white border-slate-200/70 text-slate-700 scrollbar-thumb-slate-300"
+                                    }`}>
+                                    <p className="whitespace-pre-wrap break-words">{m.description}</p>
+                                  </div>
+                                )}
+
+                                {/* Reject Reason Box */}
+                                {m.status === 'rejected' && m.rejectReason && (
+                                  <div className="p-2 rounded-lg bg-red-500/10 border border-red-500/20 text-[10px] text-red-500 flex items-start gap-1.5">
+                                    <AlertCircle size={12} className="mt-0.5 flex-shrink-0" />
+                                    <span><strong>Reason:</strong> {m.rejectReason}</span>
+                                  </div>
+                                )}
+                              </div>
+
+                              {/* Card Footer: Date, Time, Status & Action Buttons */}
+                              <div className="pt-3 mt-3 border-t border-slate-200/60 dark:border-slate-800 space-y-2">
+                                <div className="flex flex-col gap-1 text-[10px]">
+                                  <div className="flex items-center justify-between">
+                                    <span className={`flex items-center gap-1 font-medium ${darkMode ? "text-slate-400" : "text-slate-500"}`}>
+                                      <Calendar size={11} /> {new Date(m.createdAt).toLocaleDateString()}
+                                    </span>
+                                    <span className={`flex items-center gap-1 font-medium ${darkMode ? "text-slate-400" : "text-slate-500"}`}>
+                                      <Clock size={11} /> {new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                    </span>
+                                  </div>
+                                  <div className="mt-1">
+                                    {m.status === 'pending' && <span className="px-2 py-0.5 rounded text-[9px] font-bold uppercase bg-amber-500/15 text-amber-500 border border-amber-500/30 block text-center">Pending</span>}
+                                    {m.status === 'approved' && <span className="px-2 py-0.5 rounded text-[9px] font-bold uppercase bg-emerald-500/15 text-emerald-500 border border-emerald-500/30 block text-center">Approved</span>}
+                                    {m.status === 'rejected' && <span className="px-2.5 py-0.5 rounded text-[9px] font-bold uppercase bg-red-500/15 text-red-500 border border-red-500/30 block text-center">Rejected</span>}
+                                  </div>
+                                </div>
+
+                                {/* Action Buttons */}
+                                <div className="flex items-center justify-between gap-1.5 pt-1">
+                                  {m.status === 'pending' ? (
+                                    <div className="flex items-center gap-1.5 w-full">
+                                      <button onClick={() => handleStatusUpdate(m._id, 'approved')} className="flex-1 flex items-center justify-center gap-1 py-1.5 px-2 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-500 text-xs font-bold transition-all shadow-sm" title="Approve">
+                                        <CheckCircle size={14} /> Approve
+                                      </button>
+                                      <button onClick={() => setRejectItem(m)} className="flex-1 flex items-center justify-center gap-1 py-1.5 px-2 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-500 text-xs font-bold transition-all shadow-sm" title="Reject">
+                                        <XCircle size={14} /> Reject
+                                      </button>
+                                    </div>
+                                  ) : (
+                                    <div className="text-[11px] font-bold italic text-slate-400 w-full text-center py-1 bg-slate-100 dark:bg-slate-900 rounded-lg">
+                                      Processed
+                                    </div>
+                                  )}
+                                  <button onClick={() => setDeleteItem(m)} className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-500/10 transition-colors flex-shrink-0 border border-slate-200 dark:border-slate-800" title="Delete Material">
+                                    <Trash2 size={15} />
+                                  </button>
+                                </div>
+                              </div>
+
+                            </div>
+                          ))}
+                        </div>
                       )}
                     </div>
-                    <div>
-                      <div className="flex items-center gap-1.5">
-                        <h3 className={`text-xs font-bold ${darkMode ? "text-white" : "text-slate-900"}`}>
-                          {group.teacherInfo.name || "Unknown Teacher"}
-                        </h3>
-                        <span className={`text-[8px] px-1.5 py-0.2 rounded-full font-bold uppercase tracking-wider ${darkMode ? "bg-indigo-500/20 text-indigo-300 border border-indigo-500/30" : "bg-indigo-50 text-indigo-700 border border-indigo-100"}`}>
-                          {group.items.length} {group.items.length === 1 ? 'Item' : 'Items'}
-                        </span>
-                      </div>
-                      <p className={`text-[9px] font-medium ${darkMode ? "text-slate-400" : "text-slate-500"}`}>
-                        ID: {group.teacherInfo.teacherId || "N/A"} • {group.teacherInfo.email || "N/A"}
-                      </p>
-                    </div>
-                  </div>
+                  )}
+
                 </div>
-
-                {/* Compact Grid Cards Container with vertical scroll only (horizontal scroll disabled) */}
-                <div className="max-h-[580px] overflow-y-auto overflow-x-hidden pr-2 scrollbar-thin">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3.5">
-                    {group.items.map((m: any) => (
-                      <div
-                        key={m._id}
-                        onClick={() => m.isNewForTable && handleClearCardDot(m._id)}
-                        className={`group flex flex-col justify-between rounded-xl border p-3.5 transition-all hover:shadow-md relative ${
-                          // If it is a new material, apply a red background.
-                          m.isNewForTable ? (darkMode ? "bg-red-950/20 border-red-900/50 cursor-pointer" : "bg-red-50/50 border-red-200 cursor-pointer") : ""
-                          } ${!m.isNewForTable && darkMode ? "bg-slate-950/60 border-slate-800 hover:border-slate-700" : ""
-                          } ${!m.isNewForTable && !darkMode ? "bg-slate-50/70 border-slate-200/80 hover:bg-white hover:border-slate-300" : ""
-                          }`}
-                      >
-
-                        {/* The red dot (with a pulse animation, located at the top right corner of the card) */}
-                        {m.isNewForTable && (
-                          <span className="absolute -top-1.5 -right-1.5 flex h-4 w-4 z-10" title="New Material">
-                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                            <span className="relative inline-flex rounded-full h-4 w-4 bg-red-500 shadow-sm border-2 border-white dark:border-slate-900"></span>
-                          </span>
-                        )}
-                        <div className="space-y-2">
-                          {/* Thumbnail / Media Preview with Cover Image Support */}
-                          <a
-                            href={`http://localhost:5000${m.fileUrl}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            title="Click to view full screen"
-                            className={`relative aspect-video w-full rounded-lg overflow-hidden border block transition-transform group-hover:scale-[1.01] shadow-sm ${darkMode ? "border-slate-800 bg-slate-900" : "border-slate-200 bg-slate-100"
-                              }`}
-                          >
-                            {m.type === 'video' ? (
-                              <>
-                                <video
-                                  src={`http://localhost:5000${m.fileUrl}#t=0.1`}
-                                  className="w-full h-full object-cover"
-                                  preload="metadata"
-                                  muted
-                                  playsInline
-                                />
-                                <div className="absolute inset-0 bg-black/30 group-hover/thumb:bg-black/50 flex items-center justify-center transition-colors">
-                                  <PlayCircle size={22} className="text-white drop-shadow" />
-                                </div>
-                                <span className="absolute top-1 right-1 bg-black/60 backdrop-blur-sm text-white text-[8px] px-1.5 py-0.5 rounded font-bold uppercase">
-                                  Video
-                                </span>
-                              </>
-                            ) : m.coverImage ? (
-                              <>
-                                <img
-                                  src={`http://localhost:5000${m.coverImage}`}
-                                  alt={m.title}
-                                  className="w-full h-full object-cover"
-                                />
-                                <span className="absolute top-1 right-1 bg-black/60 backdrop-blur-sm text-white text-[8px] px-1.5 py-0.5 rounded font-bold uppercase">
-                                  {m.type}
-                                </span>
-                              </>
-                            ) : (
-                              <div className="w-full h-full flex flex-col items-center justify-center">
-                                {m.type === 'pdf' ? (
-                                  <FileText size={22} className="text-emerald-500 mb-1" />
-                                ) : (
-                                  <BookOpen size={22} className="text-blue-500 mb-1" />
-                                )}
-                                <span className={`text-[9px] font-bold uppercase tracking-wider ${darkMode ? "text-slate-400" : "text-slate-600"}`}>
-                                  {m.type === 'paper' ? 'Paper' : 'PDF'}
-                                </span>
-                              </div>
-                            )}
-                          </a>
-
-                          {/* Title & Badges */}
-                          <h4 className={`text-xs font-bold line-clamp-2 ${darkMode ? "text-slate-100" : "text-slate-800"}`} title={m.title}>
-                            {m.title}
-                          </h4>
-
-                          <div className="flex flex-wrap items-center gap-1">
-                            <span className={`text-[9px] uppercase font-bold px-1.5 py-0.5 rounded border ${m.type === 'video' ? darkMode ? "bg-indigo-500/10 text-indigo-400 border-indigo-500/20" : "bg-indigo-50 text-indigo-700 border-indigo-200"
-                              : m.type === 'pdf' ? darkMode ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" : "bg-emerald-50 text-emerald-700 border-emerald-200"
-                                : darkMode ? "bg-blue-500/10 text-blue-400 border-blue-500/20" : "bg-blue-50 text-blue-700 border-blue-200"
-                              }`}>
-                              {m.type}
-                            </span>
-                            <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded border ${darkMode ? "bg-slate-800 text-slate-300 border-slate-700" : "bg-white text-slate-600 border-slate-200"}`}>
-                              {m.subject}
-                            </span>
-                            {m.grade && (
-                              <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded border ${darkMode ? "bg-slate-800 text-slate-300 border-slate-700" : "bg-white text-slate-600 border-slate-200"}`}>
-                                {m.grade}
-                              </span>
-                            )}
-                          </div>
-
-                          {/* A scroll has been added along with the description. (Max Height: 24) */}
-                          {m.description && (
-                            <div className={`mt-2 p-2 rounded-lg border text-[11px] font-normal leading-relaxed max-h-24 overflow-y-auto scrollbar-thin ${darkMode ? "bg-slate-900/90 border-slate-800 text-slate-300 scrollbar-thumb-slate-700" : "bg-white border-slate-200/70 text-slate-700 scrollbar-thumb-slate-300"
-                              }`}>
-                              <p className="whitespace-pre-wrap break-words">{m.description}</p>
-                            </div>
-                          )}
-
-                          {/* Reject Reason Box */}
-                          {m.status === 'rejected' && m.rejectReason && (
-                            <div className="p-2 rounded-lg bg-red-500/10 border border-red-500/20 text-[10px] text-red-500 flex items-start gap-1.5">
-                              <AlertCircle size={12} className="mt-0.5 flex-shrink-0" />
-                              <span><strong>Reason:</strong> {m.rejectReason}</span>
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Card Footer: Date, Time, Status & Action Buttons */}
-                        <div className="pt-3 mt-3 border-t border-slate-200/60 dark:border-slate-800 space-y-2">
-                          <div className="flex flex-col gap-1 text-[10px]">
-                            <div className="flex items-center justify-between">
-                              <span className={`flex items-center gap-1 font-medium ${darkMode ? "text-slate-400" : "text-slate-500"}`}>
-                                <Calendar size={11} /> {new Date(m.createdAt).toLocaleDateString()}
-                              </span>
-                              <span className={`flex items-center gap-1 font-medium ${darkMode ? "text-slate-400" : "text-slate-500"}`}>
-                                <Clock size={11} /> {new Date(m.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                              </span>
-                            </div>
-                            <div className="mt-1">
-                              {m.status === 'pending' && <span className="px-2 py-0.5 rounded text-[9px] font-bold uppercase bg-amber-500/15 text-amber-500 border border-amber-500/30 block text-center">Pending</span>}
-                              {m.status === 'approved' && <span className="px-2 py-0.5 rounded text-[9px] font-bold uppercase bg-emerald-500/15 text-emerald-500 border border-emerald-500/30 block text-center">Approved</span>}
-                              {m.status === 'rejected' && <span className="px-2.5 py-0.5 rounded text-[9px] font-bold uppercase bg-red-500/15 text-red-500 border border-red-500/30 block text-center">Rejected</span>}
-                            </div>
-                          </div>
-
-                          {/* Action Buttons */}
-                          <div className="flex items-center justify-between gap-1.5 pt-1">
-                            {m.status === 'pending' ? (
-                              <div className="flex items-center gap-1.5 w-full">
-                                <button onClick={() => handleStatusUpdate(m._id, 'approved')} className="flex-1 flex items-center justify-center gap-1 py-1.5 px-2 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-500 text-xs font-bold transition-all shadow-sm" title="Approve">
-                                  <CheckCircle size={14} /> Approve
-                                </button>
-                                <button onClick={() => setRejectItem(m)} className="flex-1 flex items-center justify-center gap-1 py-1.5 px-2 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-500 text-xs font-bold transition-all shadow-sm" title="Reject">
-                                  <XCircle size={14} /> Reject
-                                </button>
-                              </div>
-                            ) : (
-                              <div className="text-[11px] font-bold italic text-slate-400 w-full text-center py-1 bg-slate-100 dark:bg-slate-900 rounded-lg">
-                                Processed
-                              </div>
-                            )}
-                            <button onClick={() => setDeleteItem(m)} className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-500/10 transition-colors flex-shrink-0 border border-slate-200 dark:border-slate-800" title="Delete Material">
-                              <Trash2 size={15} />
-                            </button>
-                          </div>
-                        </div>
-
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
