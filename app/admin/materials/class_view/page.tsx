@@ -5,7 +5,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import axios from "axios";
-import { Calendar, Clock, BookOpen, User, Loader2, ShieldAlert, Monitor, UserCheck, UserX, Trash2, Search, GraduationCap, Image as ImageIcon, Edit3, X, Check, CreditCard, ExternalLink, Users, ChevronLeft, ChevronRight, Bell, ChevronDown, ChevronUp, Link as LinkIcon, FileText } from "lucide-react";
+import { Calendar, Clock, BookOpen, User, Loader2, ShieldAlert, Monitor, UserCheck, UserX, Trash2, Search, GraduationCap, Image as ImageIcon, Edit3, X, Check, CreditCard, ExternalLink, Users, ChevronLeft, ChevronRight, Bell, ChevronDown, ChevronUp, Link as LinkIcon, FileText, Ban } from "lucide-react";
 import { useTheme } from "@/app/context/ThemeContext";
 
 export default function AdminClassViewPage() {
@@ -146,6 +146,44 @@ export default function AdminClassViewPage() {
     }
   };
 
+  // පන්තියක සිටින සියලුම සිසුන් එකවර Approve කිරීම
+  const handleApproveAllForClass = async (classId: string) => {
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        router.push("/login");
+        return;
+      }
+
+      await axios.put("http://localhost:5000/api/classes/requests/approve-all", { classId }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      await fetchData(token);
+    } catch (err) {
+      console.error("Error approving all students:", err);
+      alert("Failed to approve all students.");
+    }
+  };
+
+  // පන්තියක සිටින සියලුම සිසුන් එකවර Block කිරීම
+  const handleBlockAllForClass = async (classId: string) => {
+    try {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        router.push("/login");
+        return;
+      }
+
+      await axios.put("http://localhost:5000/api/classes/requests/block-all", { classId }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      await fetchData(token);
+    } catch (err) {
+      console.error("Error blocking all students:", err);
+      alert("Failed to block all students.");
+    }
+  };
+
   // Handle Admin updating class cover and description
   const handleAdminUpdateClassSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -253,6 +291,13 @@ export default function AdminClassViewPage() {
   const handleSearchChange = (classId: string, value: string) => {
     setSearchQueries(prev => ({ ...prev, [classId]: value }));
   };
+
+  // මාසයේ දින ගණන සහ ගෙවී ගිය දින ගණන ගණනය කිරීම
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth();
+  const totalDaysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+  const daysPassed = Math.min(now.getDate(), totalDaysInMonth);
 
   return (
     <div className={`min-h-screen p-3 sm:p-6 font-sans transition-colors duration-500 ${darkMode ? "dark bg-slate-950 text-white" : "bg-slate-50 text-slate-900"}`}>
@@ -385,7 +430,6 @@ export default function AdminClassViewPage() {
                     </div>
                   </div>
 
-                  {/* Section displaying the family background description */}
                   {freeCardData.familyBackground && (
                     <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-1">
                       <span className="text-slate-400 font-bold uppercase text-[9px]">Family Background / Reason:</span>
@@ -682,6 +726,12 @@ export default function AdminClassViewPage() {
                                   </div>
                                 </div>
 
+                                {/* මාසික දින ගණන සහ ගෙවී ගිය දින පෙන්වන කොටස */}
+                                <div className="p-2 rounded-lg bg-blue-50/60 dark:bg-blue-500/10 border border-blue-100 dark:border-blue-500/20 text-[10px] font-bold text-blue-700 dark:text-blue-300 flex items-center justify-between">
+                                  <span>📅 Monthly Progress:</span>
+                                  <span>Days Passed: {daysPassed} / {totalDaysInMonth} Days</span>
+                                </div>
+
                                 <div className="flex flex-wrap items-center gap-3 text-[11px] font-bold opacity-80">
                                   <div className="flex items-center gap-1">
                                     <Calendar size={12} className="text-blue-500" /> <span>Every {cls.day}</span>
@@ -691,7 +741,6 @@ export default function AdminClassViewPage() {
                                   </div>
                                 </div>
 
-                                {/* Online Link / Offline Institute Info Display for Admin */}
                                 {cls.mode === 'Online' ? (
                                   <div className="text-[11px]">
                                     {cls.provideLater || !cls.onlineLink ? (
@@ -742,6 +791,24 @@ export default function AdminClassViewPage() {
                                     Student Requests ({clsRequests.length})
                                   </h5>
                                 </div>
+
+                                {/* Approve All සහ Block All බටන්ස් */}
+                                {clsRequests.length > 0 && (
+                                  <div className="grid grid-cols-2 gap-1.5 mb-2">
+                                    <button
+                                      onClick={() => handleApproveAllForClass(cls._id)}
+                                      className="py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[10px] font-extrabold flex items-center justify-center gap-1 shadow-sm transition-all"
+                                    >
+                                      <UserCheck size={12} /> Approve All
+                                    </button>
+                                    <button
+                                      onClick={() => handleBlockAllForClass(cls._id)}
+                                      className="py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-[10px] font-extrabold flex items-center justify-center gap-1 shadow-sm transition-all"
+                                    >
+                                      <Ban size={12} /> Block All
+                                    </button>
+                                  </div>
+                                )}
 
                                 {clsRequests.length > 0 && (
                                   <div className="relative mb-2">
