@@ -20,11 +20,13 @@ import {
   Check,
   Gift,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Plus
 } from "lucide-react"; 
 import { useTheme } from "@/app/context/ThemeContext";
 import PublishSuccessPopup from "@/app/components/PublishSuccessPopup";
 import DeleteConfirmPopup from "@/app/components/MeterialsDeleteConfirmPopup";
+import MaterialUploadModal from "@/app/components/MaterialUploadModal";
 
 export default function MyPDFsPage() {
   const [pdfs, setPdfs] = useState<any[]>([]);
@@ -37,6 +39,9 @@ export default function MyPDFsPage() {
   const [isPublishPopupOpen, setIsPublishPopupOpen] = useState(false);
   const [publishedItemName, setPublishedItemName] = useState("");
   const [deleteItem, setDeleteItem] = useState<any>(null);
+
+  // Upload Modal State
+  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
 
   // Pagination State (4 items per page as requested)
   const [currentPage, setCurrentPage] = useState(1);
@@ -149,7 +154,7 @@ export default function MyPDFsPage() {
     }
   };
 
-  // Remove a specific class from published classes list (or unpublish if it was the last one and not free)
+  // Remove a specific class from published classes list
   const handleRemoveSingleClass = async (pdf: any, classIdToRemove: string) => {
     try {
       const updatedClassIds = (pdf.classIds || []).map((c: any) => c._id || c).filter((id: string) => id !== classIdToRemove);
@@ -211,7 +216,7 @@ export default function MyPDFsPage() {
   ];
 
   return (
-    <div className={`p-4 sm:p-6 min-h-screen transition-colors duration-300 font-sans ${darkMode ? "bg-slate-950" : "bg-slate-50/80"}`}>
+    <div className={`p-4 sm:p-6 min-h-screen transition-colors duration-300 font-sans w-full overflow-x-hidden ${darkMode ? "bg-slate-950" : "bg-slate-50/80"}`}>
       
       <PublishSuccessPopup 
         isOpen={isPublishPopupOpen} 
@@ -227,13 +232,22 @@ export default function MyPDFsPage() {
         itemName={deleteItem?.title}
       />
 
+      {/* Upload Modal Component */}
+      <MaterialUploadModal 
+        isOpen={isUploadModalOpen}
+        onClose={() => setIsUploadModalOpen(false)}
+        onSuccess={() => {
+          fetchPdfs();
+        }}
+      />
+
       {/* Class Selection & Free Option Modal for Publishing */}
       {publishModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className={`w-full max-w-md p-5 rounded-2xl shadow-2xl border ${darkMode ? "bg-slate-900 border-slate-800 text-white" : "bg-white border-slate-200 text-slate-900"}`}>
+          <div className={`w-full max-w-md p-4 sm:p-5 rounded-2xl shadow-2xl border ${darkMode ? "bg-slate-900 border-slate-800 text-white" : "bg-white border-slate-200 text-slate-900"}`}>
             <div className="flex justify-between items-center mb-3">
-              <h3 className="text-base font-extrabold">Select Classes & Access to Publish</h3>
-              <button onClick={() => setPublishModalOpen(false)} className="p-1 rounded-lg text-slate-400 hover:bg-slate-500/10">
+              <h3 className="text-sm sm:text-base font-extrabold">Select Classes & Access to Publish</h3>
+              <button onClick={() => setPublishModalOpen(false)} className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-500/10">
                 <X size={18} />
               </button>
             </div>
@@ -311,50 +325,91 @@ export default function MyPDFsPage() {
         </div>
       )}
 
-      <div className="max-w-6xl mx-auto">
-        <div className="mb-6 flex flex-col md:flex-row md:items-end justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className={`flex h-12 w-12 items-center justify-center rounded-2xl shadow-sm ${darkMode ? "bg-orange-500/10 text-orange-400 border border-orange-500/20" : "bg-white text-orange-600 border border-orange-100"}`}>
-              <FileStack size={22} strokeWidth={2} />
+      <div className="w-full max-w-6xl mx-auto px-1 sm:px-0">
+        <div className="mb-6 flex flex-col gap-4">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className={`flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-2xl shadow-sm shrink-0 ${darkMode ? "bg-orange-500/10 text-orange-400 border border-orange-500/20" : "bg-white text-orange-600 border border-orange-100"}`}>
+                <FileStack size={20} strokeWidth={2} />
+              </div>
+              <div className="min-w-0">
+                <h2 className={`text-base sm:text-2xl font-extrabold tracking-tight truncate ${darkMode ? "text-white" : "text-slate-900"}`}>
+                  My Documents
+                </h2>
+                <p className={`mt-0.5 text-[10px] sm:text-xs font-medium truncate ${darkMode ? "text-slate-400" : "text-slate-500"}`}>
+                  Manage, view, and publish your uploaded PDFs and Papers.
+                </p>
+              </div>
             </div>
-            <div>
-              <h2 className={`text-xl sm:text-2xl font-extrabold tracking-tight ${darkMode ? "text-white" : "text-slate-900"}`}>
-                My Documents
-              </h2>
-              <p className={`mt-0.5 text-xs font-medium ${darkMode ? "text-slate-400" : "text-slate-500"}`}>
-                Manage, view, and publish your uploaded PDFs and Papers (Max 4 per view).
-              </p>
-            </div>
+
+            {/* Add PDF and Papers Button for Desktop */}
+            <button
+              onClick={() => setIsUploadModalOpen(true)}
+              className="hidden sm:flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold bg-orange-600 hover:bg-orange-700 text-white shadow-md shadow-orange-600/20 transition-all active:scale-[0.98] shrink-0"
+            >
+              <Plus size={16} /> Add PDF and Papers
+            </button>
           </div>
 
-          <div className="relative w-full md:w-72">
-            <Search className={`absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 ${darkMode ? "text-slate-500" : "text-slate-400"}`} />
-            <input 
-              type="text" 
-              placeholder="Search documents..." 
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className={`w-full pl-9 pr-3 py-2 rounded-xl border text-xs font-medium transition-all focus:outline-none focus:ring-2 focus:ring-orange-500/50 ${
-                darkMode ? "bg-slate-900 border-slate-800 text-slate-200 placeholder-slate-500" : "bg-white border-slate-200 text-slate-800 placeholder-slate-400 shadow-sm"
-              }`}
-            />
+          <div className="flex flex-col sm:flex-row items-center gap-3 w-full">
+            {/* Add PDF and Papers Button for Mobile */}
+            <button
+              onClick={() => setIsUploadModalOpen(true)}
+              className="sm:hidden w-full flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl text-xs font-bold bg-orange-600 hover:bg-orange-700 text-white shadow-md shadow-orange-600/20 transition-all active:scale-[0.98]"
+            >
+              <Plus size={16} /> Add PDF and Papers
+            </button>
+
+            <div className="relative w-full">
+              <Search className={`absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 ${darkMode ? "text-slate-500" : "text-slate-400"}`} />
+              <input 
+                type="text" 
+                placeholder="Search documents by title or subject..." 
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className={`w-full pl-10 pr-3.5 py-2.5 sm:py-2 rounded-xl border text-xs font-medium transition-all focus:outline-none focus:ring-2 focus:ring-orange-500/50 ${
+                  darkMode ? "bg-slate-900 border-slate-800 text-slate-200 placeholder-slate-500" : "bg-white border-slate-200 text-slate-800 placeholder-slate-400 shadow-sm"
+                }`}
+              />
+            </div>
           </div>
         </div>
 
-        <div className="flex overflow-x-auto gap-1.5 mb-5 pb-1 scrollbar-hide">
-          {tabs.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${
-                activeTab === tab.id
-                  ? "bg-orange-600 text-white shadow-md shadow-orange-600/20"
-                  : (darkMode ? "bg-slate-900 text-slate-400 hover:bg-slate-800 border border-slate-800" : "bg-white text-slate-600 hover:bg-slate-100 border border-slate-200 shadow-sm")
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
+        {/* Responsive Filter Options (Grid for Mobile & Scrollable Tabs for Desktop) */}
+        <div className="mb-5">
+          {/* Mobile View: Grid Layout (පේළියකට 2 බැගින් තිරය ඇතුළටම ලස්සනට පෙන්වයි) */}
+          <div className="grid grid-cols-2 gap-2 sm:hidden">
+            {tabs.map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`px-3 py-2.5 rounded-xl text-xs font-bold transition-all text-center truncate ${
+                  activeTab === tab.id
+                    ? "bg-orange-600 text-white shadow-md shadow-orange-600/20"
+                    : (darkMode ? "bg-slate-900 text-slate-400 border border-slate-800" : "bg-white text-slate-600 border border-slate-200 shadow-sm")
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Desktop/Tablet View: Horizontal Scrollable Tabs */}
+          <div className="hidden sm:flex overflow-x-auto gap-1.5 pb-2 scrollbar-none">
+            {tabs.map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${
+                  activeTab === tab.id
+                    ? "bg-orange-600 text-white shadow-md shadow-orange-600/20"
+                    : (darkMode ? "bg-slate-900 text-slate-400 hover:bg-slate-800 border border-slate-800" : "bg-white text-slate-600 hover:bg-slate-100 border border-slate-200 shadow-sm")
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
         </div>
 
         {loading ? (
@@ -363,26 +418,25 @@ export default function MyPDFsPage() {
             <span className={`text-xs font-medium ${darkMode ? "text-slate-400" : "text-slate-500"}`}>Loading documents...</span>
           </div>
         ) : filteredPdfs.length === 0 ? (
-          <div className={`py-12 flex flex-col items-center justify-center text-center rounded-2xl border ${darkMode ? "bg-slate-900/50 border-slate-800" : "bg-white border-slate-200 shadow-sm"}`}>
-            <FileStack size={30} className="text-slate-400 mb-2" />
+          <div className={`py-12 px-4 flex flex-col items-center justify-center text-center rounded-2xl border ${darkMode ? "bg-slate-900/50 border-slate-800" : "bg-white border-slate-200 shadow-sm"}`}>
+            <FileStack size={36} className="text-slate-400 mb-2 opacity-60" />
             <h3 className={`text-sm font-bold mb-0.5 ${darkMode ? "text-slate-300" : "text-slate-700"}`}>No documents found</h3>
+            <p className="text-xs text-slate-400">Try changing your search terms or filter tabs.</p>
           </div>
         ) : (
           <>
-            {/* Exactly 4 items view layout per page */}
             <div className="grid grid-cols-1 gap-3.5">
               {paginatedPdfs.map((pdf) => (
                 <div 
                   key={pdf._id} 
-                  className={`group flex flex-col gap-2.5 p-4 rounded-xl border transition-all ${
+                  className={`group flex flex-col gap-3 p-4 rounded-2xl border transition-all ${
                     darkMode ? "bg-slate-900/80 border-slate-800" : "bg-white border-slate-200 shadow-sm"
                   }`}
                 >
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div className="flex items-start sm:items-center gap-3 flex-1 min-w-0">
                       
-                      {/* PDF Cover Image Display Section (Cute & Compact) */}
-                      <div className={`relative w-12 h-16 sm:w-14 sm:h-18 rounded-lg overflow-hidden flex-shrink-0 border flex items-center justify-center ${darkMode ? "bg-slate-800 border-slate-700" : "bg-slate-100 border-slate-200"}`}>
+                      <div className={`relative w-12 h-16 sm:w-14 sm:h-18 rounded-xl overflow-hidden flex-shrink-0 border flex items-center justify-center ${darkMode ? "bg-slate-800 border-slate-700" : "bg-slate-100 border-slate-200"}`}>
                         {pdf.coverImage || pdf.thumbnail ? (
                           <img 
                             src={pdf.coverImage ? (pdf.coverImage.startsWith('http') ? pdf.coverImage : `http://localhost:5000${pdf.coverImage}`) : (pdf.thumbnail.startsWith('http') ? pdf.thumbnail : `http://localhost:5000${pdf.thumbnail}`)} 
@@ -398,8 +452,8 @@ export default function MyPDFsPage() {
                       </div>
 
                       <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-1.5 mb-1 flex-wrap">
-                          <h3 className={`font-bold text-xs sm:text-sm truncate ${darkMode ? "text-slate-200" : "text-slate-800"}`}>{pdf.title}</h3>
+                        <div className="flex items-center gap-1.5 mb-1.5 flex-wrap">
+                          <h3 className={`font-bold text-xs sm:text-sm truncate max-w-full ${darkMode ? "text-slate-200" : "text-slate-800"}`}>{pdf.title}</h3>
                           {pdf.status === 'pending' && <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400">Pending</span>}
                           {pdf.status === 'approved' && !pdf.isPublished && <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400">Ready to Publish</span>}
                           {pdf.status === 'rejected' && <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-red-500/10 text-red-400">Rejected</span>}
@@ -407,21 +461,20 @@ export default function MyPDFsPage() {
                           {pdf.isFree && <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 flex items-center gap-1"><Gift size={9} /> Free</span>}
                         </div>
                         
-                        <div className={`flex items-center flex-wrap gap-x-2.5 gap-y-0.5 text-[11px] font-medium ${darkMode ? "text-slate-400" : "text-slate-500"}`}>
-                          <span className="flex items-center gap-1"><BookOpen size={11} /> {pdf.subject}</span>
+                        <div className={`flex items-center flex-wrap gap-x-2.5 gap-y-1 text-[11px] font-medium ${darkMode ? "text-slate-400" : "text-slate-500"}`}>
+                          <span className="flex items-center gap-1"><BookOpen size={11} className="shrink-0" /> {pdf.subject}</span>
                           {pdf.grade && <span>• {pdf.grade}</span>}
-                          <span>• <Calendar size={11} className="inline" /> {new Date(pdf.createdAt).toLocaleDateString()}</span>
+                          <span className="flex items-center gap-1">• <Calendar size={11} className="shrink-0" /> {new Date(pdf.createdAt).toLocaleDateString()}</span>
                         </div>
                       </div>
                     </div>
 
-                    {/* Actions */}
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center justify-end sm:justify-start gap-2 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100 dark:border-slate-800">
                       {pdf.status === 'approved' && (
                         <>
                           <button 
                             onClick={() => openPublishModal(pdf)}
-                            className="flex items-center gap-1 px-3 py-1.5 rounded-lg font-bold text-[11px] bg-orange-600 hover:bg-orange-700 text-white shadow-sm shadow-orange-600/20"
+                            className="flex items-center gap-1 px-3 py-1.5 rounded-xl font-bold text-[11px] bg-orange-600 hover:bg-orange-700 text-white shadow-sm shadow-orange-600/20"
                           >
                             <Globe size={12} /> {pdf.isPublished ? "Edit" : "Publish"}
                           </button>
@@ -429,7 +482,7 @@ export default function MyPDFsPage() {
                           {pdf.isPublished && (
                             <button 
                               onClick={() => handleUnpublish(pdf._id)}
-                              className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg font-bold text-[11px] bg-rose-600/10 hover:bg-rose-600 text-rose-500 hover:text-white transition-all border border-rose-500/20"
+                              className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl font-bold text-[11px] bg-rose-600/10 hover:bg-rose-600 text-rose-500 hover:text-white transition-all border border-rose-500/20"
                               title="Unpublish Completely"
                             >
                               Unpublish
@@ -438,19 +491,18 @@ export default function MyPDFsPage() {
                         </>
                       )}
 
-                      <a href={`http://localhost:5000${pdf.fileUrl}`} target="_blank" rel="noopener noreferrer" className="p-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-[11px] font-bold flex items-center gap-1">
-                        <Eye size={12} /> View
+                      <a href={`http://localhost:5000${pdf.fileUrl}`} target="_blank" rel="noopener noreferrer" className="p-2 rounded-xl border border-slate-200 dark:border-slate-700 text-[11px] font-bold flex items-center gap-1 hover:bg-slate-500/10">
+                        <Eye size={13} /> View
                       </a>
 
-                      <button onClick={() => setDeleteItem(pdf)} className="p-1.5 rounded-lg text-rose-500 hover:bg-rose-500/10">
-                        <Trash2 size={14} />
+                      <button onClick={() => setDeleteItem(pdf)} className="p-2 rounded-xl text-rose-500 hover:bg-rose-500/10">
+                        <Trash2 size={15} />
                       </button>
                     </div>
                   </div>
 
-                  {/* Rejection Reason Display Box for Teacher */}
                   {pdf.status === 'rejected' && (pdf.rejectReason || pdf.adminRejectReason || pdf.reason) && (
-                    <div className={`mt-1 p-2.5 rounded-lg border text-[11px] flex items-start gap-1.5 ${darkMode ? "bg-red-500/10 border-red-500/20 text-red-300" : "bg-red-50 border-red-200 text-red-700"}`}>
+                    <div className={`mt-1 p-2.5 rounded-xl border text-[11px] flex items-start gap-1.5 ${darkMode ? "bg-red-500/10 border-red-500/20 text-red-300" : "bg-red-50 border-red-200 text-red-700"}`}>
                       <AlertCircle size={13} className="mt-0.5 flex-shrink-0" />
                       <div>
                         <span className="font-bold block mb-0.5">Rejection Reason:</span>
@@ -459,13 +511,12 @@ export default function MyPDFsPage() {
                     </div>
                   )}
 
-                  {/* Published Classes List Display */}
                   {pdf.isPublished && ((pdf.classIds && pdf.classIds.length > 0) || pdf.isFree) && (
-                    <div className={`mt-1 pt-2 border-t flex flex-wrap items-center gap-1.5 ${darkMode ? "border-slate-800" : "border-slate-100"}`}>
+                    <div className={`mt-1 pt-2.5 border-t flex flex-wrap items-center gap-1.5 ${darkMode ? "border-slate-800" : "border-slate-100"}`}>
                       <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mr-1">Published to:</span>
                       
                       {pdf.isFree && (
-                        <span className="text-[10px] px-2 py-0.5 rounded-md font-bold border flex items-center gap-1 bg-emerald-500/10 border-emerald-500/30 text-emerald-400">
+                        <span className="text-[10px] px-2 py-0.5 rounded-lg font-bold border flex items-center gap-1 bg-emerald-500/10 border-emerald-500/30 text-emerald-400">
                           <Gift size={10} /> Free Page
                           <button 
                             onClick={async () => {
@@ -488,7 +539,7 @@ export default function MyPDFsPage() {
                         const classId = cls._id || cls;
                         const displayTitle = cls.grade ? `${cls.grade} - ${cls.medium} (${cls.mode})` : "Class";
                         return (
-                          <span key={classId} className={`text-[10px] px-2 py-0.5 rounded-md font-bold border flex items-center gap-1 ${darkMode ? "bg-slate-800 border-slate-700 text-orange-400" : "bg-orange-50 border-orange-200 text-orange-700"}`}>
+                          <span key={classId} className={`text-[10px] px-2 py-0.5 rounded-lg font-bold border flex items-center gap-1 ${darkMode ? "bg-slate-800 border-slate-700 text-orange-400" : "bg-orange-50 border-orange-200 text-orange-700"}`}>
                             {displayTitle}
                             <button 
                               onClick={() => handleRemoveSingleClass(pdf, classId)}
@@ -506,18 +557,17 @@ export default function MyPDFsPage() {
               ))}
             </div>
 
-            {/* Pagination controls / buttons to navigate sideways */}
             {totalPages > 1 && (
-              <div className="flex items-center justify-between mt-5 pt-3 border-t border-slate-200 dark:border-slate-800">
-                <span className={`text-xs font-medium ${darkMode ? "text-slate-400" : "text-slate-500"}`}>
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 mt-6 pt-4 border-t border-slate-200 dark:border-slate-800">
+                <span className={`text-xs font-medium text-center sm:text-left ${darkMode ? "text-slate-400" : "text-slate-500"}`}>
                   Showing page <span className="font-bold">{currentPage}</span> of <span className="font-bold">{totalPages}</span> ({filteredPdfs.length} total items)
                 </span>
                 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 w-full sm:w-auto justify-center">
                   <button
                     onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
                     disabled={currentPage === 1}
-                    className={`flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold transition-all border ${
+                    className={`flex items-center justify-center gap-1 px-4 py-2 rounded-xl text-xs font-bold transition-all border flex-1 sm:flex-initial ${
                       currentPage === 1 
                         ? "opacity-40 cursor-not-allowed border-slate-300 dark:border-slate-800" 
                         : (darkMode ? "bg-slate-900 border-slate-700 text-slate-200 hover:bg-slate-800" : "bg-white border-slate-200 text-slate-700 hover:bg-slate-100 shadow-sm")
@@ -529,7 +579,7 @@ export default function MyPDFsPage() {
                   <button
                     onClick={() => setCurrentPage((prev) => Math.min(prev + 1, totalPages))}
                     disabled={currentPage === totalPages}
-                    className={`flex items-center gap-1 px-3 py-1.5 rounded-xl text-xs font-bold transition-all border ${
+                    className={`flex items-center justify-center gap-1 px-4 py-2 rounded-xl text-xs font-bold transition-all border flex-1 sm:flex-initial ${
                       currentPage === totalPages 
                         ? "opacity-40 cursor-not-allowed border-slate-300 dark:border-slate-800" 
                         : (darkMode ? "bg-slate-900 border-slate-700 text-slate-200 hover:bg-slate-800" : "bg-white border-slate-200 text-slate-700 hover:bg-slate-100 shadow-sm")
