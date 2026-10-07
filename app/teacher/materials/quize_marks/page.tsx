@@ -4,7 +4,7 @@
 
 import React, { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Award, Clock, FileText, User, Eye, Search, CheckCircle2, AlertCircle, ArrowLeft, Check, X, Calendar, Trash2, Send } from "lucide-react";
+import { Award, Clock, FileText, User, Eye, Search, AlertCircle, X, Trash2, Send, Download } from "lucide-react";
 import { useTheme } from "@/app/context/ThemeContext";
 import axios from "axios";
 
@@ -149,6 +149,7 @@ export default function TeacherQuizMarksPage() {
   return (
     <div className={`p-4 sm:p-6 lg:p-8 min-h-screen transition-colors duration-300 ${darkMode ? "bg-slate-950 text-white" : "bg-slate-50 text-slate-900"}`}>
       
+      {/* Delete Confirmation Modal */}
       {deleteModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fadeIn">
           <div className={`w-full max-w-md p-6 rounded-2xl shadow-2xl border transition-all ${darkMode ? "bg-slate-900 border-slate-800 text-white" : "bg-white border-slate-200 text-slate-900"}`}>
@@ -175,6 +176,7 @@ export default function TeacherQuizMarksPage() {
         </div>
       )}
 
+      {/* Review Modal - Displaying the generated Evaluated PDF Report directly */}
       {modalOpen && selectedStudentSub && selectedQuiz && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 overflow-y-auto">
           <div className={`w-full max-w-4xl p-6 rounded-3xl shadow-2xl border max-h-[90vh] overflow-y-auto ${darkMode ? "bg-slate-900 border-slate-800 text-white" : "bg-white border-slate-200 text-slate-900"}`}>
@@ -189,8 +191,8 @@ export default function TeacherQuizMarksPage() {
                   )}
                 </div>
                 <div>
-                  <h3 className="text-lg font-extrabold">{selectedStudentSub.studentId?.name}'s Submission</h3>
-                  <p className="text-xs text-slate-400">{selectedStudentSub.studentId?.email} • {selectedStudentSub.timeTaken}</p>
+                  <h3 className="text-lg font-extrabold">{selectedStudentSub.studentId?.name}'s Evaluated Report</h3>
+                  <p className="text-xs text-slate-400">{selectedStudentSub.studentId?.email} • Time: {selectedStudentSub.timeTaken || 'N/A'}</p>
                 </div>
               </div>
               <button onClick={() => setModalOpen(false)} className="p-2 rounded-xl text-slate-400 hover:bg-slate-500/10">
@@ -205,124 +207,35 @@ export default function TeacherQuizMarksPage() {
               </span>
             </div>
 
+            {/* Evaluated PDF Viewer */}
             <div className="space-y-4">
-              {selectedQuiz.questions.map((q: any, qIdx: number) => {
-                const qId = q._id.toString();
-                const studentAnswers = selectedStudentSub.answers instanceof Map ? Object.fromEntries(selectedStudentSub.answers) : (selectedStudentSub.answers || {});
-                const studentAns = studentAnswers[qId];
-                const correctAns = String(q.correctAnswer || "").trim();
-                
-                let isCorrect = false;
-                if (q.type === 'single') {
-                  const cleanStudent = String(studentAns || "").trim().toLowerCase().replace(/[^a-z0-9]/g, '');
-                  const cleanCorrect = correctAns.toLowerCase().replace(/[^a-z0-9]/g, '');
-                  isCorrect = cleanStudent === cleanCorrect && cleanStudent !== "";
-                } else if (q.type === 'short') {
-                  if (correctAns) {
-                    const cleanStudent = String(studentAns || "").trim().toLowerCase().replace(/[^a-z0-9]/g, '');
-                    const cleanRef = correctAns.toLowerCase().replace(/[^a-z0-9]/g, '');
-                    isCorrect = cleanStudent === cleanRef;
-                  } else {
-                    isCorrect = false;
-                  }
-                } else if (q.type === 'mcq') {
-                  const correctArr = Array.isArray(q.correctAnswer) ? q.correctAnswer : [q.correctAnswer];
-                  if (Array.isArray(studentAns)) {
-                    isCorrect = correctArr.every((a: string) => studentAns.includes(a)) && studentAns.every((a: string) => correctArr.includes(a));
-                  }
-                }
-
-                let maxQMarks = q.marks || 5;
-                if (q.type === 'essay' && q.subQuestions && q.subQuestions.length > 0) {
-                  maxQMarks = q.subQuestions.reduce((s: number, sq: any) => s + sq.marks, 0);
-                }
-
-                let earnedQMarks = 0;
-                const essayMarksObj = selectedStudentSub.essayMarks instanceof Map ? Object.fromEntries(selectedStudentSub.essayMarks) : (selectedStudentSub.essayMarks || {});
-                
-                if (q.type !== 'essay') {
-                  if (isCorrect) {
-                    earnedQMarks = q.marks;
-                  } else {
-                    earnedQMarks = Number(essayMarksObj[qId]) || 0;
-                  }
-                } else {
-                  const val = essayMarksObj[qId];
-                  if (typeof val === 'object' && val !== null) {
-                    earnedQMarks = Object.values(val).reduce((s: number, m: any) => s + (Number(m) || 0), 0);
-                  } else {
-                    earnedQMarks = Number(val) || 0;
-                  }
-                }
-
-                let formattedStudentAns = "";
-                if (Array.isArray(studentAns)) {
-                  formattedStudentAns = studentAns.join(', ');
-                } else if (typeof studentAns === 'object' && studentAns !== null) {
-                  formattedStudentAns = Object.entries(studentAns)
-                    .map(([k, v]) => `Part (${Number(k) + 1}): ${v}`)
-                    .join(' | ');
-                } else {
-                  formattedStudentAns = String(studentAns || "No Answer Given");
-                }
-
-                // ගුරුවරයා ලබාදුන් Teacher Correction / Feedback ආරක්ෂිතව ලබා ගැනීම (විකල්ප property names සමඟ)
-                let correctionText = "";
-                const tCorrections = selectedStudentSub.teacherCorrections || selectedStudentSub.corrections || selectedStudentSub.feedback || selectedStudentSub.teacherFeedback;
-                if (tCorrections) {
-                  if (typeof tCorrections.get === 'function') {
-                    correctionText = tCorrections.get(qId) || "";
-                  } else if (typeof tCorrections === 'object') {
-                    correctionText = tCorrections[qId] || "";
-                  }
-                }
-
-                return (
-                  <div key={qId} className={`p-4 rounded-2xl border text-xs space-y-2.5 ${darkMode ? "bg-slate-950 border-slate-800" : "bg-slate-50 border-slate-200"}`}>
-                    <div className="flex justify-between items-center">
-                      <p className="font-bold text-sm">
-                        {qIdx + 1}. {q.questionText} <span className="opacity-60 text-[10px]">({q.type.toUpperCase()})</span>
-                      </p>
-                      <span className="px-2.5 py-1 rounded-lg text-xs font-extrabold bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
-                        Score: {earnedQMarks} / {maxQMarks} Marks
-                      </span>
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2">
-                      <div className="p-3 rounded-xl bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
-                        <span className="text-[10px] text-slate-400 block font-bold mb-1">Student Answer:</span>
-                        {q.type !== 'essay' && q.type !== 'short' ? (
-                          <span className={isCorrect ? "text-emerald-500 font-bold flex items-center gap-1.5 text-sm" : "text-rose-500 font-bold flex items-center gap-1.5 text-sm"}>
-                            {isCorrect ? <Check size={16} /> : <X size={16} />}
-                            {formattedStudentAns} {isCorrect ? "(Correct ✅)" : "(Incorrect ❌)"}
-                          </span>
-                        ) : (
-                          <span className="text-slate-200 font-medium text-sm">
-                            {formattedStudentAns}
-                          </span>
-                        )}
-                      </div>
-
-                      {q.type !== 'essay' && (
-                        <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
-                          <span className="text-[10px] text-emerald-400 block font-bold mb-1">Teacher's Answer Key Reference:</span>
-                          <span className="text-emerald-400 font-bold text-sm">
-                            {Array.isArray(q.correctAnswer) ? q.correctAnswer.join(', ') : (q.correctAnswer || 'None specified (Manual grading)')}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Teacher Correction / Feedback Display */}
-                    {correctionText && (
-                      <div className="mt-2 p-3 rounded-xl bg-indigo-500/5 border border-indigo-500/20 text-indigo-300">
-                        <span className="text-[10px] font-bold text-indigo-400 block mb-0.5">Teacher's Correction / Feedback:</span>
-                        <p className="text-xs">{correctionText}</p>
-                      </div>
-                    )}
+              {selectedStudentSub.evaluatedPdfUrl ? (
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs font-bold text-slate-400">Generated Evaluation Report (PDF):</span>
+                    <a 
+                      href={`http://localhost:5000${selectedStudentSub.evaluatedPdfUrl}`} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm"
+                    >
+                      <Download size={14} /> Open / Download PDF
+                    </a>
                   </div>
-                );
-              })}
+                  <div className="w-full h-[500px] rounded-2xl overflow-hidden border bg-slate-950">
+                    <iframe 
+                      src={`http://localhost:5000${selectedStudentSub.evaluatedPdfUrl}`} 
+                      className="w-full h-full"
+                      title="Evaluated PDF Report"
+                    />
+                  </div>
+                </div>
+              ) : (
+                <div className="p-12 text-center bg-slate-800/20 rounded-2xl border border-dashed">
+                  <FileText size={36} className="mx-auto mb-2 text-slate-400 opacity-60" />
+                  <p className="text-xs font-bold text-slate-300">Evaluated PDF report not found. Please evaluate and save marks from the submission panel first.</p>
+                </div>
+              )}
             </div>
 
             <div className="mt-6 flex justify-end">
@@ -344,7 +257,7 @@ export default function TeacherQuizMarksPage() {
           <div>
             <h1 className="text-2xl font-extrabold tracking-tight">Student Quiz Marks & Submissions</h1>
             <p className={`text-sm mt-1 ${darkMode ? "text-slate-400" : "text-slate-500"}`}>
-              Select a quiz to view student performance, scores, and review their submitted answer papers.
+              Select a quiz to view student performance, scores, and review their evaluated reports.
             </p>
           </div>
         </div>
@@ -362,6 +275,7 @@ export default function TeacherQuizMarksPage() {
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
             
+            {/* Quiz Sidebar Selector */}
             <div className={`lg:col-span-1 p-4 rounded-3xl border space-y-3 ${darkMode ? "bg-slate-900 border-slate-800" : "bg-white border-slate-200 shadow-sm"}`}>
               <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 px-2">Select Quiz</h3>
               <div className="space-y-2 max-h-[60vh] overflow-y-auto pr-1">
@@ -387,6 +301,7 @@ export default function TeacherQuizMarksPage() {
               </div>
             </div>
 
+            {/* Submissions List Table */}
             <div className={`lg:col-span-3 p-6 rounded-3xl border space-y-6 ${darkMode ? "bg-slate-900 border-slate-800" : "bg-white border-slate-200 shadow-sm"}`}>
               
               {selectedQuiz && (
@@ -457,7 +372,7 @@ export default function TeacherQuizMarksPage() {
                               <span className="truncate">{student.name}</span>
                             </td>
                             <td className="py-3.5 text-slate-400">{student.email}</td>
-                            <td className="py-3.5 opacity-80">{sub.timeTaken}</td>
+                            <td className="py-3.5 opacity-80">{sub.timeTaken || 'N/A'}</td>
                             <td className="py-3.5">
                               <span className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase ${
                                 sub.isEvaluated 
@@ -475,7 +390,7 @@ export default function TeacherQuizMarksPage() {
                                 onClick={() => openStudentPaperModal(sub)}
                                 className="px-2.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold shadow-sm transition-all inline-flex items-center gap-1 text-[11px]"
                               >
-                                <Eye size={12} /> Review
+                                <Eye size={12} /> Review Report
                               </button>
                               
                               <button

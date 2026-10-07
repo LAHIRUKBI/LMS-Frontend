@@ -4,7 +4,7 @@
 
 import React, { useEffect, useState, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { Check, X, Eye, User, CheckSquare, Send, ArrowLeft, Award, AlertCircle } from "lucide-react";
+import { Check, X, Eye, User, CheckSquare, Send, ArrowLeft, Award, AlertCircle, Image as ImageIcon } from "lucide-react";
 import { useTheme } from "@/app/context/ThemeContext";
 import axios from "axios";
 import QuizUploadSuccessPopup from "@/app/components/QuizUploadSuccessPopup";
@@ -217,7 +217,6 @@ function TeacherQuizSubmissionContent() {
                 const qId = q._id.toString();
                 const studentAns = studentAnswers[qId];
 
-                // 1. MCQ සහ Single ප්‍රශ්න සඳහා
                 if (q.type === 'single' || q.type === 'mcq') {
                   let isCorrect = false;
                   if (q.type === 'single') {
@@ -240,7 +239,6 @@ function TeacherQuizSubmissionContent() {
                     calculatedTotalScore += Number(manualMark) || 0;
                   }
                 } 
-                // 2. Short Answers සහ Essay ප්‍රශ්න සඳහා
                 else if (q.type === 'short' || q.type === 'essay') {
                   const hasSubQ = q.subQuestions && Array.isArray(q.subQuestions) && q.subQuestions.length > 0;
                   
@@ -395,6 +393,35 @@ function TeacherQuizSubmissionContent() {
                                 </div>
                               )}
                             </div>
+
+                            {/* ළමයා විසින් උඩුගත කර ඇති පිළිතුරු කොළ පෙන්වීම */}
+                            {sub.answerSheets && sub.answerSheets[q._id] && sub.answerSheets[q._id].length > 0 && (
+                              <div className="mt-4 p-4 rounded-2xl bg-slate-100 dark:bg-slate-800 border space-y-2">
+                                <span className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                                  <ImageIcon size={14} className="text-blue-500" /> Student's Written Answer Sheets (Click to View):
+                                </span>
+                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                                  {sub.answerSheets[q._id].map((sheetUrl: string, imgIdx: number) => (
+                                    <a 
+                                      key={imgIdx} 
+                                      href={`http://localhost:5000${sheetUrl}`} 
+                                      target="_blank" 
+                                      rel="noopener noreferrer"
+                                      className="block relative rounded-xl overflow-hidden border shadow-sm group aspect-[3/4]"
+                                    >
+                                      <img 
+                                        src={`http://localhost:5000${sheetUrl}`} 
+                                        alt={`Answer Sheet Page ${imgIdx + 1}`} 
+                                        className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
+                                      />
+                                      <span className="absolute bottom-1 right-1 bg-black/70 text-white text-[10px] px-2 py-0.5 rounded-md">
+                                        Page {imgIdx + 1} 🔍
+                                      </span>
+                                    </a>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
 
                             {q.type === 'short' && (
                               <div className="mt-3 pt-2 border-t flex items-center justify-between bg-amber-500/5 p-2.5 rounded-xl border border-amber-500/20">
