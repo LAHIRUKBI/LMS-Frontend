@@ -791,7 +791,6 @@ export default function TeacherMyQuizzesPage() {
                     <div className={`border-t pt-4 ${darkMode ? "border-slate-800" : "border-slate-100"}`}>
                       <div className="flex justify-between items-center mb-3">
                         <div className="flex items-center gap-3">
-                          <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">Questions & Answer Key Details:</h3>
                           <button
                             onClick={() => toggleQuestionsCollapse(quiz._id)}
                             className="text-xs font-bold text-indigo-400 hover:underline flex items-center gap-1"
@@ -805,7 +804,7 @@ export default function TeacherMyQuizzesPage() {
                           onClick={() => handleDownloadPDFAnswerKey(quiz)}
                           className="px-3 py-1.5 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-bold shadow-sm flex items-center gap-1.5 transition-colors"
                         >
-                          <Download size={14} /> Download PDF Answer Key
+                          <Download size={14} /> Answer sheet
                         </button>
                       </div>
 

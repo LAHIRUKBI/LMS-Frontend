@@ -1,7 +1,9 @@
+// src/app/components/TeacherQuizCreator.tsx
+
 "use client";
 
-import React, { useState, useRef } from "react";
-import { Plus, Trash2, Send, Image as ImageIcon, CheckCircle, Upload, X, HelpCircle, Award, Clock, FileText, ArrowRight, ArrowLeft, Eye, AlertCircle } from "lucide-react";
+import React, { useState, useRef, useEffect } from "react";
+import { Plus, Trash2, Send, Image as ImageIcon, CheckCircle, Upload, X, HelpCircle, Award, Clock, FileText, ArrowRight, ArrowLeft, Eye, AlertCircle, ChevronDown } from "lucide-react";
 import axios from "axios";
 import QuizUploadSuccessPopup from "@/app/components/QuizUploadSuccessPopup";
 import { useTheme } from "@/app/context/ThemeContext";
@@ -61,6 +63,20 @@ export default function TeacherQuizCreator() {
     type: "error"
   });
   const [showReviewModal, setShowReviewModal] = useState(false);
+
+  // Custom Dropdown Open States
+  const [openDropdown, setOpenDropdown] = useState<string | null>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setOpenDropdown(null);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   const triggerNotification = (message: string) => {
     setNotification({ show: true, message, type: "error" });
@@ -258,10 +274,30 @@ export default function TeacherQuizCreator() {
     }
   };
 
+  // Helper labels mapping for duration and types
+  const durationLabels: { [key: string]: string } = {
+    "30": "30 Mins",
+    "60": "1 Hour",
+    "90": "1.5 Hours",
+    "120": "2 Hours",
+    "150": "2.5 Hours",
+    "180": "3 Hours"
+  };
+
+  const typeLabels: { [key in QuestionType]: string } = {
+    "mcq": "Multiple Choice (MCQ)",
+    "single": "Single Choice (MCQ)",
+    "short": "Short Answer",
+    "essay": "Essay / Structured Questions"
+  };
+
   return (
-    <div className={`w-full max-w-full sm:max-w-4xl md:max-w-5xl mx-auto p-2 sm:p-4 md:p-8 rounded-xl sm:rounded-3xl shadow-xl border transition-colors duration-300 space-y-6 overflow-x-hidden box-border ${
-      darkMode ? "bg-slate-900 text-slate-100 border-slate-800" : "bg-white text-slate-900 border-slate-200"
-    }`}>
+    <div 
+      ref={dropdownRef}
+      className={`w-full max-w-full sm:max-w-4xl md:max-w-5xl mx-auto p-2 sm:p-4 md:p-8 rounded-xl sm:rounded-3xl shadow-xl border transition-colors duration-300 space-y-6 overflow-x-hidden box-border ${
+        darkMode ? "bg-slate-900 text-slate-100 border-slate-800" : "bg-white text-slate-900 border-slate-200"
+      }`}
+    >
       
       {/* Custom Notification Modal */}
       {notification.show && (
@@ -437,24 +473,46 @@ export default function TeacherQuizCreator() {
                 }`}
               />
             </div>
-            <div>
+            
+            {/* Duration (Custom Responsive Dropdown) */}
+            <div className="relative">
               <label className={`block text-xs font-bold uppercase tracking-wider mb-2 flex items-center gap-1.5 ${darkMode ? "text-slate-300" : "text-slate-600"}`}>
                 <Clock size={14} className="text-indigo-500 shrink-0" /> Duration
               </label>
-              <select
-                value={duration}
-                onChange={(e) => setDuration(e.target.value)}
-                className={`w-full max-w-full box-border p-3 text-sm border rounded-xl outline-none transition-all shadow-sm cursor-pointer ${
-                  darkMode ? "bg-slate-800 border-slate-600 text-white" : "bg-white border-slate-300 text-slate-900"
+              <div
+                onClick={() => setOpenDropdown(openDropdown === "duration" ? null : "duration")}
+                className={`w-full p-3 rounded-xl flex items-center justify-between cursor-pointer font-medium text-sm select-none ${
+                  darkMode ? "bg-slate-800 border border-slate-600 text-white" : "bg-white border border-slate-300 text-slate-900"
                 }`}
               >
-                <option value="30">30 Mins</option>
-                <option value="60">1 Hour</option>
-                <option value="90">1.5 Hours</option>
-                <option value="120">2 Hours</option>
-                <option value="150">2.5 Hours</option>
-                <option value="180">3 Hours</option>
-              </select>
+                <span className="truncate">{durationLabels[duration] || `${duration} Mins`}</span>
+                <ChevronDown size={16} className={`transition-transform duration-200 shrink-0 ${openDropdown === "duration" ? "rotate-180" : ""}`} />
+              </div>
+
+              {openDropdown === "duration" && (
+                <div className={`absolute left-0 right-0 top-full mt-1.5 max-h-52 overflow-y-auto rounded-xl shadow-xl z-30 border ${
+                  darkMode ? "bg-slate-900 border-slate-700 text-slate-200" : "bg-white border-slate-200 text-slate-700"
+                }`}>
+                  {[
+                    { val: "30", label: "30 Mins" },
+                    { val: "60", label: "1 Hour" },
+                    { val: "90", label: "1.5 Hours" },
+                    { val: "120", label: "2 Hours" },
+                    { val: "150", label: "2.5 Hours" },
+                    { val: "180", label: "3 Hours" }
+                  ].map((item) => (
+                    <div
+                      key={item.val}
+                      onClick={() => { setDuration(item.val); setOpenDropdown(null); }}
+                      className={`p-3 text-sm font-medium cursor-pointer transition-colors ${
+                        darkMode ? "hover:bg-slate-800" : "hover:bg-slate-100"
+                      } ${duration === item.val ? (darkMode ? "bg-slate-800 text-indigo-400 font-bold" : "bg-slate-100 text-indigo-600 font-bold") : ""}`}
+                    >
+                      {item.label}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 
@@ -505,21 +563,39 @@ export default function TeacherQuizCreator() {
             </div>
             
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
+              
+              {/* Question Type (Custom Responsive Dropdown) */}
+              <div className="relative">
                 <label className={`block text-xs font-bold uppercase tracking-wider mb-1.5 ${darkMode ? "text-slate-300" : "text-slate-600"}`}>Question Type</label>
-                <select
-                  value={currentType}
-                  onChange={(e) => handleTypeChange(e.target.value as QuestionType)}
-                  className={`w-full max-w-full box-border p-2.5 text-xs sm:text-sm border rounded-xl outline-none shadow-sm cursor-pointer ${
-                    darkMode ? "bg-slate-800 border-slate-600 text-white" : "bg-white border-slate-300 text-slate-900"
+                <div
+                  onClick={() => setOpenDropdown(openDropdown === "questionType" ? null : "questionType")}
+                  className={`w-full p-2.5 sm:p-3 rounded-xl flex items-center justify-between cursor-pointer font-medium text-xs sm:text-sm select-none ${
+                    darkMode ? "bg-slate-800 border border-slate-600 text-white" : "bg-white border border-slate-300 text-slate-900"
                   }`}
                 >
-                  <option value="mcq">Multiple Choice (MCQ)</option>
-                  <option value="single">Single Choice (MCQ)</option>
-                  <option value="short">Short Answer</option>
-                  <option value="essay">Essay / Structured Questions</option>
-                </select>
+                  <span className="truncate">{typeLabels[currentType]}</span>
+                  <ChevronDown size={14} className={`transition-transform duration-200 shrink-0 ${openDropdown === "questionType" ? "rotate-180" : ""}`} />
+                </div>
+
+                {openDropdown === "questionType" && (
+                  <div className={`absolute left-0 right-0 top-full mt-1.5 rounded-xl shadow-xl z-30 border overflow-hidden ${
+                    darkMode ? "bg-slate-900 border-slate-700 text-slate-200" : "bg-white border-slate-200 text-slate-700"
+                  }`}>
+                    {(["mcq", "single", "short", "essay"] as QuestionType[]).map((typeKey) => (
+                      <div
+                        key={typeKey}
+                        onClick={() => { handleTypeChange(typeKey); setOpenDropdown(null); }}
+                        className={`p-2.5 sm:p-3 text-xs sm:text-sm font-medium cursor-pointer transition-colors ${
+                          darkMode ? "hover:bg-slate-800" : "hover:bg-slate-100"
+                        } ${currentType === typeKey ? (darkMode ? "bg-slate-800 text-indigo-400 font-bold" : "bg-slate-100 text-indigo-600 font-bold") : ""}`}
+                      >
+                        {typeLabels[typeKey]}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
+
               <div>
                 <label className={`block text-xs font-bold uppercase tracking-wider mb-1.5 ${darkMode ? "text-slate-300" : "text-slate-600"}`}>Marks</label>
                 <input
