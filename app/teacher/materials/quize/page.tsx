@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useRef } from "react";
-import { Plus, Trash2, Send, Image as ImageIcon, CheckCircle, Upload, X, HelpCircle, Award, Clock, FileText, ArrowRight, ArrowLeft } from "lucide-react";
+import { Plus, Trash2, Send, Image as ImageIcon, CheckCircle, Upload, X, HelpCircle, Award, Clock, FileText, ArrowRight, ArrowLeft, Eye, AlertCircle } from "lucide-react";
 import axios from "axios";
 import QuizUploadSuccessPopup from "@/app/components/QuizUploadSuccessPopup";
 import { useTheme } from "@/app/context/ThemeContext";
@@ -54,6 +54,17 @@ export default function TeacherQuizCreator() {
   ]);
 
   const [showSuccessPopup, setShowSuccessPopup] = useState(false);
+
+  const [notification, setNotification] = useState<{ show: boolean; message: string; type: "error" | "info" }>({
+    show: false,
+    message: "",
+    type: "error"
+  });
+  const [showReviewModal, setShowReviewModal] = useState(false);
+
+  const triggerNotification = (message: string) => {
+    setNotification({ show: true, message, type: "error" });
+  };
 
   const handleTypeChange = (newType: QuestionType) => {
     setCurrentType(newType);
@@ -122,7 +133,7 @@ export default function TeacherQuizCreator() {
 
   const handleNextToQuestions = () => {
     if (!title.trim()) {
-      alert("Please enter the quiz title.");
+      triggerNotification("Please enter the quiz title.");
       return;
     }
     setStep(2);
@@ -130,29 +141,28 @@ export default function TeacherQuizCreator() {
 
   const handleAddQuestionToQuiz = () => {
     if (!currentText.trim()) {
-      alert("Please enter the question text or main description.");
+      triggerNotification("Please enter the question text or main description.");
       return;
     }
 
     if (currentType === "mcq" && currentOptions.some(opt => !opt.trim())) {
-      alert("Please fill all MCQ options or remove empty ones.");
+      triggerNotification("Please fill all MCQ options or remove empty ones.");
       return;
     }
 
     let finalCorrectAnswer: any = currentCorrect;
     if (currentType === "mcq") {
       if (currentCorrectMultiple.length === 0) {
-        alert("Please select at least one correct answer for Multiple Choice (MCQ).");
+        triggerNotification("Please select at least one correct answer for Multiple Choice (MCQ).");
         return;
       }
       finalCorrectAnswer = currentCorrectMultiple;
     } else if (currentType === "single") {
       if (!currentCorrect.trim()) {
-        alert("Please provide the correct answer for Single Choice.");
+        triggerNotification("Please provide the correct answer for Single Choice.");
         return;
       }
     } else if (currentType === "short") {
-      // Short Answer සඳහා Correct Answer Reference එක විකල්ප වේ (Optional)
       finalCorrectAnswer = currentCorrect.trim() ? currentCorrect : "";
     }
 
@@ -162,7 +172,7 @@ export default function TeacherQuizCreator() {
     if (currentType === "essay") {
       if (hasSubQuestions && currentSubQuestions.length > 0) {
         if (currentSubQuestions.some(sq => !sq.subQuestionText.trim())) {
-          alert("Please fill all essay sub-question texts.");
+          triggerNotification("Please fill all essay sub-question texts.");
           return;
         }
         finalSubQuestions = currentSubQuestions;
@@ -202,12 +212,16 @@ export default function TeacherQuizCreator() {
     setQuestions(questions.filter((q) => q.id !== id));
   };
 
-  const handleSubmitToAdmin = async () => {
+  const handlePreSubmitCheck = () => {
     if (questions.length === 0) {
-      alert("Please add at least one question before submitting.");
+      triggerNotification("Please add at least one question before submitting.");
       return;
     }
+    setShowReviewModal(true);
+  };
 
+  const handleSubmitToAdmin = async () => {
+    setShowReviewModal(false);
     const formData = new FormData();
     formData.append("title", title);
     formData.append("description", description);
@@ -240,25 +254,106 @@ export default function TeacherQuizCreator() {
       }
     } catch (error: any) {
       console.error("Submission error:", error);
-      alert(error.response?.data?.message || "Failed to connect with the server.");
+      triggerNotification(error.response?.data?.message || "Failed to connect with the server.");
     }
   };
 
   return (
-    <div className={`max-w-5xl mx-auto p-4 sm:p-8 rounded-3xl shadow-xl border transition-colors duration-300 space-y-8 ${
+    <div className={`w-full max-w-full sm:max-w-4xl md:max-w-5xl mx-auto p-2 sm:p-4 md:p-8 rounded-xl sm:rounded-3xl shadow-xl border transition-colors duration-300 space-y-6 overflow-x-hidden box-border ${
       darkMode ? "bg-slate-900 text-slate-100 border-slate-800" : "bg-white text-slate-900 border-slate-200"
     }`}>
       
+      {/* Custom Notification Modal */}
+      {notification.show && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
+          <div className={`max-w-md w-full p-6 rounded-3xl shadow-2xl border text-center space-y-4 ${
+            darkMode ? "bg-slate-800 border-slate-700 text-slate-100" : "bg-white border-slate-100 text-slate-900"
+          }`}>
+            <div className="w-12 h-12 rounded-full bg-red-100 text-red-600 flex items-center justify-center mx-auto shadow-inner">
+              <AlertCircle size={24} />
+            </div>
+            <h3 className="text-lg font-bold">Attention Required</h3>
+            <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">{notification.message}</p>
+            <button
+              onClick={() => setNotification({ ...notification, show: false })}
+              className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold transition shadow-lg shadow-indigo-600/20"
+            >
+              Okay, Got It
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Review Modal before Final Submission */}
+      {showReviewModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-sm overflow-y-auto">
+          <div className={`max-w-3xl w-full max-h-[90vh] p-4 sm:p-8 rounded-3xl shadow-2xl border flex flex-col space-y-6 box-border ${
+            darkMode ? "bg-slate-900 border-slate-700 text-slate-100" : "bg-white border-slate-200 text-slate-900"
+          }`}>
+            <div className="flex justify-between items-center pb-4 border-b border-slate-200 dark:border-slate-800">
+              <div>
+                <h2 className="text-lg sm:text-xl font-extrabold flex items-center gap-2">
+                  <Eye className="text-indigo-500 shrink-0" size={22} /> Review Quiz Before Submission
+                </h2>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Please inspect your quiz paper carefully before sending it to the admin.</p>
+              </div>
+              <button onClick={() => setShowReviewModal(false)} className="p-2 rounded-xl text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition shrink-0">
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="space-y-4 overflow-y-auto pr-1 flex-1">
+              <div className={`p-4 rounded-2xl border ${darkMode ? "bg-slate-800/50 border-slate-700" : "bg-slate-50 border-slate-200"}`}>
+                <h3 className="font-bold text-base text-indigo-600 dark:text-indigo-400 break-words">{title}</h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 break-words">{description || "No description provided."}</p>
+                <div className="flex gap-3 sm:gap-4 mt-3 text-xs font-semibold flex-wrap">
+                  <span>⏱️ Duration: {duration} Mins</span>
+                  <span>📊 Total Marks: {totalQuizMarks}</span>
+                  <span>❓ Questions: {questions.length}</span>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                {questions.map((q, idx) => (
+                  <div key={q.id} className={`p-4 rounded-2xl border space-y-2 ${darkMode ? "bg-slate-800/30 border-slate-700" : "bg-white border-slate-200"}`}>
+                    <div className="flex justify-between items-center text-xs">
+                      <span className="font-bold text-indigo-500 uppercase">{q.type} • {q.marks} Marks</span>
+                      <span className="text-slate-400 font-semibold">Q{idx + 1}</span>
+                    </div>
+                    <p className="font-bold text-sm break-words">{q.questionText}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="pt-4 border-t border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row gap-3">
+              <button
+                onClick={() => setShowReviewModal(false)}
+                className="w-full sm:flex-1 py-3 px-4 rounded-xl border border-slate-300 dark:border-slate-700 font-bold text-sm hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+              >
+                Back & Edit
+              </button>
+              <button
+                onClick={handleSubmitToAdmin}
+                className="w-full sm:flex-1 py-3 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm shadow-lg shadow-indigo-600/20 transition flex items-center justify-center gap-2"
+              >
+                <Send size={16} /> Confirm & Send to Admin
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header Section */}
       <div className={`pb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b ${
         darkMode ? "border-slate-800" : "border-slate-200"
       }`}>
         <div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold flex items-center gap-3 tracking-tight">
-            <div className={`p-2.5 rounded-2xl border shadow-inner ${
+          <h1 className="text-lg sm:text-2xl md:text-3xl font-extrabold flex items-center gap-2.5 sm:gap-3 tracking-tight">
+            <div className={`p-2 sm:p-2.5 rounded-2xl border shadow-inner shrink-0 ${
               darkMode ? "bg-indigo-950/50 text-indigo-400 border-indigo-900/50" : "bg-indigo-50 text-indigo-600 border-indigo-100"
             }`}>
-              <FileText size={24} />
+              <FileText size={22} />
             </div>
             Create New Quiz
           </h1>
@@ -268,32 +363,32 @@ export default function TeacherQuizCreator() {
         </div>
         
         {/* Quick Stats Badges */}
-        <div className="flex items-center gap-3">
-          <div className={`px-4 py-2 rounded-xl flex items-center gap-2.5 text-xs font-semibold shadow-sm border ${
+        <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto">
+          <div className={`px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl flex items-center gap-2 text-xs font-semibold shadow-sm border ${
             darkMode ? "bg-slate-800/80 border-slate-700/60 text-slate-300" : "bg-slate-50 border-slate-200 text-slate-700"
           }`}>
-            <Award size={16} className="text-indigo-500" /> Total Marks: <span className="text-indigo-600 dark:text-indigo-400 font-bold">{totalQuizMarks}</span>
+            <Award size={14} className="text-indigo-500 shrink-0" /> Total Marks: <span className="text-indigo-600 dark:text-indigo-400 font-bold">{totalQuizMarks}</span>
           </div>
-          <div className={`px-4 py-2 rounded-xl flex items-center gap-2.5 text-xs font-semibold shadow-sm border ${
+          <div className={`px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl flex items-center gap-2 text-xs font-semibold shadow-sm border ${
             darkMode ? "bg-slate-800/80 border-slate-700/60 text-slate-300" : "bg-slate-50 border-slate-200 text-slate-700"
           }`}>
-            <HelpCircle size={16} className="text-indigo-500" /> Questions: <span className="text-indigo-600 dark:text-indigo-400 font-bold">{questions.length}</span>
+            <HelpCircle size={14} className="text-indigo-500 shrink-0" /> Questions: <span className="text-indigo-600 dark:text-indigo-400 font-bold">{questions.length}</span>
           </div>
         </div>
       </div>
 
       {/* Step Indicator Tabs */}
-      <div className={`flex border-b text-sm font-semibold ${darkMode ? "border-slate-800" : "border-slate-200"}`}>
+      <div className={`flex border-b text-xs sm:text-sm font-semibold overflow-x-auto w-full ${darkMode ? "border-slate-800" : "border-slate-200"}`}>
         <button
           type="button"
           onClick={() => setStep(1)}
-          className={`pb-4 px-6 border-b-2 transition-all flex items-center gap-2.5 ${
+          className={`pb-3 px-3 sm:px-6 border-b-2 transition-all flex items-center gap-2 whitespace-nowrap ${
             step === 1
               ? "border-indigo-600 dark:border-indigo-400 text-indigo-600 dark:text-indigo-400 font-bold"
               : "border-transparent text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
           }`}
         >
-          <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
+          <span className={`w-5 h-5 sm:w-6 sm:h-6 rounded-full flex items-center justify-center text-[10px] sm:text-xs font-bold shrink-0 ${
             step === 1 ? "bg-indigo-600 text-white shadow-md shadow-indigo-500/20" : darkMode ? "bg-slate-800 text-slate-400" : "bg-slate-100 text-slate-600"
           }`}>1</span>
           Basic Details
@@ -302,18 +397,18 @@ export default function TeacherQuizCreator() {
           type="button"
           onClick={() => {
             if (!title.trim()) {
-              alert("Please enter the quiz title first.");
+              triggerNotification("Please enter the quiz title first.");
               return;
             }
             setStep(2);
           }}
-          className={`pb-4 px-6 border-b-2 transition-all flex items-center gap-2.5 ${
+          className={`pb-3 px-3 sm:px-6 border-b-2 transition-all flex items-center gap-2 whitespace-nowrap ${
             step === 2
               ? "border-indigo-600 dark:border-indigo-400 text-indigo-600 dark:text-indigo-400 font-bold"
               : "border-transparent text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
           }`}
         >
-          <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
+          <span className={`w-5 h-5 sm:w-6 sm:h-6 rounded-full flex items-center justify-center text-[10px] sm:text-xs font-bold shrink-0 ${
             step === 2 ? "bg-indigo-600 text-white shadow-md shadow-indigo-500/20" : darkMode ? "bg-slate-800 text-slate-400" : "bg-slate-100 text-slate-600"
           }`}>2</span>
           Add Questions & Submit
@@ -322,14 +417,14 @@ export default function TeacherQuizCreator() {
 
       {/* STEP 1: Basic Details */}
       {step === 1 && (
-        <div className={`p-6 sm:p-8 rounded-2xl border shadow-sm backdrop-blur-md space-y-6 ${
+        <div className={`p-4 sm:p-6 md:p-8 rounded-2xl border shadow-sm backdrop-blur-md space-y-6 overflow-hidden box-border ${
           darkMode ? "bg-slate-800/40 border-slate-700" : "bg-slate-50 border-slate-200"
         }`}>
-          <h2 className={`font-bold text-base ${darkMode ? "text-slate-200" : "text-slate-800"}`}>
+          <h2 className={`font-bold text-sm sm:text-base ${darkMode ? "text-slate-200" : "text-slate-800"}`}>
             Step 1: Enter Basic Quiz Details
           </h2>
           
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
             <div className="sm:col-span-2">
               <label className={`block text-xs font-bold uppercase tracking-wider mb-2 ${darkMode ? "text-slate-300" : "text-slate-600"}`}>Quiz Title</label>
               <input
@@ -337,19 +432,19 @@ export default function TeacherQuizCreator() {
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="e.g., Grade 10 - Science Unit Test"
-                className={`w-full p-3 text-sm border rounded-xl outline-none transition-all shadow-sm ${
+                className={`w-full max-w-full box-border p-3 text-sm border rounded-xl outline-none transition-all shadow-sm ${
                   darkMode ? "bg-slate-800 border-slate-600 text-white focus:border-indigo-400" : "bg-white border-slate-300 text-slate-900 focus:border-indigo-500"
                 }`}
               />
             </div>
             <div>
               <label className={`block text-xs font-bold uppercase tracking-wider mb-2 flex items-center gap-1.5 ${darkMode ? "text-slate-300" : "text-slate-600"}`}>
-                <Clock size={14} className="text-indigo-500" /> Duration
+                <Clock size={14} className="text-indigo-500 shrink-0" /> Duration
               </label>
               <select
                 value={duration}
                 onChange={(e) => setDuration(e.target.value)}
-                className={`w-full p-3 text-sm border rounded-xl outline-none transition-all shadow-sm cursor-pointer ${
+                className={`w-full max-w-full box-border p-3 text-sm border rounded-xl outline-none transition-all shadow-sm cursor-pointer ${
                   darkMode ? "bg-slate-800 border-slate-600 text-white" : "bg-white border-slate-300 text-slate-900"
                 }`}
               >
@@ -369,7 +464,7 @@ export default function TeacherQuizCreator() {
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Briefly describe what this quiz tests..."
-              className={`w-full p-3 text-sm border rounded-xl outline-none transition-all shadow-sm ${
+              className={`w-full max-w-full box-border p-3 text-sm border rounded-xl outline-none transition-all shadow-sm ${
                 darkMode ? "bg-slate-800 border-slate-600 text-white" : "bg-white border-slate-300 text-slate-900"
               }`}
               rows={4}
@@ -380,7 +475,7 @@ export default function TeacherQuizCreator() {
             <button
               type="button"
               onClick={handleNextToQuestions}
-              className="bg-indigo-600 hover:bg-indigo-700 text-white px-7 py-3 rounded-xl font-bold transition-all text-sm flex items-center gap-2.5 shadow-lg shadow-indigo-600/20 active:scale-[0.98]"
+              className="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700 text-white px-7 py-3 rounded-xl font-bold transition-all text-sm flex items-center justify-center gap-2.5 shadow-lg shadow-indigo-600/20 active:scale-[0.98]"
             >
               Next: Add Questions <ArrowRight size={16} />
             </button>
@@ -390,20 +485,20 @@ export default function TeacherQuizCreator() {
 
       {/* STEP 2: Add Questions & Review */}
       {step === 2 && (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 sm:gap-8">
           
           {/* Left Column: Form Inputs */}
-          <div className={`lg:col-span-7 p-6 rounded-2xl border shadow-sm backdrop-blur-md space-y-6 ${
+          <div className={`lg:col-span-7 p-3 sm:p-6 rounded-2xl border shadow-sm backdrop-blur-md space-y-6 overflow-hidden box-border ${
             darkMode ? "bg-slate-800/40 border-slate-700" : "bg-slate-50 border-slate-200"
           }`}>
             <div className={`flex justify-between items-center pb-3 border-b ${darkMode ? "border-slate-700" : "border-slate-200"}`}>
-              <h2 className={`font-bold text-base ${darkMode ? "text-slate-200" : "text-slate-800"}`}>
+              <h2 className={`font-bold text-sm sm:text-base ${darkMode ? "text-slate-200" : "text-slate-800"}`}>
                 Step 2: Add Questions
               </h2>
               <button
                 type="button"
                 onClick={() => setStep(1)}
-                className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1.5"
+                className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 hover:underline flex items-center gap-1.5 shrink-0"
               >
                 <ArrowLeft size={14} /> Edit Basic Details
               </button>
@@ -415,7 +510,7 @@ export default function TeacherQuizCreator() {
                 <select
                   value={currentType}
                   onChange={(e) => handleTypeChange(e.target.value as QuestionType)}
-                  className={`w-full p-2.5 text-xs sm:text-sm border rounded-xl outline-none shadow-sm cursor-pointer ${
+                  className={`w-full max-w-full box-border p-2.5 text-xs sm:text-sm border rounded-xl outline-none shadow-sm cursor-pointer ${
                     darkMode ? "bg-slate-800 border-slate-600 text-white" : "bg-white border-slate-300 text-slate-900"
                   }`}
                 >
@@ -432,7 +527,7 @@ export default function TeacherQuizCreator() {
                   value={currentMarks}
                   onChange={(e) => setCurrentMarks(Number(e.target.value))}
                   disabled={currentType === "essay" && hasSubQuestions}
-                  className={`w-full p-2.5 text-xs sm:text-sm border rounded-xl outline-none disabled:opacity-50 shadow-sm ${
+                  className={`w-full max-w-full box-border p-2.5 text-xs sm:text-sm border rounded-xl outline-none disabled:opacity-50 shadow-sm ${
                     darkMode ? "bg-slate-800 border-slate-600 text-white" : "bg-white border-slate-300 text-slate-900"
                   }`}
                   min={1}
@@ -448,7 +543,7 @@ export default function TeacherQuizCreator() {
                 value={currentText}
                 onChange={(e) => setCurrentText(e.target.value)}
                 placeholder={currentType === "essay" ? "Enter paragraph, essay question or instructions..." : "Type your question here clearly..."}
-                className={`w-full p-3 text-xs sm:text-sm border rounded-xl outline-none shadow-sm ${
+                className={`w-full max-w-full box-border p-3 text-xs sm:text-sm border rounded-xl outline-none shadow-sm ${
                   darkMode ? "bg-slate-800 border-slate-600 text-white" : "bg-white border-slate-300 text-slate-900"
                 }`}
                 rows={currentType === "essay" ? 3 : 2}
@@ -458,9 +553,9 @@ export default function TeacherQuizCreator() {
             {/* Image Upload with Preview */}
             <div className="space-y-2">
               <label className={`block text-xs font-bold uppercase tracking-wider mb-1.5 flex items-center gap-1.5 ${darkMode ? "text-slate-300" : "text-slate-600"}`}>
-                <ImageIcon size={14} className="text-indigo-500" /> Upload Question / Passage Image (Optional)
+                <ImageIcon size={14} className="text-indigo-500 shrink-0" /> Upload Question / Passage Image (Optional)
               </label>
-              <div className={`flex items-center gap-3 p-3 rounded-xl border border-dashed ${
+              <div className={`flex flex-col sm:flex-row items-stretch sm:items-center gap-3 p-3 rounded-xl border border-dashed overflow-hidden ${
                 darkMode ? "border-slate-600 bg-slate-800/60" : "border-slate-300 bg-white"
               }`}>
                 <input
@@ -486,7 +581,7 @@ export default function TeacherQuizCreator() {
                       setImagePreviewUrl(null);
                       if (imageInputRef.current) imageInputRef.current.value = "";
                     }}
-                    className={`p-2 rounded-xl transition shrink-0 ${darkMode ? "text-slate-400 hover:text-red-400 bg-slate-700" : "text-slate-400 hover:text-red-500 bg-slate-100"}`}
+                    className={`p-2 rounded-xl transition shrink-0 self-end sm:self-auto ${darkMode ? "text-slate-400 hover:text-red-400 bg-slate-700" : "text-slate-400 hover:text-red-500 bg-slate-100"}`}
                     title="Remove Image"
                   >
                     <X size={16} />
@@ -502,32 +597,32 @@ export default function TeacherQuizCreator() {
 
             {/* MCQ Options */}
             {currentType === "mcq" && (
-              <div className={`p-4 rounded-2xl border shadow-sm space-y-3 ${darkMode ? "bg-slate-900 border-slate-700" : "bg-white border-slate-200"}`}>
-                <div className="flex justify-between items-center">
+              <div className={`p-3 sm:p-4 rounded-2xl border shadow-sm space-y-3 overflow-hidden box-border ${darkMode ? "bg-slate-900 border-slate-700" : "bg-white border-slate-200"}`}>
+                <div className="flex justify-between items-center flex-wrap gap-2">
                   <label className={`block text-xs font-bold uppercase tracking-wider ${darkMode ? "text-slate-300" : "text-slate-700"}`}>Answer Options (Check all correct answers)</label>
-                  <span className={`text-[10px] font-bold px-2.5 py-1 rounded-lg ${darkMode ? "bg-indigo-950/60 text-indigo-400" : "bg-indigo-50 text-indigo-600"}`}>Multiple selections allowed</span>
+                  <span className={`text-[10px] font-bold px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-lg ${darkMode ? "bg-indigo-950/60 text-indigo-400" : "bg-indigo-50 text-indigo-600"}`}>Multiple selections allowed</span>
                 </div>
                 {currentOptions.map((opt, idx) => (
-                  <div key={idx} className="flex gap-3 items-center">
+                  <div key={idx} className="flex gap-2 items-center">
                     <input
                       type="checkbox"
                       checked={currentCorrectMultiple.includes(opt) && opt.trim() !== ""}
                       onChange={() => handleToggleMultipleCorrect(opt)}
-                      className={`w-4 h-4 text-indigo-600 rounded cursor-pointer ${darkMode ? "border-slate-600 bg-slate-800" : "border-slate-300"}`}
+                      className={`w-4 h-4 text-indigo-600 rounded cursor-pointer shrink-0 ${darkMode ? "border-slate-600 bg-slate-800" : "border-slate-300"}`}
                     />
-                    <span className="text-xs font-bold text-slate-400 w-5">{idx + 1}.</span>
+                    <span className="text-xs font-bold text-slate-400 w-4 shrink-0">{idx + 1}.</span>
                     <input
                       type="text"
                       value={opt}
                       onChange={(e) => handleOptionChange(idx, e.target.value)}
                       placeholder={`Option ${idx + 1}`}
-                      className={`w-full p-2.5 text-xs sm:text-sm border rounded-xl shadow-sm ${darkMode ? "bg-slate-800 border-slate-600 text-white" : "bg-white border-slate-300 text-slate-900"}`}
+                      className={`w-full max-w-full box-border p-2 sm:p-2.5 text-xs sm:text-sm border rounded-xl shadow-sm ${darkMode ? "bg-slate-800 border-slate-600 text-white" : "bg-white border-slate-300 text-slate-900"}`}
                     />
                     {currentOptions.length > 2 && (
                       <button
                         type="button"
                         onClick={() => handleRemoveOption(idx)}
-                        className="text-slate-400 hover:text-red-500 p-2 rounded-xl transition"
+                        className="text-slate-400 hover:text-red-500 p-1.5 sm:p-2 rounded-xl transition shrink-0"
                       >
                         <Trash2 size={16} />
                       </button>
@@ -546,32 +641,32 @@ export default function TeacherQuizCreator() {
 
             {/* Single Choice Options */}
             {currentType === "single" && (
-              <div className={`p-4 rounded-2xl border shadow-sm space-y-3 ${darkMode ? "bg-slate-900 border-slate-700" : "bg-white border-slate-200"}`}>
+              <div className={`p-3 sm:p-4 rounded-2xl border shadow-sm space-y-3 overflow-hidden box-border ${darkMode ? "bg-slate-900 border-slate-700" : "bg-white border-slate-200"}`}>
                 <div className="flex justify-between items-center">
                   <label className={`block text-xs font-bold uppercase tracking-wider ${darkMode ? "text-slate-300" : "text-slate-700"}`}>Answer Options (Select 1 correct answer)</label>
                 </div>
                 {currentOptions.map((opt, idx) => (
-                  <div key={idx} className="flex gap-3 items-center">
+                  <div key={idx} className="flex gap-2 items-center">
                     <input
                       type="radio"
                       name="singleCorrectRadio"
                       checked={currentCorrect === opt && opt.trim() !== ""}
                       onChange={() => setCurrentCorrect(opt)}
-                      className={`w-4 h-4 text-indigo-600 cursor-pointer ${darkMode ? "border-slate-600 bg-slate-800" : "border-slate-300"}`}
+                      className={`w-4 h-4 text-indigo-600 cursor-pointer shrink-0 ${darkMode ? "border-slate-600 bg-slate-800" : "border-slate-300"}`}
                     />
-                    <span className="text-xs font-bold text-slate-400 w-5">{idx + 1}.</span>
+                    <span className="text-xs font-bold text-slate-400 w-4 shrink-0">{idx + 1}.</span>
                     <input
                       type="text"
                       value={opt}
                       onChange={(e) => handleOptionChange(idx, e.target.value)}
                       placeholder={`Option ${idx + 1}`}
-                      className={`w-full p-2.5 text-xs sm:text-sm border rounded-xl shadow-sm ${darkMode ? "bg-slate-800 border-slate-600 text-white" : "bg-white border-slate-300 text-slate-900"}`}
+                      className={`w-full max-w-full box-border p-2 sm:p-2.5 text-xs sm:text-sm border rounded-xl shadow-sm ${darkMode ? "bg-slate-800 border-slate-600 text-white" : "bg-white border-slate-300 text-slate-900"}`}
                     />
                     {currentOptions.length > 2 && (
                       <button
                         type="button"
                         onClick={() => handleRemoveOption(idx)}
-                        className="text-slate-400 hover:text-red-500 p-2 rounded-xl transition"
+                        className="text-slate-400 hover:text-red-500 p-1.5 sm:p-2 rounded-xl transition shrink-0"
                       >
                         <Trash2 size={16} />
                       </button>
@@ -590,14 +685,14 @@ export default function TeacherQuizCreator() {
 
             {/* Essay Sub-questions Toggle & Builder */}
             {currentType === "essay" && (
-              <div className={`p-4 rounded-2xl border shadow-sm space-y-4 ${darkMode ? "bg-slate-900 border-slate-700" : "bg-white border-slate-200"}`}>
-                <div className="flex items-center justify-between">
-                  <label className={`text-xs font-bold flex items-center gap-2.5 cursor-pointer ${darkMode ? "text-slate-300" : "text-slate-700"}`}>
+              <div className={`p-3 sm:p-4 rounded-2xl border shadow-sm space-y-4 overflow-hidden box-border ${darkMode ? "bg-slate-900 border-slate-700" : "bg-white border-slate-200"}`}>
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <label className={`text-xs font-bold flex items-center gap-2 cursor-pointer ${darkMode ? "text-slate-300" : "text-slate-700"}`}>
                     <input 
                       type="checkbox"
                       checked={hasSubQuestions}
                       onChange={(e) => setHasSubQuestions(e.target.checked)}
-                      className={`w-4 h-4 text-indigo-600 rounded ${darkMode ? "border-slate-600 bg-slate-800" : "border-slate-300"}`}
+                      className={`w-4 h-4 text-indigo-600 rounded shrink-0 ${darkMode ? "border-slate-600 bg-slate-800" : "border-slate-300"}`}
                     />
                     Add Sub-Questions (Optional parts like i, ii, iii)
                   </label>
@@ -616,13 +711,13 @@ export default function TeacherQuizCreator() {
                               type="number"
                               value={sq.marks}
                               onChange={(e) => handleSubQuestionChange(sIdx, "marks", Number(e.target.value))}
-                              className={`w-16 p-1.5 text-xs font-bold border rounded-lg text-center ${darkMode ? "bg-slate-800 border-slate-600 text-white" : "bg-white border-slate-300 text-slate-900"}`}
+                              className={`w-14 p-1 text-xs font-bold border rounded-lg text-center ${darkMode ? "bg-slate-800 border-slate-600 text-white" : "bg-white border-slate-300 text-slate-900"}`}
                               min={1}
                             />
                             <button
                               type="button"
                               onClick={() => handleRemoveSubQuestion(sq.id)}
-                              className="text-slate-400 hover:text-red-500 p-1 rounded-lg transition"
+                              className="text-slate-400 hover:text-red-500 p-1 rounded-lg transition shrink-0"
                             >
                               <Trash2 size={14} />
                             </button>
@@ -632,8 +727,8 @@ export default function TeacherQuizCreator() {
                           type="text"
                           value={sq.subQuestionText}
                           onChange={(e) => handleSubQuestionChange(sIdx, "subQuestionText", e.target.value)}
-                          placeholder={`Enter sub-question ${sIdx + 1} (e.g., Explain the process shown in Figure 1)`}
-                          className={`w-full p-2.5 text-xs sm:text-sm border rounded-xl shadow-sm ${darkMode ? "bg-slate-800 border-slate-600 text-white" : "bg-white border-slate-300 text-slate-900"}`}
+                          placeholder={`Enter sub-question ${sIdx + 1} (e.g., Explain process)`}
+                          className={`w-full max-w-full box-border p-2 sm:p-2.5 text-xs sm:text-sm border rounded-xl shadow-sm ${darkMode ? "bg-slate-800 border-slate-600 text-white" : "bg-white border-slate-300 text-slate-900"}`}
                         />
                       </div>
                     ))}
@@ -660,7 +755,7 @@ export default function TeacherQuizCreator() {
                   value={currentCorrect as string}
                   onChange={(e) => setCurrentCorrect(e.target.value)}
                   placeholder="Provide standard correct answer reference (optional)"
-                  className={`w-full p-3 text-xs sm:text-sm border rounded-xl shadow-sm outline-none ${darkMode ? "bg-slate-800 border-slate-600 text-white" : "bg-white border-slate-300 text-slate-900"}`}
+                  className={`w-full max-w-full box-border p-3 text-xs sm:text-sm border rounded-xl shadow-sm outline-none ${darkMode ? "bg-slate-800 border-slate-600 text-white" : "bg-white border-slate-300 text-slate-900"}`}
                 />
               </div>
             )}
@@ -675,7 +770,7 @@ export default function TeacherQuizCreator() {
           </div>
 
           {/* Right Column: Added Questions List Preview & Submit Button */}
-          <div className={`lg:col-span-5 p-6 rounded-2xl border shadow-sm flex flex-col justify-between backdrop-blur-md ${
+          <div className={`lg:col-span-5 p-3 sm:p-6 rounded-2xl border shadow-sm flex flex-col justify-between backdrop-blur-md overflow-hidden box-border ${
             darkMode ? "bg-slate-800/40 border-slate-700" : "bg-slate-50 border-slate-200"
           }`}>
             <div>
@@ -688,7 +783,7 @@ export default function TeacherQuizCreator() {
 
               <div className="space-y-3 overflow-y-auto max-h-[420px] pr-1">
                 {questions.length === 0 ? (
-                  <div className="text-center py-20 text-slate-400 space-y-3">
+                  <div className="text-center py-16 sm:py-20 text-slate-400 space-y-3">
                     <div className={`w-12 h-12 rounded-full flex items-center justify-center mx-auto ${darkMode ? "bg-slate-800 text-slate-400" : "bg-slate-200 text-slate-400"}`}>
                       <HelpCircle size={24} />
                     </div>
@@ -702,10 +797,10 @@ export default function TeacherQuizCreator() {
                     }
 
                     return (
-                      <div key={q.id} className={`p-4 border rounded-2xl flex justify-between items-start shadow-sm text-xs gap-3 transition-all ${
+                      <div key={q.id} className={`p-3 sm:p-4 border rounded-2xl flex justify-between items-start shadow-sm text-xs gap-3 transition-all ${
                         darkMode ? "bg-slate-900 border-slate-700 text-slate-100" : "bg-white border-slate-200 text-slate-900"
                       }`}>
-                        <div className="space-y-2 w-full">
+                        <div className="space-y-2 w-full overflow-hidden">
                           <div className="flex items-center justify-between">
                             <span className={`text-[10px] px-2.5 py-1 rounded-lg font-bold uppercase tracking-wider border ${
                               darkMode ? "bg-indigo-950/80 text-indigo-400 border-indigo-900/50" : "bg-indigo-50 text-indigo-600 border-indigo-100"
@@ -713,12 +808,12 @@ export default function TeacherQuizCreator() {
                               {q.type} • {effectiveMarks} Marks
                             </span>
                           </div>
-                          <p className={`font-bold text-sm leading-snug ${darkMode ? "text-white" : "text-slate-800"}`}>
+                          <p className={`font-bold text-sm leading-snug break-words ${darkMode ? "text-white" : "text-slate-800"}`}>
                             {index + 1}. {q.questionText}
                           </p>
                           
                           {q.imageUrl && (
-                            <span className="text-[11px] text-slate-500 font-semibold flex items-center gap-1">📷 Image attached: {q.imageUrl}</span>
+                            <span className="text-[11px] text-slate-500 font-semibold flex items-center gap-1 break-words">📷 Image attached: {q.imageUrl}</span>
                           )}
 
                           {q.type === "mcq" && q.options && q.options.length > 0 && (
@@ -726,7 +821,7 @@ export default function TeacherQuizCreator() {
                               {q.options.map((opt, oIdx) => {
                                 const isCorrect = Array.isArray(q.correctAnswer) && q.correctAnswer.includes(opt);
                                 return (
-                                  <div key={oIdx} className={isCorrect ? "text-indigo-600 dark:text-indigo-400 font-bold" : ""}>
+                                  <div key={oIdx} className={`break-words ${isCorrect ? "text-indigo-600 dark:text-indigo-400 font-bold" : ""}`}>
                                     • {opt} {isCorrect && " (Correct)"}
                                   </div>
                                 );
@@ -739,7 +834,7 @@ export default function TeacherQuizCreator() {
                               {q.options.map((opt, oIdx) => {
                                 const isCorrect = opt === q.correctAnswer;
                                 return (
-                                  <div key={oIdx} className={isCorrect ? "text-indigo-600 dark:text-indigo-400 font-bold" : ""}>
+                                  <div key={oIdx} className={`break-words ${isCorrect ? "text-indigo-600 dark:text-indigo-400 font-bold" : ""}`}>
                                     • {opt} {isCorrect && " (Correct)"}
                                   </div>
                                 );
@@ -750,7 +845,7 @@ export default function TeacherQuizCreator() {
                           {q.type === "essay" && q.subQuestions && (
                             <div className="pl-3 space-y-1.5 text-xs text-slate-500 dark:text-slate-300 border-l-2 border-indigo-500/40">
                               {q.subQuestions.map((sq, sqIdx) => (
-                                <div key={sq.id} className="font-semibold">
+                                <div key={sq.id} className="font-semibold break-words">
                                   ({sqIdx + 1}) {sq.subQuestionText} <span className="text-indigo-500 font-bold">[{sq.marks} marks]</span>
                                 </div>
                               ))}
@@ -758,7 +853,7 @@ export default function TeacherQuizCreator() {
                           )}
 
                           {q.type !== "mcq" && q.type !== "single" && q.type !== "essay" && (
-                            <p className="text-xs text-slate-500 dark:text-slate-300 font-medium pt-1">
+                            <p className="text-xs text-slate-500 dark:text-slate-300 font-medium pt-1 break-words">
                               <span className="text-slate-400 font-bold">Answer Ref:</span> {String(q.correctAnswer || "None specified (Manual grading)")}
                             </p>
                           )}
@@ -780,7 +875,7 @@ export default function TeacherQuizCreator() {
 
             <div className={`pt-4 border-t ${darkMode ? "border-slate-700" : "border-slate-200"}`}>
               <button
-                onClick={handleSubmitToAdmin}
+                onClick={handlePreSubmitCheck}
                 className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-3.5 rounded-xl font-bold flex items-center justify-center gap-2.5 transition-all text-sm shadow-lg shadow-indigo-600/20 active:scale-[0.98]"
               >
                 <Send size={18} /> Submit Quiz to Admin
