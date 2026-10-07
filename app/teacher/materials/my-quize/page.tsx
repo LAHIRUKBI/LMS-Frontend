@@ -3,10 +3,11 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { CheckCircle, Clock, Globe, FileText, Trash2, AlertCircle, Image as ImageIcon, X, Check, Eye, User, CheckSquare, Send, Calendar, ArrowLeft, Download, Award } from "lucide-react";
+import { CheckCircle, Clock, Globe, FileText, Trash2, AlertCircle, Image as ImageIcon, X, Check, Eye, User, CheckSquare, Send, Calendar, ArrowLeft, Download, Award, ChevronDown, ChevronUp, Edit3, ChevronLeft, ChevronRight } from "lucide-react";
 import { useTheme } from "@/app/context/ThemeContext";
 import axios from "axios";
-import QuizUploadSuccessPopup from "@/app/components/QuizUploadSuccessPopup"; // 👈 Popup සංරචකය ආනයනය කර ඇත
+import { useRouter } from "next/navigation";
+import QuizUploadSuccessPopup from "@/app/components/QuizUploadSuccessPopup";
 
 interface SubQuestion {
   _id?: string;
@@ -50,8 +51,12 @@ interface QuizItem {
 
 export default function TeacherMyQuizzesPage() {
   const { darkMode } = useTheme();
+  const router = useRouter();
   const [quizzes, setQuizzes] = useState<QuizItem[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Submissions count state per quiz
+  const [quizSubmissionCounts, setQuizSubmissionCounts] = useState<{ [quizId: string]: { total: number; pending: number; evaluated: number } }>({});
 
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [quizToDelete, setQuizToDelete] = useState<string | null>(null);
@@ -66,20 +71,16 @@ export default function TeacherMyQuizzesPage() {
     [classId: string]: { startDate: string; startTime: string; endDate: string; endTime: string } 
   }>({});
 
-  const [submissionsModalOpen, setSubmissionsModalOpen] = useState(false);
-  const [selectedQuizSubmissions, setSelectedQuizSubmissions] = useState<any[]>([]);
-  const [selectedQuizDetails, setSelectedQuizDetails] = useState<any>(null);
-  
-  const [selectedStudentSub, setSelectedStudentSub] = useState<any | null>(null);
+  // Questions Collapse State persisted using localStorage
+  const [collapsedQuestions, setCollapsedQuestions] = useState<{ [quizId: string]: boolean }>({});
 
-  const [essayMarksInput, setEssayMarksInput] = useState<{ [key: string]: { [qId: string]: any } }>({});
-  const [checkedPapers, setCheckedPapers] = useState<{ [subId: string]: boolean }>({});
-  
-  // Essay සඳහා ගුරුවරයා ලබාදෙන Corrective Feedback / Text Box සඳහා වන state එක
-  const [teacherCorrectionInputs, setTeacherCorrectionInputs] = useState<{ [subId: string]: { [qId: string]: string } }>({});
+  // Published Classes Pagination State per Quiz: { [quizId]: pageNumber }
+  const [classPages, setClassPages] = useState<{ [quizId: string]: number }>({});
+  const classesPerPage = 4;
 
-  // Save Marks to Database බටන් එක එබූ විට පෙන්වන Popup state එක
-  const [showSaveSuccessPopup, setShowSaveSuccessPopup] = useState(false);
+  // Pagination State for Quizzes (1 per page)
+  const [currentPage, setCurrentPage] = useState(1);
+  const quizzesPerPage = 1;
 
   const fetchMyQuizzes = async () => {
     try {
@@ -87,7 +88,42 @@ export default function TeacherMyQuizzesPage() {
       const res = await axios.get("http://localhost:5000/api/quiz/my-quizzes", {
         headers: { Authorization: `Bearer ${token}` }
       });
-      setQuizzes(res.data);
+      const fetchedQuizzes = res.data;
+      setQuizzes(fetchedQuizzes);
+
+      // Load collapsed states from localStorage
+      const savedCollapsed = localStorage.getItem("teacher_quiz_collapsed");
+      if (savedCollapsed) {
+        try {
+          setCollapsedQuestions(JSON.parse(savedCollapsed));
+        } catch (e) {
+          console.error("Error parsing saved collapsed state", e);
+        }
+      }
+
+      // Fetch submission counts
+      const countsMap: { [quizId: string]: { total: number; pending: number; evaluated: number } } = {};
+      for (const q of fetchedQuizzes) {
+        if (q.isPublished) {
+          try {
+            const subRes = await axios.get(`http://localhost:5000/api/quiz/${q._id}/submissions`, {
+              headers: { Authorization: `Bearer ${token}` }
+            });
+            const subs = subRes.data || [];
+            const evaluatedCount = subs.filter((s: any) => s.isEvaluated).length;
+            const pendingCount = subs.length - evaluatedCount;
+            countsMap[q._id] = {
+              total: subs.length,
+              pending: pendingCount,
+              evaluated: evaluatedCount
+            };
+          } catch (e) {
+            countsMap[q._id] = { total: 0, pending: 0, evaluated: 0 };
+          }
+        }
+      }
+      setQuizSubmissionCounts(countsMap);
+
     } catch (err) {
       console.error("Error fetching my quizzes:", err);
     } finally {
@@ -111,6 +147,17 @@ export default function TeacherMyQuizzesPage() {
     fetchMyQuizzes();
     fetchTeacherClasses();
   }, []);
+
+  const toggleQuestionsCollapse = (quizId: string) => {
+    setCollapsedQuestions(prev => {
+      const updated = {
+        ...prev,
+        [quizId]: !prev[quizId]
+      };
+      localStorage.setItem("teacher_quiz_collapsed", JSON.stringify(updated));
+      return updated;
+    });
+  };
 
   const openPublishModal = (quiz: QuizItem) => {
     setSelectedQuizForPublish(quiz);
@@ -243,99 +290,6 @@ export default function TeacherMyQuizzesPage() {
     }
   };
 
-  const openSubmissionsModal = async (quiz: any) => {
-    setSelectedQuizDetails(quiz);
-    setSelectedStudentSub(null);
-    try {
-      const token = localStorage.getItem("token");
-      const res = await axios.get(`http://localhost:5000/api/quiz/${quiz._id}/submissions`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setSelectedQuizSubmissions(res.data);
-      setCheckedPapers({});
-      setSubmissionsModalOpen(true);
-    } catch (err) {
-      alert("Error retrieving student submissions.");
-    }
-  };
-
-  const handleCheckMCQ = (subId: string) => {
-    setCheckedPapers({ ...checkedPapers, [subId]: true });
-  };
-
-  const handleEssayMarkChange = (subId: string, qId: string, val: any) => {
-    setEssayMarksInput({
-      ...essayMarksInput,
-      [subId]: {
-        ...(essayMarksInput[subId] || {}),
-        [qId]: val
-      }
-    });
-  };
-
-  const handleTeacherCorrectionChange = (subId: string, qId: string, text: string) => {
-    setTeacherCorrectionInputs({
-      ...teacherCorrectionInputs,
-      [subId]: {
-        ...(teacherCorrectionInputs[subId] || {}),
-        [qId]: text
-      }
-    });
-  };
-
-  const handleSendMarksToDB = async (subId: string, currentCalculatedScore?: number) => {
-    try {
-      const token = localStorage.getItem("token");
-      const marks = essayMarksInput[subId] || {};
-      const corrections = teacherCorrectionInputs[subId] || {};
-      
-      const res = await axios.post(`http://localhost:5000/api/quiz/evaluate-essay`, {
-        submissionId: subId,
-        essayMarks: marks,
-        teacherCorrections: corrections,
-        overrideScore: currentCalculatedScore
-      }, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-
-      setShowSaveSuccessPopup(true);
-
-      const updatedSub = res.data.sub;
-      setSelectedQuizSubmissions(selectedQuizSubmissions.map(s => s._id === subId ? updatedSub : s));
-      if (selectedStudentSub && selectedStudentSub._id === subId) {
-        setSelectedStudentSub(updatedSub);
-      }
-
-      setTimeout(() => {
-        setShowSaveSuccessPopup(false);
-        setSelectedStudentSub(null);
-      }, 2000);
-
-    } catch (err) {
-      alert("Failed to send marks to database.");
-    }
-  };
-
-  const handleCheckAllStudentMCQAndSend = async () => {
-    if (!selectedQuizDetails) return;
-    try {
-      const token = localStorage.getItem("token");
-      const res = await axios.post(`http://localhost:5000/api/quiz/${selectedQuizDetails._id}/evaluate-all-mcq`, {}, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-
-      if (res.status === 200) {
-        setShowSaveSuccessPopup(true);
-        setTimeout(() => {
-          setShowSaveSuccessPopup(false);
-          openSubmissionsModal(selectedQuizDetails);
-        }, 2000);
-      }
-    } catch (err) {
-      alert("Failed to evaluate and send all marks.");
-    }
-  };
-
   const handleDownloadPDFAnswerKey = (quiz: QuizItem) => {
     const printWindow = window.open('', '_blank');
     if (!printWindow) {
@@ -418,474 +372,57 @@ export default function TeacherMyQuizzesPage() {
     }, 500);
   };
 
-  const getStudentProfileImageUrl = (photoUrl: string) => {
-    if (!photoUrl) return null;
-    if (photoUrl.startsWith("http")) return photoUrl;
-    return `http://localhost:5000${photoUrl}`;
-  };
-
-  const isPureObjectiveQuiz = selectedQuizDetails?.questions?.every((q: any) => q.type === 'mcq' || q.type === 'single' || q.type === 'short');
+  // Pagination Logic for Quizzes (1 full-width quiz per page)
+  const indexOfLastQuiz = currentPage * quizzesPerPage;
+  const indexOfFirstQuiz = indexOfLastQuiz - quizzesPerPage;
+  const currentQuizzes = quizzes.slice(indexOfFirstQuiz, indexOfLastQuiz);
+  const totalPages = Math.ceil(quizzes.length / quizzesPerPage);
 
   return (
     <div className={`p-4 sm:p-6 lg:p-8 min-h-screen transition-colors duration-300 ${darkMode ? "bg-slate-950 text-white" : "bg-slate-50 text-slate-900"}`}>
       
-      {/* Save Success Popup Message */}
-      <QuizUploadSuccessPopup 
-        isOpen={showSaveSuccessPopup}
-        onClose={() => setShowSaveSuccessPopup(false)}
-        message="Marks successfully saved to Database and paper evaluated!"
-      />
-
-      {/* Submissions Evaluation Modal */}
-      {submissionsModalOpen && selectedQuizDetails && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 overflow-y-auto">
-          <div className={`w-full max-w-4xl p-6 rounded-3xl shadow-2xl border max-h-[90vh] overflow-y-auto ${darkMode ? "bg-slate-900 border-slate-800 text-white" : "bg-white border-slate-200 text-slate-900"}`}>
-            
-            {/* Modal Header */}
-            <div className="flex justify-between items-center mb-4 border-b pb-3">
-              <div>
-                <h3 className="text-xl font-extrabold">{selectedQuizDetails.title} - Student Submissions</h3>
-                <p className="text-xs text-slate-400">
-                  {selectedStudentSub ? "Reviewing individual student paper and answer key." : "Click on any student to review their submission."}
-                </p>
-              </div>
-              <button onClick={() => { setSubmissionsModalOpen(false); setSelectedStudentSub(null); }} className="p-2 rounded-xl text-slate-400 hover:bg-slate-500/10">
-                <X size={20} />
-              </button>
-            </div>
-
-            {/* If a student is selected, show side-by-side paper view. Otherwise, show student list. */}
-            {selectedStudentSub ? (
-              <div className="space-y-6">
-                <button 
-                  onClick={() => setSelectedStudentSub(null)}
-                  className="flex items-center gap-1.5 text-xs font-bold text-blue-600 hover:underline mb-2"
-                >
-                  <ArrowLeft size={16} /> Back to Student List
-                </button>
-
-                {(() => {
-                  const sub = selectedStudentSub;
-                  const student = sub.studentId;
-                  if (!student) return null;
-                  const isChecked = checkedPapers[sub._id] || false;
-                  const studentAnswers = sub.answers instanceof Map ? Object.fromEntries(sub.answers) : (sub.answers || {});
-
-                  const getSavedEssayMark = (qIdStr: string) => {
-                    if (!sub.essayMarks) return 0;
-                    if (typeof sub.essayMarks.get === 'function') {
-                      return Number(sub.essayMarks.get(qIdStr)) || 0;
-                    }
-                    return Number(sub.essayMarks[qIdStr]) || 0;
-                  };
-
-                  let calculatedTotalScore = 0;
-                  selectedQuizDetails.questions.forEach((q: any) => {
-                    const qId = q._id.toString();
-                    const studentAns = studentAnswers[qId];
-
-                    if (q.type === 'single') {
-                      const cleanStudent = String(studentAns || "").trim().toLowerCase().replace(/[^a-z0-9]/g, '');
-                      const cleanCorrect = String(q.correctAnswer || "").trim().toLowerCase().replace(/[^a-z0-9]/g, '');
-                      if (cleanCorrect && cleanStudent === cleanCorrect) {
-                        calculatedTotalScore += Number(q.marks) || 0;
-                      } else {
-                        const manualVal = (essayMarksInput[sub._id] || {})[qId] !== undefined ? Number((essayMarksInput[sub._id] || {})[qId]) : 0;
-                        calculatedTotalScore += manualVal;
-                      }
-                    } else if (q.type === 'short') {
-                      const cleanCorrect = String(q.correctAnswer || "").trim();
-                      if (cleanCorrect) {
-                        const cleanStudent = String(studentAns || "").trim().toLowerCase().replace(/[^a-z0-9]/g, '');
-                        const cleanRef = cleanCorrect.toLowerCase().replace(/[^a-z0-9]/g, '');
-                        if (cleanStudent === cleanRef) {
-                          calculatedTotalScore += Number(q.marks) || 0;
-                        } else {
-                          const manualVal = (essayMarksInput[sub._id] || {})[qId] !== undefined ? Number((essayMarksInput[sub._id] || {})[qId]) : 0;
-                          calculatedTotalScore += manualVal;
-                        }
-                      } else {
-                        const manualVal = (essayMarksInput[sub._id] || {})[qId] !== undefined ? Number((essayMarksInput[sub._id] || {})[qId]) : getSavedEssayMark(qId);
-                        calculatedTotalScore += manualVal;
-                      }
-                    } else if (q.type === 'mcq') {
-                      const correctArr = Array.isArray(q.correctAnswer) ? q.correctAnswer : [q.correctAnswer];
-                      if (Array.isArray(studentAns)) {
-                        const isAllCorrect = correctArr.every((a: string) => studentAns.includes(a)) && studentAns.every((a: string) => correctArr.includes(a));
-                        if (isAllCorrect) {
-                          calculatedTotalScore += Number(q.marks) || 0;
-                        } else {
-                          const manualMcqMarks = (essayMarksInput[sub._id] || {})[qId] !== undefined ? Number((essayMarksInput[sub._id] || {})[qId]) : 0;
-                          calculatedTotalScore += manualMcqMarks;
-                        }
-                      }
-                    }
-                  });
-
-                  const currentEssayMarks = essayMarksInput[sub._id] || {};
-                  Object.entries(currentEssayMarks).forEach(([qIdKey, val]: [string, any]) => {
-                    const targetQ = selectedQuizDetails.questions.find((q: any) => q._id.toString() === qIdKey);
-                    if (targetQ && (targetQ.type === 'mcq' || targetQ.type === 'single' || targetQ.type === 'short')) return;
-
-                    if (typeof val === 'object' && val !== null) {
-                      calculatedTotalScore += Object.values(val).reduce((s: number, m: any) => s + (Number(m) || 0), 0);
-                    } else {
-                      calculatedTotalScore += Number(val) || 0;
-                    }
-                  });
-
-                  const displayTotalScore = sub.isEvaluated && (!essayMarksInput[sub._id] || Object.keys(essayMarksInput[sub._id]).length === 0) 
-                    ? (Number(sub.score) || 0) 
-                    : calculatedTotalScore;
-
-                  return (
-                    <div className={`p-5 rounded-2xl border space-y-5 ${darkMode ? "bg-slate-950 border-slate-800" : "bg-slate-50 border-slate-200"}`}>
-                      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-full overflow-hidden bg-slate-200 flex items-center justify-center border">
-                            {student.profileImage ? (
-                              <img src={getStudentProfileImageUrl(student.profileImage) || ""} alt="" className="w-full h-full object-cover" />
-                            ) : (
-                              <User size={18} className="text-slate-500" />
-                            )}
-                          </div>
-                          <div>
-                            <h4 className="font-bold text-sm">{student.name}</h4>
-                            <p className="text-[11px] text-slate-400">{student.email} • {sub.timeTaken}</p>
-                          </div>
-                        </div>
-                        <span className="px-3 py-1.5 rounded-full text-xs font-extrabold bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 flex items-center gap-1.5">
-                          <Award size={14} /> Total Score: {displayTotalScore} / {sub.maxScore} Marks
-                        </span>
-                      </div>
-
-                      {!isChecked ? (
-                        <div className="my-3">
-                          <button 
-                            onClick={() => handleCheckMCQ(sub._id)}
-                            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-sm flex items-center gap-1.5"
-                          >
-                            <CheckSquare size={16} /> Check Paper & Mark Right/Wrong
-                          </button>
-                        </div>
-                      ) : (
-                        <div className="space-y-4 pl-2 border-l-2 border-blue-500/40 my-3">
-                          <p className="text-xs font-bold text-emerald-500">✔ Auto-evaluation completed (Review right/wrong marks & give custom marks/feedback if needed):</p>
-                          
-                          {selectedQuizDetails.questions.map((q: any, qIdx: number) => {
-                            const qId = q._id.toString();
-                            const studentAns = studentAnswers[qId];
-
-                            let isCorrect = false;
-                            if (q.type === 'single') {
-                              const cleanStudent = String(studentAns || "").trim().toLowerCase().replace(/[^a-z0-9]/g, '');
-                              const cleanCorrect = String(q.correctAnswer || "").trim().toLowerCase().replace(/[^a-z0-9]/g, '');
-                              isCorrect = cleanStudent === cleanCorrect && cleanStudent !== "";
-                            } else if (q.type === 'short') {
-                              const cleanCorrect = String(q.correctAnswer || "").trim();
-                              if (cleanCorrect) {
-                                const cleanStudent = String(studentAns || "").trim().toLowerCase().replace(/[^a-z0-9]/g, '');
-                                const cleanRef = cleanCorrect.toLowerCase().replace(/[^a-z0-9]/g, '');
-                                isCorrect = cleanStudent === cleanRef;
-                              } else {
-                                isCorrect = false;
-                              }
-                            } else if (q.type === 'mcq') {
-                              const correctArr = Array.isArray(q.correctAnswer) ? q.correctAnswer : [q.correctAnswer];
-                              if (Array.isArray(studentAns)) {
-                                isCorrect = correctArr.every((a: string) => studentAns.includes(a)) && studentAns.every((a: string) => correctArr.includes(a));
-                              }
-                            }
-
-                            let questionEarnedMarks = 0;
-                            if (q.type !== 'essay') {
-                              if (isCorrect) {
-                                questionEarnedMarks = q.marks;
-                              } else {
-                                const manualMark = (essayMarksInput[sub._id] || {})[qId];
-                                questionEarnedMarks = manualMark !== undefined ? Number(manualMark) : getSavedEssayMark(qId);
-                              }
-                            } else {
-                              if (q.subQuestions && Array.isArray(q.subQuestions) && q.subQuestions.length > 0) {
-                                const savedSub = sub.essayMarks?.get ? sub.essayMarks.get(qId) : (sub.essayMarks?.[qId] || {});
-                                const currentInputSub = (essayMarksInput[sub._id] || {})[qId] || savedSub || {};
-                                questionEarnedMarks = Object.values(currentInputSub).reduce((s: number, m: any) => s + (Number(m) || 0), 0);
-                              } else {
-                                const inputVal = (essayMarksInput[sub._id] || {})[qId];
-                                questionEarnedMarks = inputVal !== undefined ? Number(inputVal) : getSavedEssayMark(qId);
-                              }
-                            }
-
-                            const hasSubQ = q.subQuestions && Array.isArray(q.subQuestions) && q.subQuestions.length > 0;
-
-                            let formattedStudentAnswer = "";
-                            if (Array.isArray(studentAns)) {
-                              formattedStudentAnswer = studentAns.join(', ');
-                            } else if (typeof studentAns === 'object' && studentAns !== null) {
-                              formattedStudentAnswer = Object.entries(studentAns)
-                                .map(([k, v]) => `Part (${Number(k) + 1}): ${v}`)
-                                .join(' | ');
-                            } else {
-                              formattedStudentAnswer = String(studentAns || "No Answer Given");
-                            }
-
-                            return (
-                              <div key={qId} className={`p-4 rounded-xl border text-xs space-y-2.5 ${darkMode ? "bg-slate-900 border-slate-800" : "bg-white border-slate-200"}`}>
-                                <div className="flex justify-between items-center">
-                                  <p className="font-bold text-sm">
-                                    {qIdx + 1}. {q.questionText} <span className="opacity-60 text-[10px]">({q.type.toUpperCase()})</span>
-                                  </p>
-                                  <div className="flex items-center gap-2">
-                                    <span className="px-2.5 py-1 rounded-lg text-xs font-extrabold bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
-                                      Score: {questionEarnedMarks} / {hasSubQ ? q.subQuestions.reduce((s: number, sq: any) => s + sq.marks, 0) : q.marks} Marks
-                                    </span>
-
-                                    {q.type !== 'essay' && q.type !== 'short' && (
-                                      <span className={`px-2.5 py-1 rounded-lg text-xs font-bold flex items-center gap-1 ${
-                                        isCorrect ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" : "bg-rose-500/10 text-rose-500 border border-rose-500/20"
-                                      }`}>
-                                        {isCorrect ? <Check size={14} /> : <X size={14} />}
-                                        {isCorrect ? "Correct" : "Incorrect"}
-                                      </span>
-                                    )}
-                                  </div>
-                                </div>
-                                
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2">
-                                  <div className="p-3 rounded-lg bg-slate-100 dark:bg-slate-800/80 border">
-                                    <span className="text-[10px] text-slate-400 block font-bold mb-1">Student Answer:</span>
-                                    <span className="text-slate-200 font-medium">
-                                      {formattedStudentAnswer}
-                                    </span>
-                                  </div>
-
-                                  {q.type !== 'essay' && (
-                                    <div className="p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
-                                      <span className="text-[10px] text-emerald-400 block font-bold mb-1">Teacher's Answer Key Reference:</span>
-                                      <span className="text-emerald-400 font-bold">
-                                        {Array.isArray(q.correctAnswer) ? q.correctAnswer.join(', ') : String(q.correctAnswer || 'None specified (Manual grading)')}
-                                      </span>
-                                    </div>
-                                  )}
-                                </div>
-
-                                {q.type === 'short' && (
-                                  <div className="mt-3 pt-2 border-t flex items-center justify-between bg-amber-500/5 p-2.5 rounded-xl border border-amber-500/20">
-                                    <span className="font-bold text-xs text-amber-500">Give Short Answer Marks (Max {q.marks} Marks):</span>
-                                    <input 
-                                      type="number"
-                                      max={q.marks}
-                                      min={0}
-                                      defaultValue={getSavedEssayMark(qId)}
-                                      onChange={(e) => {
-                                        handleEssayMarkChange(sub._id, qId, Number(e.target.value));
-                                      }}
-                                      className="w-24 p-2 rounded-lg border bg-slate-800 text-center font-extrabold text-white text-sm focus:ring-2 focus:ring-amber-500"
-                                    />
-                                  </div>
-                                )}
-
-                                {q.type === 'mcq' && !isCorrect && (
-                                  <div className="mt-3 pt-2 border-t flex items-center justify-between bg-amber-500/5 p-2.5 rounded-xl border border-amber-500/20">
-                                    <span className="font-bold text-xs text-amber-500">Give Custom/Partial Marks (Max {q.marks} Marks):</span>
-                                    <input 
-                                      type="number"
-                                      max={q.marks}
-                                      min={0}
-                                      defaultValue={getSavedEssayMark(qId)}
-                                      onChange={(e) => {
-                                        handleEssayMarkChange(sub._id, qId, Number(e.target.value));
-                                      }}
-                                      className="w-24 p-2 rounded-lg border bg-slate-800 text-center font-extrabold text-white text-sm focus:ring-2 focus:ring-amber-500"
-                                    />
-                                  </div>
-                                )}
-
-                                {q.type === 'essay' && hasSubQ && (
-                                  <div className="mt-3 pt-2 border-t space-y-2">
-                                    <span className="font-bold text-[11px] text-indigo-400 block">Give Marks for Essay Sub-Questions:</span>
-                                    {q.subQuestions.map((sq: any, sqIdx: number) => (
-                                      <div key={sq._id || sqIdx} className="flex justify-between items-center gap-2 bg-slate-800/40 p-2.5 rounded-lg">
-                                        <span>({sqIdx + 1}) {sq.subQuestionText} [Max {sq.marks}]</span>
-                                        <input 
-                                          type="number"
-                                          max={sq.marks}
-                                          min={0}
-                                          defaultValue={sub.essayMarks?.get ? sub.essayMarks.get(qId)?.[sqIdx] : (sub.essayMarks?.[qId]?.[sqIdx] || 0)}
-                                          onChange={(e) => {
-                                            const currentEssayObj: { [key: string]: any } = essayMarksInput[sub._id] || sub.essayMarks || {};
-                                            const currentSubMarks: { [key: number]: number } = { ...(currentEssayObj[qId] || {}) };
-                                            currentSubMarks[sqIdx] = Number(e.target.value);
-                                            handleEssayMarkChange(sub._id, qId, currentSubMarks);
-                                          }}
-                                          className="w-20 p-1.5 rounded border bg-slate-800 text-center font-bold text-white"
-                                        />
-                                      </div>
-                                    ))}
-                                  </div>
-                                )}
-
-                                {q.type === 'essay' && !hasSubQ && (
-                                  <div className="mt-3 pt-2 border-t flex items-center justify-between bg-indigo-500/5 p-2.5 rounded-xl border border-indigo-500/20">
-                                    <span className="font-bold text-xs text-indigo-400">Give Essay Marks (Max {q.marks} Marks):</span>
-                                    <input 
-                                      type="number"
-                                      max={q.marks}
-                                      min={0}
-                                      defaultValue={getSavedEssayMark(qId)}
-                                      onChange={(e) => {
-                                        handleEssayMarkChange(sub._id, qId, Number(e.target.value));
-                                      }}
-                                      className="w-24 p-2 rounded-lg border bg-slate-800 text-center font-extrabold text-white text-sm focus:ring-2 focus:ring-indigo-500"
-                                    />
-                                  </div>
-                                )}
-
-                                <div className="mt-3 pt-2 border-t">
-                                  <label className="block text-[11px] font-bold text-slate-400 mb-1">
-                                    Teacher's Correction / What is correct for this question (Feedback for student):
-                                  </label>
-                                  <textarea
-                                    rows={2}
-                                    placeholder="Write the correct explanation or advice for the student here..."
-                                    defaultValue={sub.teacherCorrections?.get ? sub.teacherCorrections.get(qId) : (sub.teacherCorrections?.[qId] || "")}
-                                    onChange={(e) => handleTeacherCorrectionChange(sub._id, qId, e.target.value)}
-                                    className="w-full p-2.5 text-xs rounded-xl border bg-slate-800/80 border-slate-700 text-white outline-none focus:ring-1 focus:ring-indigo-500"
-                                  />
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      )}
-
-                      {/* Bottom Total Score Display & Save Button */}
-                      <div className="mt-6 pt-4 border-t flex flex-col sm:flex-row justify-between items-center gap-4">
-                        <div className="bg-emerald-500/10 border border-emerald-500/30 px-4 py-2.5 rounded-2xl flex items-center gap-2">
-                          <Award size={20} className="text-emerald-400" />
-                          <span className="text-xs font-bold text-emerald-400">
-                            Final Calculated Score: <strong className="text-sm">{displayTotalScore} / {sub.maxScore}</strong>
-                          </span>
-                        </div>
-
-                        <button 
-                          onClick={() => handleSendMarksToDB(sub._id, displayTotalScore)}
-                          className="px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl text-xs font-bold shadow-lg flex items-center gap-2 transition"
-                        >
-                          <Send size={16} /> Save Marks to Database
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })()}
-              </div>
-            ) : (
-              /* Student List View */
-              selectedQuizSubmissions.length === 0 ? (
-                <p className="text-center py-10 text-slate-400 text-sm italic">No students have submitted this quiz yet.</p>
-              ) : (
-                <div className="space-y-3">
-                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-3">
-                    <p className="text-xs font-bold text-slate-400">Click on a student to review their paper:</p>
-                    
-                    {isPureObjectiveQuiz && (
-                      <button 
-                        onClick={handleCheckAllStudentMCQAndSend}
-                        className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-md flex items-center gap-2"
-                      >
-                        <CheckSquare size={16} /> Check All Objective Papers & Save Marks
-                      </button>
-                    )}
-                  </div>
-
-                  {selectedQuizSubmissions.map((sub) => {
-                    const student = sub.studentId;
-                    if (!student) return null;
-
-                    return (
-                      <div 
-                        key={sub._id}
-                        onClick={() => setSelectedStudentSub(sub)}
-                        className={`p-4 rounded-2xl border cursor-pointer flex items-center justify-between transition-all ${
-                          darkMode ? "bg-slate-950 border-slate-800 hover:border-blue-500/50" : "bg-slate-50 border-slate-200 hover:border-blue-300"
-                        }`}
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-full overflow-hidden bg-slate-200 flex items-center justify-center border">
-                            {student.profileImage ? (
-                              <img src={getStudentProfileImageUrl(student.profileImage) || ""} alt="" className="w-full h-full object-cover" />
-                            ) : (
-                              <User size={18} className="text-slate-500" />
-                            )}
-                          </div>
-                          <div>
-                            <h4 className="font-bold text-sm">{student.name}</h4>
-                            <p className="text-[11px] text-slate-400">{student.email} • {sub.timeTaken}</p>
-                          </div>
-                        </div>
-
-                        <div className="flex items-center gap-3">
-                          <span className={`px-3 py-1 rounded-full text-xs font-bold ${
-                            sub.isEvaluated ? "bg-emerald-500/10 text-emerald-500 border border-emerald-500/20" : "bg-amber-500/10 text-amber-500 border border-amber-500/20"
-                          }`}>
-                            {sub.isEvaluated ? `Score: ${sub.score}/${sub.maxScore}` : "Pending Evaluation"}
-                          </span>
-                          <span className="text-xs font-bold text-blue-600 hover:underline flex items-center gap-1">
-                            Review Paper <Eye size={14} />
-                          </span>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )
-            )}
-
-          </div>
-        </div>
-      )}
-
-      {/* Class Selection & Scheduling Modal for Publishing */}
+      {/* Class Selection & Scheduling Modal for Publishing / Edit Publishing */}
       {publishModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 overflow-y-auto">
-          <div className={`w-full max-w-2xl p-6 rounded-3xl shadow-2xl border max-h-[90vh] overflow-y-auto ${darkMode ? "bg-slate-900 border-slate-800 text-white" : "bg-white border-slate-200 text-slate-900"}`}>
+          <div className={`w-full max-w-xl p-6 rounded-2xl shadow-xl border max-h-[90vh] overflow-y-auto ${darkMode ? "bg-slate-900 border-slate-800 text-white" : "bg-white border-slate-200 text-slate-900"}`}>
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-extrabold">Select Classes & Schedule Quiz Publication</h3>
               <button onClick={() => setPublishModalOpen(false)} className="p-1 rounded-lg text-slate-400 hover:bg-slate-500/10">
                 <X size={20} />
               </button>
             </div>
-            <p className="text-xs text-slate-400 mb-4">Choose classes and select either "Publish Now" or configure a custom date-time schedule.</p>
+            <p className="text-xs text-slate-400 mb-4">Choose additional or existing classes and select "Publish Now" or configure schedules without unpublishing.</p>
 
             {teacherClasses.length === 0 ? (
-              <p className="text-sm text-center py-6 text-slate-500">No classes found. Please create a class first.</p>
+              <p className="text-xs text-center py-4 text-slate-500">No classes found. Please create a class first.</p>
             ) : (
-              <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-1 mb-6">
+              <div className="space-y-3 max-h-[50vh] overflow-y-auto pr-1 mb-5">
                 {teacherClasses.map((cls) => {
                   const isSelected = selectedClassIds.includes(cls._id);
                   const mode = publishModes[cls._id] || "now";
                   const sched = classScheduleData[cls._id] || { startDate: "", startTime: "", endDate: "", endTime: "" };
+                  const gradeText = cls.grade === 'Other' ? (cls.customGradeName || 'Other') : `Grade ${cls.grade}`;
 
                   return (
                     <div 
                       key={cls._id}
-                      className={`p-4 rounded-2xl border transition-all ${
+                      className={`p-3.5 rounded-xl border transition-all ${
                         isSelected 
                           ? (darkMode ? "bg-indigo-500/10 border-indigo-500/50 text-white" : "bg-indigo-50 border-indigo-300 text-slate-900")
-                          : (darkMode ? "bg-slate-800/50 border-slate-800 text-slate-400" : "bg-slate-50 border-slate-200 text-slate-600")
+                          : (darkMode ? "bg-slate-800/40 border-slate-800 text-slate-400" : "bg-slate-50 border-slate-200 text-slate-600")
                       }`}
                     >
                       <div className="flex items-center justify-between cursor-pointer" onClick={() => toggleClassSelection(cls._id)}>
                         <div>
                           <div className="flex items-center gap-2">
-                            <span className="font-bold text-sm">
-                              {cls.grade === 'Other' ? cls.customGradeName : `Grade ${cls.grade}`}
+                            <span className="font-bold text-xs">
+                              {gradeText}
                             </span>
                             <span className="text-xs opacity-70">({cls.medium} - {cls.mode})</span>
                           </div>
                           <p className="text-xs opacity-60 mt-0.5">{cls.day} | {cls.startTime} - {cls.endTime}</p>
                         </div>
-                        <div className={`w-5 h-5 rounded-lg flex items-center justify-center border ${isSelected ? "bg-indigo-600 border-indigo-600 text-white" : "border-slate-400"}`}>
+                        <div className={`w-5 h-5 rounded flex items-center justify-center border ${isSelected ? "bg-indigo-600 border-indigo-600 text-white" : "border-slate-400"}`}>
                           {isSelected && <Check size={14} />}
                         </div>
                       </div>
@@ -925,7 +462,7 @@ export default function TeacherMyQuizzesPage() {
                                       ...classScheduleData,
                                       [cls._id]: { ...sched, startDate: e.target.value }
                                     })}
-                                    className="p-1.5 rounded-lg border bg-slate-800 border-slate-700 text-white flex-1"
+                                    className="p-1.5 rounded-lg border bg-slate-800 border-slate-700 text-white flex-1 text-xs"
                                   />
                                   <input 
                                     type="time" 
@@ -934,7 +471,7 @@ export default function TeacherMyQuizzesPage() {
                                       ...classScheduleData,
                                       [cls._id]: { ...sched, startTime: e.target.value }
                                     })}
-                                    className="p-1.5 rounded-lg border bg-slate-800 border-slate-700 text-white"
+                                    className="p-1.5 rounded-lg border bg-slate-800 border-slate-700 text-white text-xs"
                                   />
                                 </div>
                               </div>
@@ -949,7 +486,7 @@ export default function TeacherMyQuizzesPage() {
                                       ...classScheduleData,
                                       [cls._id]: { ...sched, endDate: e.target.value }
                                     })}
-                                    className="p-1.5 rounded-lg border bg-slate-800 border-slate-700 text-white flex-1"
+                                    className="p-1.5 rounded-lg border bg-slate-800 border-slate-700 text-white flex-1 text-xs"
                                   />
                                   <input 
                                     type="time" 
@@ -958,7 +495,7 @@ export default function TeacherMyQuizzesPage() {
                                       ...classScheduleData,
                                       [cls._id]: { ...sched, endTime: e.target.value }
                                     })}
-                                    className="p-1.5 rounded-lg border bg-slate-800 border-slate-700 text-white"
+                                    className="p-1.5 rounded-lg border bg-slate-800 border-slate-700 text-white text-xs"
                                   />
                                 </div>
                               </div>
@@ -979,9 +516,9 @@ export default function TeacherMyQuizzesPage() {
               <button 
                 onClick={handleConfirmPublish}
                 disabled={selectedClassIds.length === 0}
-                className="px-6 py-2.5 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-white disabled:opacity-50 shadow-md"
+                className="px-6 py-2.5 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-white disabled:opacity-50 shadow-sm"
               >
-                Confirm & Publish
+                Save & Update Publish
               </button>
             </div>
           </div>
@@ -989,12 +526,12 @@ export default function TeacherMyQuizzesPage() {
       )}
 
       {/* Main Container */}
-      <div className="max-w-5xl mx-auto space-y-6">
+      <div className="max-w-4xl mx-auto space-y-6">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
             <h1 className="text-2xl font-extrabold tracking-tight">My Quizzes</h1>
             <p className={`text-sm mt-1 ${darkMode ? "text-slate-400" : "text-slate-500"}`}>
-              Manage your created quizzes, check admin approval status, view rejection reasons, and publish them with flexible schedules.
+              Manage your created quizzes, check admin approval status, view submissions, and publish them with flexible schedules.
             </p>
           </div>
         </div>
@@ -1005,7 +542,7 @@ export default function TeacherMyQuizzesPage() {
             <div className={`w-full max-w-md p-6 rounded-2xl shadow-2xl border transition-all ${darkMode ? "bg-slate-900 border-slate-800 text-white" : "bg-white border-slate-200 text-slate-900"}`}>
               <div className="flex justify-between items-center mb-4">
                 <div className="flex items-center gap-2 text-rose-500 font-bold text-lg">
-                  <AlertCircle size={22} /> Confirm Deletion
+                  <AlertCircle size={20} /> Confirm Deletion
                 </div>
                 <button onClick={() => setDeleteModalOpen(false)} className="p-1 rounded-lg text-slate-400 hover:bg-slate-500/10">
                   <X size={18} />
@@ -1037,287 +574,407 @@ export default function TeacherMyQuizzesPage() {
             <p className="text-xs text-slate-400 mt-1">You haven't created any quizzes yet.</p>
           </div>
         ) : (
-          <div className="space-y-4">
-            {quizzes.map((quiz) => (
-              <div 
-                key={quiz._id} 
-                className={`p-6 rounded-2xl border shadow-sm transition-all space-y-4 ${
-                  darkMode ? "bg-slate-900 border-slate-800" : "bg-white border-slate-200"
-                }`}
-              >
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-                  <div>
-                    <h2 className="text-xl font-bold">{quiz.title}</h2>
-                    <p className={`text-xs mt-1 ${darkMode ? "text-slate-300" : "text-slate-600"}`}>
-                      {quiz.description || "No description provided."}
-                    </p>
-                    <div className="flex items-center gap-3 mt-2 text-xs text-slate-400">
-                      <span className="flex items-center gap-1">
-                        <Clock size={14} /> {quiz.duration} minutes
-                      </span>
-                      <span>•</span>
-                      <span>{quiz.questions.length} Questions</span>
-                    </div>
-                  </div>
+          <>
+            {/* Quizzes Displayed Full-Width (1 per row) with pagination */}
+            <div className="space-y-6">
+              {currentQuizzes.map((quiz) => {
+                const isCollapsed = collapsedQuestions[quiz._id] || false;
+                const subCounts = quizSubmissionCounts[quiz._id] || { total: 0, pending: 0, evaluated: 0 };
 
-                  <div className="flex flex-wrap items-center gap-2">
-                    {quiz.isPublished && (
-                      <button 
-                        onClick={() => openSubmissionsModal(quiz)}
-                        className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-sm transition-all mr-2"
-                      >
-                        <Eye size={16} /> View Submissions
-                      </button>
-                    )}
+                // Pagination for published classes (4 per page)
+                const currentClassPage = classPages[quiz._id] || 1;
+                const allSchedules = quiz.classSchedules || [];
+                const totalClassPages = Math.ceil(allSchedules.length / classesPerPage);
+                const startIndex = (currentClassPage - 1) * classesPerPage;
+                const paginatedSchedules = allSchedules.slice(startIndex, startIndex + classesPerPage);
 
-                    <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide ${
-                      quiz.status === "approved" ? "bg-emerald-500/10 text-emerald-500 border border-emerald-500/20" :
-                      quiz.status === "rejected" ? "bg-rose-500/10 text-rose-500 border border-rose-500/20" : 
-                      "bg-amber-500/10 text-amber-500 border border-amber-500/20"
-                    }`}>
-                      Admin: {quiz.status}
-                    </span>
-
-                    {quiz.status === "approved" && (
-                      <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide ${
-                        quiz.isPublished 
-                          ? "bg-indigo-500/10 text-indigo-400 border border-indigo-500/20" 
-                          : "bg-slate-500/10 text-slate-400 border border-slate-500/20"
-                      }`}>
-                        {quiz.isPublished ? "Published" : "Draft (Unpublished)"}
-                      </span>
-                    )}
-                  </div>
-                </div>
-
-                {quiz.status === "rejected" && quiz.rejectReason && (
-                  <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-xs text-rose-500 flex items-start gap-2">
-                    <AlertCircle size={16} className="mt-0.5 flex-shrink-0" />
-                    <span><strong>Rejection Reason:</strong> {quiz.rejectReason}</span>
-                  </div>
-                )}
-
-                {quiz.isPublished && quiz.classSchedules && quiz.classSchedules.length > 0 && (
-                  <div className={`pt-3 border-t space-y-2 ${darkMode ? "border-slate-800" : "border-slate-100"}`}>
-                    <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Published Classes & Schedules:</span>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      {quiz.classSchedules.map((sch, sIdx) => {
-                        const cls = sch.classId;
-                        const classIdVal = cls?._id || cls;
-
-                        let isCurrentlyOpen = true;
-                        if (sch.publishType === 'schedule') {
-                          const now = new Date();
-                          const startDateTime = sch.startDate && sch.startTime 
-                            ? new Date(`${sch.startDate.split('T')[0]}T${sch.startTime}`)
-                            : (sch.startDate ? new Date(sch.startDate) : null);
-                          const endDateTime = sch.endDate && sch.endTime 
-                            ? new Date(`${sch.endDate.split('T')[0]}T${sch.endTime}`)
-                            : (sch.endDate ? new Date(sch.endDate) : null);
-
-                          const isAfterStart = startDateTime ? now >= startDateTime : true;
-                          const isBeforeEnd = endDateTime ? now <= endDateTime : true;
-                          isCurrentlyOpen = isAfterStart && isBeforeEnd;
-                        }
-
-                        return (
-                          <div key={sIdx} className={`p-3 rounded-xl border text-xs space-y-2 relative ${darkMode ? "bg-slate-950/60 border-slate-800 text-slate-300" : "bg-slate-50 border-slate-200 text-slate-700"}`}>
-                            <div className="flex justify-between items-start gap-2">
-                              <div>
-                                <div className="font-bold text-indigo-400 text-sm">
-                                  {cls?.grade === 'Other' ? cls.customGradeName : (cls?.grade ? `Grade ${cls.grade}` : (cls?.name || "Class"))} - {cls?.medium || ""} ({cls?.mode || ""})
-                                </div>
-                                <div className="text-[11px] opacity-70 mt-0.5">
-                                  {cls?.day || ""} {cls?.startTime ? `| ${cls.startTime} - ${cls?.endTime}` : ""}
-                                </div>
-                              </div>
-
-                              <div className="flex items-center gap-2">
-                                <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase ${
-                                  isCurrentlyOpen 
-                                    ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" 
-                                    : "bg-amber-500/10 text-amber-400 border border-amber-500/20"
-                                }`}>
-                                  {isCurrentlyOpen ? "Open" : "Scheduled"}
-                                </span>
-
-                                <button
-                                  onClick={() => handleRemoveClassFromQuiz(quiz, classIdVal)}
-                                  title="Remove from this class"
-                                  className="p-1.5 rounded-lg bg-rose-500/15 hover:bg-rose-500/20 text-rose-500 transition-colors"
-                                >
-                                  <Trash2 size={13} />
-                                </button>
-                              </div>
-                            </div>
-
-                            <div className="text-[11px] opacity-80 flex items-center gap-1 pt-1 border-t border-slate-500/10">
-                              <Calendar size={12} />
-                              {sch.publishType === 'now' ? (
-                                <span className="text-emerald-400 font-semibold">Published Immediately (Now)</span>
-                              ) : (
-                                <span>
-                                  Scheduled: {sch.startDate?.split('T')[0]} ({sch.startTime}) ➔ {sch.endDate?.split('T')[0]} ({sch.endTime})
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-
-                <div className={`border-t pt-4 ${darkMode ? "border-slate-800" : "border-slate-100"}`}>
-                  <div className="flex justify-between items-center mb-3">
-                    <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-400">Questions & Answers Details:</h3>
-                    <button
-                      onClick={() => handleDownloadPDFAnswerKey(quiz)}
-                      className="px-3 py-1.5 bg-teal-600 hover:bg-teal-700 text-white rounded-lg text-xs font-bold shadow-sm flex items-center gap-1.5 transition-colors"
-                    >
-                      <Download size={14} /> Download PDF Answer Key
-                    </button>
-                  </div>
-
-                  <div className="space-y-3 max-h-72 overflow-y-auto pr-2">
-                    {quiz.questions.map((q, idx) => {
-                      let totalQMarks = q.marks;
-                      if (q.type === 'essay' && q.subQuestions && q.subQuestions.length > 0) {
-                        totalQMarks = q.subQuestions.reduce((s, sq) => s + sq.marks, 0);
-                      }
-
-                      return (
-                        <div key={`${quiz._id}-question-${idx}`} className={`p-4 rounded-xl border text-xs space-y-2 ${darkMode ? "bg-slate-950/50 border-slate-800" : "bg-slate-50 border-slate-200"}`}>
-                          <div className="flex justify-between items-start">
-                            <p className="font-semibold text-sm">
-                              {idx + 1}. {q.questionText}
-                            </p>
-                            <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
-                              {q.type} ({totalQMarks} marks)
-                            </span>
-                          </div>
-
-                          {q.imageUrl && (
-                            <div className="mt-1">
-                              <span className="text-[10px] text-slate-400 flex items-center gap-1 mb-1">
-                                <ImageIcon size={12} /> Attached Image:
-                              </span>
-                              <img 
-                                src={`http://localhost:5000${q.imageUrl}`} 
-                                alt="Question Visual" 
-                                className="max-h-32 rounded border border-slate-700 object-contain" 
-                                onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
-                              />
-                            </div>
-                          )}
-
-                          {(q.type === 'mcq' || q.type === 'single') && q.options && q.options.length > 0 && (
-                            <div className="space-y-1 mt-2 pl-2 border-l-2 border-indigo-500/40">
-                              <p className="text-[11px] font-semibold text-slate-400">Options:</p>
-                              <ul className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
-                                {q.options.map((opt, optIdx) => {
-                                  const isCorrect = q.type === 'mcq' 
-                                    ? (Array.isArray(q.correctAnswer) && q.correctAnswer.includes(opt))
-                                    : (q.correctAnswer === opt);
-
-                                  return (
-                                    <li key={optIdx} className={`p-2 rounded border text-xs ${isCorrect ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400 font-bold" : (darkMode ? "bg-slate-900 border-slate-800 text-slate-300" : "bg-white border-slate-200 text-slate-700")}`}>
-                                      <span className="font-bold mr-1">({optIdx + 1})</span> {opt} {isCorrect && "✅"}
-                                    </li>
-                                  );
-                                })}
-                              </ul>
-                            </div>
-                          )}
-
-                          {q.type === 'essay' && q.subQuestions && q.subQuestions.length > 0 && (
-                            <div className="space-y-1 mt-2 pl-2 border-l-2 border-indigo-500/40">
-                              <p className="text-[11px] font-semibold text-slate-400">Sub-Questions:</p>
-                              <div className="space-y-1">
-                                {q.subQuestions.map((sq, sqIdx) => (
-                                  <div key={sq._id || sqIdx} className="p-2 rounded border text-xs bg-slate-900/40 flex justify-between items-center">
-                                    <span><strong>({sqIdx + 1})</strong> {sq.subQuestionText}</span>
-                                    <span className="text-indigo-400 font-bold">[{sq.marks} marks]</span>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-
-                          <div className="mt-2 pt-2 border-t border-slate-500/25 flex items-center justify-between">
-                            {q.type === 'mcq' && (
-                              <span className="font-mono bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 px-2.5 py-1 rounded inline-block text-[11px]">
-                                ✅ Correct Answers: <strong className="text-emerald-400">{Array.isArray(q.correctAnswer) ? q.correctAnswer.join(', ') : String(q.correctAnswer || '')}</strong>
-                              </span>
-                            )}
-                            {q.type === 'single' && (
-                              <span className="font-mono bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 px-2.5 py-1 rounded inline-block text-[11px]">
-                                ✅ Correct Answer: <strong className="text-emerald-400">{String(q.correctAnswer || '')}</strong>
-                              </span>
-                            )}
-                            {q.type === 'short' && (
-                              <span className="font-mono bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 px-2.5 py-1 rounded inline-block text-[11px]">
-                                ✅ Correct Reference: <strong className="text-emerald-400">{String(q.correctAnswer || 'None (Manual grading)')}</strong>
-                              </span>
-                            )}
-                            {q.type === 'essay' && (
-                              <span className="font-mono bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 px-2.5 py-1 rounded inline-block text-[11px]">
-                                📝 Structured Essay Question (Evaluated by Teacher)
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                <div className={`flex justify-between items-center pt-3 border-t ${darkMode ? "border-slate-800" : "border-slate-100"}`}>
-                  <button
-                    onClick={() => openDeleteModal(quiz._id)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-rose-500 hover:bg-rose-500/10 transition-colors"
+                return (
+                  <div 
+                    key={quiz._id} 
+                    className={`p-6 sm:p-8 rounded-3xl border shadow-md transition-all space-y-5 ${
+                      darkMode ? "bg-slate-900 border-slate-800" : "bg-white border-slate-200"
+                    }`}
                   >
-                    <Trash2 size={14} /> Delete
-                  </button>
+                    {/* Header info */}
+                    <div className="space-y-3">
+                      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                        <div>
+                          <h2 className="text-xl font-extrabold">{quiz.title}</h2>
+                          <p className={`text-xs mt-1 leading-relaxed ${darkMode ? "text-slate-300" : "text-slate-600"}`}>
+                            {quiz.description || "No description provided."}
+                          </p>
+                        </div>
 
-                  <div className="flex items-center gap-2">
-                    {quiz.status === "approved" && (
-                      <>
-                        {!quiz.isPublished ? (
+                        <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide whitespace-nowrap ${
+                          quiz.status === "approved" ? "bg-emerald-500/10 text-emerald-500 border border-emerald-500/20" :
+                          quiz.status === "rejected" ? "bg-rose-500/10 text-rose-500 border border-rose-500/20" : 
+                          "bg-amber-500/10 text-amber-500 border border-amber-500/20"
+                        }`}>
+                          {quiz.status}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center gap-3 text-xs text-slate-400 flex-wrap">
+                        <span className="flex items-center gap-1">
+                          <Clock size={14} /> {quiz.duration} minutes
+                        </span>
+                        <span>•</span>
+                        <span>{quiz.questions.length} Questions</span>
+                        {quiz.status === "approved" && (
+                          <>
+                            <span>•</span>
+                            <span className={`font-bold ${quiz.isPublished ? "text-indigo-400" : "text-slate-400"}`}>
+                              {quiz.isPublished ? "Published" : "Draft (Unpublished)"}
+                            </span>
+                          </>
+                        )}
+                      </div>
+
+                      {/* Submission Status Badges */}
+                      {quiz.isPublished && (
+                        <div className="flex items-center gap-2 pt-2 flex-wrap">
+                          <span className="px-3 py-1 rounded-lg text-xs font-bold bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                            Total Submissions: {subCounts.total}
+                          </span>
+                          <span className="px-3 py-1 rounded-lg text-xs font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                            Pending Evaluation: {subCounts.pending}
+                          </span>
+                          <span className="px-3 py-1 rounded-lg text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                            Evaluated & Saved: {subCounts.evaluated}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+
+                    {quiz.status === "rejected" && quiz.rejectReason && (
+                      <div className="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-xs text-rose-500 flex items-start gap-2">
+                        <AlertCircle size={16} className="mt-0.5 flex-shrink-0" />
+                        <span><strong>Rejection Reason:</strong> {quiz.rejectReason}</span>
+                      </div>
+                    )}
+
+                    {/* Published Classes & Schedules with Pagination (4 per page) */}
+                    {quiz.isPublished && allSchedules.length > 0 && (
+                      <div className={`pt-4 border-t space-y-3 ${darkMode ? "border-slate-800" : "border-slate-100"}`}>
+                        <div className="flex justify-between items-center">
+                          <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Published Classes & Schedules:</span>
                           <button
                             onClick={() => openPublishModal(quiz)}
-                            className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-white transition-all shadow-sm"
+                            className="text-xs font-bold text-indigo-400 hover:underline flex items-center gap-1.5"
                           >
-                            <Globe size={14} /> Publish to Classes
+                            <Edit3 size={14} /> Edit Publish / Add Class
                           </button>
-                        ) : (
+                        </div>
+                        
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          {paginatedSchedules.map((sch, sIdx) => {
+                            const cls = sch.classId;
+                            const classIdVal = cls?._id || cls;
+                            
+                            let gradeDisplay = "Class";
+                            if (cls) {
+                              if (typeof cls === 'object') {
+                                if (cls.grade && cls.grade !== 'Other') {
+                                  gradeDisplay = `Grade ${cls.grade}`;
+                                } else if (cls.customGradeName) {
+                                  gradeDisplay = cls.customGradeName;
+                                } else if (cls.name) {
+                                  gradeDisplay = cls.name;
+                                } else if (cls.subject) {
+                                  gradeDisplay = cls.subject;
+                                }
+                              } else {
+                                const foundCls = teacherClasses.find((tc: any) => tc._id === cls);
+                                if (foundCls) {
+                                  gradeDisplay = foundCls.grade === 'Other' ? (foundCls.customGradeName || 'Other') : (foundCls.grade ? `Grade ${foundCls.grade}` : (foundCls.name || "Class"));
+                                }
+                              }
+                            }
+
+                            const resolvedClsObj = (typeof cls === 'object' && cls !== null) ? cls : teacherClasses.find((tc: any) => tc._id === classIdVal);
+                            const mediumDisplay = resolvedClsObj?.medium ? ` - ${resolvedClsObj.medium}` : '';
+                            const modeDisplay = resolvedClsObj?.mode ? ` (${resolvedClsObj.mode})` : '';
+
+                            let isCurrentlyOpen = true;
+                            if (sch.publishType === 'schedule') {
+                              const now = new Date();
+                              const startDateTime = sch.startDate && sch.startTime 
+                                ? new Date(`${sch.startDate.split('T')[0]}T${sch.startTime}`)
+                                : (sch.startDate ? new Date(sch.startDate) : null);
+                              const endDateTime = sch.endDate && sch.endTime 
+                                ? new Date(`${sch.endDate.split('T')[0]}T${sch.endTime}`)
+                                : (sch.endDate ? new Date(sch.endDate) : null);
+
+                              const isAfterStart = startDateTime ? now >= startDateTime : true;
+                              const isBeforeEnd = endDateTime ? now <= endDateTime : true;
+                              isCurrentlyOpen = isAfterStart && isBeforeEnd;
+                            }
+
+                            return (
+                              <div key={sIdx} className={`p-3.5 rounded-2xl border text-xs space-y-2 relative ${darkMode ? "bg-slate-950/60 border-slate-800 text-slate-300" : "bg-slate-50 border-slate-200 text-slate-700"}`}>
+                                <div className="flex justify-between items-start gap-2">
+                                  <div>
+                                    <div className="font-extrabold text-indigo-400 text-sm">
+                                      {gradeDisplay}{mediumDisplay}{modeDisplay}
+                                    </div>
+                                    <div className="text-[11px] opacity-70 mt-0.5">
+                                      {resolvedClsObj?.day || ""} {resolvedClsObj?.startTime ? `| ${resolvedClsObj.startTime} - ${resolvedClsObj?.endTime}` : ""}
+                                    </div>
+                                  </div>
+
+                                  <div className="flex items-center gap-2">
+                                    <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase ${
+                                      isCurrentlyOpen 
+                                        ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" 
+                                        : "bg-amber-500/10 text-amber-400 border border-amber-500/20"
+                                    }`}>
+                                      {isCurrentlyOpen ? "Open" : "Scheduled"}
+                                    </span>
+
+                                    <button
+                                      onClick={() => handleRemoveClassFromQuiz(quiz, classIdVal)}
+                                      title="Remove from this class"
+                                      className="p-1.5 rounded-lg bg-rose-500/15 hover:bg-rose-500/20 text-rose-500 transition-colors"
+                                    >
+                                      <Trash2 size={13} />
+                                    </button>
+                                  </div>
+                                </div>
+
+                                <div className="text-[11px] opacity-80 flex items-center gap-1 pt-1.5 border-t border-slate-500/10">
+                                  <Calendar size={12} />
+                                  {sch.publishType === 'now' ? (
+                                    <span className="text-emerald-400 font-semibold">Published Immediately (Now)</span>
+                                  ) : (
+                                    <span className="font-medium text-amber-300/90">
+                                      Scheduled: {sch.startDate?.split('T')[0]} ({sch.startTime}) ➔ {sch.endDate?.split('T')[0]} ({sch.endTime})
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+
+                        {/* Published Classes Pagination Controls (if > 4 classes) */}
+                        {totalClassPages > 1 && (
+                          <div className="flex justify-between items-center pt-2 px-1 text-xs">
+                            <span className="text-[11px] text-slate-400 font-medium">
+                              Showing page {currentClassPage} of {totalClassPages} ({allSchedules.length} classes total)
+                            </span>
+                            <div className="flex items-center gap-1.5">
+                              <button
+                                onClick={() => setClassPages({ ...classPages, [quiz._id]: Math.max(currentClassPage - 1, 1) })}
+                                disabled={currentClassPage === 1}
+                                className={`p-1.5 rounded-lg border transition ${
+                                  currentClassPage === 1 ? "opacity-40 cursor-not-allowed" : "hover:bg-indigo-600 hover:text-white"
+                                } ${darkMode ? "border-slate-800 bg-slate-900" : "border-slate-200 bg-white"}`}
+                              >
+                                <ChevronLeft size={14} />
+                              </button>
+                              <button
+                                onClick={() => setClassPages({ ...classPages, [quiz._id]: Math.min(currentClassPage + 1, totalClassPages) })}
+                                disabled={currentClassPage === totalClassPages}
+                                className={`p-1.5 rounded-lg border transition ${
+                                  currentClassPage === totalClassPages ? "opacity-40 cursor-not-allowed" : "hover:bg-indigo-600 hover:text-white"
+                                } ${darkMode ? "border-slate-800 bg-slate-900" : "border-slate-200 bg-white"}`}
+                              >
+                                <ChevronRight size={14} />
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Questions Section with Collapse/Expand Button (Persisted State) */}
+                    <div className={`border-t pt-4 ${darkMode ? "border-slate-800" : "border-slate-100"}`}>
+                      <div className="flex justify-between items-center mb-3">
+                        <div className="flex items-center gap-3">
+                          <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">Questions & Answer Key Details:</h3>
                           <button
-                            onClick={() => handleUnpublish(quiz._id)}
-                            className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold bg-rose-600 hover:bg-rose-700 text-white transition-all shadow-sm"
+                            onClick={() => toggleQuestionsCollapse(quiz._id)}
+                            className="text-xs font-bold text-indigo-400 hover:underline flex items-center gap-1"
                           >
-                            Unpublish
+                            {isCollapsed ? <ChevronDown size={16} /> : <ChevronUp size={16} />}
+                            {isCollapsed ? "View All Questions" : "Hide Questions"}
+                          </button>
+                        </div>
+                        
+                        <button
+                          onClick={() => handleDownloadPDFAnswerKey(quiz)}
+                          className="px-3 py-1.5 bg-teal-600 hover:bg-teal-700 text-white rounded-xl text-xs font-bold shadow-sm flex items-center gap-1.5 transition-colors"
+                        >
+                          <Download size={14} /> Download PDF Answer Key
+                        </button>
+                      </div>
+
+                      {!isCollapsed && (
+                        <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
+                          {quiz.questions.map((q, idx) => {
+                            let totalQMarks = q.marks;
+                            if (q.type === 'essay' && q.subQuestions && q.subQuestions.length > 0) {
+                              totalQMarks = q.subQuestions.reduce((s, sq) => s + sq.marks, 0);
+                            }
+
+                            return (
+                              <div key={`${quiz._id}-question-${idx}`} className={`p-4 rounded-2xl border text-xs space-y-2.5 ${darkMode ? "bg-slate-950/50 border-slate-800" : "bg-slate-50 border-slate-200"}`}>
+                                <div className="flex justify-between items-start">
+                                  <p className="font-bold text-sm">
+                                    {idx + 1}. {q.questionText}
+                                  </p>
+                                  <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 whitespace-nowrap">
+                                    {q.type} ({totalQMarks} marks)
+                                  </span>
+                                </div>
+
+                                {q.imageUrl && (
+                                  <div className="mt-2">
+                                    <span className="text-[10px] text-slate-400 flex items-center gap-1 mb-1">
+                                      <ImageIcon size={12} /> Included Image:
+                                    </span>
+                                    <img 
+                                      src={`http://localhost:5000${q.imageUrl}`} 
+                                      alt="Question Visual" 
+                                      className="max-h-36 rounded-xl border border-slate-700 object-contain" 
+                                      onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
+                                    />
+                                  </div>
+                                )}
+
+                                {(q.type === 'mcq' || q.type === 'single') && q.options && q.options.length > 0 && (
+                                  <div className="space-y-1.5 mt-2 pl-3 border-l-2 border-indigo-500/40">
+                                    <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                      {q.options.map((opt, optIdx) => {
+                                        const isCorrect = q.type === 'mcq' 
+                                          ? (Array.isArray(q.correctAnswer) && q.correctAnswer.includes(opt))
+                                          : (q.correctAnswer === opt);
+
+                                        return (
+                                          <li key={optIdx} className={`p-2.5 rounded-xl border text-xs ${isCorrect ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400 font-bold" : (darkMode ? "bg-slate-900 border-slate-800 text-slate-300" : "bg-white border-slate-200 text-slate-700")}`}>
+                                            <span className="font-bold mr-1">({optIdx + 1})</span> {opt} {isCorrect && "✅"}
+                                          </li>
+                                        );
+                                      })}
+                                    </ul>
+                                  </div>
+                                )}
+
+                                {q.type === 'essay' && q.subQuestions && q.subQuestions.length > 0 && (
+                                  <div className="space-y-1.5 mt-2 pl-3 border-l-2 border-indigo-500/40">
+                                    <div className="space-y-1.5">
+                                      {q.subQuestions.map((sq, sqIdx) => (
+                                        <div key={sq._id || sqIdx} className="p-2 rounded-lg border text-xs bg-slate-900/40 flex justify-between items-center">
+                                          <span><strong>({sqIdx + 1})</strong> {sq.subQuestionText}</span>
+                                          <span className="text-indigo-400 font-bold">[{sq.marks} marks]</span>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+
+                                <div className="mt-2 pt-2 border-t border-slate-500/25 flex items-center justify-between">
+                                  {q.type === 'mcq' && (
+                                    <span className="font-mono bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 px-3 py-1 rounded-lg text-xs">
+                                      ✅ Correct Answers: <strong className="text-emerald-400">{Array.isArray(q.correctAnswer) ? q.correctAnswer.join(', ') : String(q.correctAnswer || '')}</strong>
+                                    </span>
+                                  )}
+                                  {q.type === 'single' && (
+                                    <span className="font-mono bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 px-3 py-1 rounded-lg text-xs">
+                                      ✅ Correct Answer: <strong className="text-emerald-400">{String(q.correctAnswer || '')}</strong>
+                                    </span>
+                                  )}
+                                  {q.type === 'short' && (
+                                    <span className="font-mono bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 px-3 py-1 rounded-lg text-xs">
+                                      ✅ Correct Reference: <strong className="text-emerald-400">{String(q.correctAnswer || 'Manual grading')}</strong>
+                                    </span>
+                                  )}
+                                  {q.type === 'essay' && (
+                                    <span className="font-mono bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 px-3 py-1 rounded-lg text-xs">
+                                      📝 Structured Essay Question (Evaluated by Teacher)
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Footer Actions */}
+                    <div className={`flex flex-col sm:flex-row justify-between items-center pt-4 gap-3 border-t ${darkMode ? "border-slate-800" : "border-slate-100"}`}>
+                      <button
+                        onClick={() => openDeleteModal(quiz._id)}
+                        className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold text-rose-500 hover:bg-rose-500/10 transition-colors"
+                      >
+                        <Trash2 size={15} /> Delete Quiz
+                      </button>
+
+                      <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
+                        {quiz.status === "approved" && (
+                          <>
+                            {quiz.isPublished ? (
+                              <button
+                                onClick={() => handleUnpublish(quiz._id)}
+                                className="px-4 py-2.5 rounded-xl text-xs font-bold bg-rose-600 hover:bg-rose-700 text-white transition-all shadow-sm"
+                              >
+                                Unpublish
+                              </button>
+                            ) : (
+                              <button
+                                onClick={() => openPublishModal(quiz)}
+                                className="px-5 py-2.5 rounded-xl text-xs font-bold bg-indigo-600 hover:bg-indigo-500 text-white transition-all shadow-sm flex items-center gap-1.5"
+                              >
+                                <Globe size={15} /> Publish to Classes
+                              </button>
+                            )}
+                          </>
+                        )}
+
+                        {quiz.isPublished && (
+                          <button
+                            onClick={() => router.push(`/teacher/materials/submission?quizId=${quiz._id}`)}
+                            className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-sm transition-all"
+                          >
+                            <Eye size={15} /> View Submissions
                           </button>
                         )}
-                      </>
-                    )}
+                      </div>
+                    </div>
 
-                    {quiz.status === "pending" && (
-                      <span className="text-xs italic text-amber-500">
-                        Waiting for admin review & approval...
-                      </span>
-                    )}
-
-                    {quiz.status === "rejected" && (
-                      <span className="text-xs italic text-rose-500">
-                        Please update and re-submit based on feedback.
-                      </span>
-                    )}
                   </div>
-                </div>
+                );
+              })}
+            </div>
 
+            {/* Quiz Pagination Controls */}
+            {totalPages > 1 && (
+              <div className="flex justify-center items-center gap-3 pt-6">
+                <button
+                  onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                  disabled={currentPage === 1}
+                  className={`px-4 py-2 rounded-xl text-xs font-bold border transition ${
+                    currentPage === 1 ? "opacity-40 cursor-not-allowed" : "hover:bg-indigo-600 hover:text-white"
+                  } ${darkMode ? "border-slate-800 bg-slate-900" : "border-slate-200 bg-white"}`}
+                >
+                  Previous
+                </button>
+                <span className="text-xs font-extrabold px-3 py-1 rounded-lg bg-indigo-500/10 text-indigo-400">
+                  Page {currentPage} of {totalPages}
+                </span>
+                <button
+                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                  disabled={currentPage === totalPages}
+                  className={`px-4 py-2 rounded-xl text-xs font-bold border transition ${
+                    currentPage === totalPages ? "opacity-40 cursor-not-allowed" : "hover:bg-indigo-600 hover:text-white"
+                  } ${darkMode ? "border-slate-800 bg-slate-900" : "border-slate-200 bg-white"}`}
+                >
+                  Next
+                </button>
               </div>
-            ))}
-          </div>
+            )}
+          </>
         )}
       </div>
     </div>
