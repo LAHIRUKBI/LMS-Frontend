@@ -251,8 +251,7 @@ export default function TeacherSidebar() {
     { name: "Ticket", path: "/teacher/tickets", icon: FileStack },
     { name: "Add Quiz", path: "/teacher/materials/quize", icon: FileQuestion },
     { name: "My Quizzes", path: "/teacher/materials/my-quize", icon: BookOpenCheck },
-    { name: "Create Class", path: "/teacher/class/create_class", icon: PlusCircle },
-    { name: "View Class", path: "/teacher/class/view_class", icon: Eye },
+    { name: "Classes", path: "/teacher/class/view_class", icon: Eye },
     { name: "Student Marks", path: "/teacher/materials/quize_marks", icon: Award },
   ];
 

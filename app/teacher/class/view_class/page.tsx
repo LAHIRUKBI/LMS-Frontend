@@ -5,8 +5,9 @@
 import { useEffect, useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import axios from "axios";
-import { Trash2, Calendar, Clock, Loader2, Search, ArrowLeft, CheckCircle2, AlertCircle, Users, User, Mail, Phone, Building, MapPin, Edit3, Link as LinkIcon, X, Save, PlayCircle, ChevronLeft, ChevronRight } from "lucide-react";
+import { Trash2, Calendar, Clock, Loader2, Search, CheckCircle2, AlertCircle, Users, User, Mail, Phone, Building, MapPin, Edit3, Link as LinkIcon, X, Save, PlayCircle, ChevronLeft, ChevronRight, Plus } from "lucide-react";
 import ClassDeleteConfirmPopup from "@/app/components/ClassDeleteConfirmPopup";
+import CreateClassModal from "@/app/components/CreateClassModal";
 import { useTheme } from "@/app/context/ThemeContext";
 
 export default function ViewClassesPage() {
@@ -19,6 +20,7 @@ export default function ViewClassesPage() {
 
   const [deleteClassId, setDeleteClassId] = useState<string | null>(null);
   const [editingClassId, setEditingClassId] = useState<string | null>(null);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
   // Search & Filter State
   const [searchQuery, setSearchQuery] = useState("");
@@ -57,14 +59,17 @@ export default function ViewClassesPage() {
   }, [router]);
 
   // Fetch classes and approved students belonging to the teacher
-  const fetchClassesAndStudents = async (token: string) => {
+  const fetchClassesAndStudents = async (token?: string) => {
+    const currentToken = token || localStorage.getItem("token");
+    if (!currentToken) return;
+
     try {
       const [classesRes, requestsRes] = await Promise.all([
         axios.get("http://localhost:5000/api/classes/my-classes", {
-          headers: { Authorization: `Bearer ${token}` }
+          headers: { Authorization: `Bearer ${currentToken}` }
         }),
         axios.get("http://localhost:5000/api/classes/requests/all", {
-          headers: { Authorization: `Bearer ${token}` }
+          headers: { Authorization: `Bearer ${currentToken}` }
         })
       ]);
       setClasses(classesRes.data);
@@ -214,6 +219,16 @@ export default function ViewClassesPage() {
         onConfirm={handleDeleteClass}
       />
 
+      {/* Create Class Modal Component */}
+      <CreateClassModal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        onClassCreated={() => {
+          fetchClassesAndStudents();
+          setMessage({ type: "success", text: "New class created successfully!" });
+        }}
+      />
+
       <div className="max-w-4xl mx-auto space-y-6">
         
         {/* Header & Search Bar section */}
@@ -223,23 +238,34 @@ export default function ViewClassesPage() {
             <p className={`text-xs ${darkMode ? "text-slate-400" : "text-slate-500"}`}>Manage your classes, early class startup, and active online links.</p>
           </div>
 
-          {/* Smooth Search Input */}
-          <div className="relative w-full md:w-72">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
-            <input
-              type="text"
-              placeholder="Search classes (grade, medium, day...)"
-              value={searchQuery}
-              onChange={(e) => {
-                setSearchQuery(e.target.value);
-                setCurrentClassPage(1); // Reset to first page on search
-              }}
-              className={`w-full pl-10 pr-4 py-2 rounded-xl border text-xs transition-all outline-none shadow-sm ${
-                darkMode 
-                  ? "bg-slate-900 border-slate-800 text-white focus:border-blue-500" 
-                  : "bg-white border-slate-200 text-slate-800 focus:border-blue-500"
-              }`}
-            />
+          <div className="flex items-center gap-3">
+            {/* Create Class Button */}
+            <button
+              onClick={() => setIsCreateModalOpen(true)}
+              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2.5 rounded-xl font-bold text-xs transition-all shadow-md shadow-blue-600/20"
+            >
+              <Plus size={16} />
+              <span>Create Class</span>
+            </button>
+
+            {/* Smooth Search Input */}
+            <div className="relative w-full md:w-64">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+              <input
+                type="text"
+                placeholder="Search classes..."
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setCurrentClassPage(1);
+                }}
+                className={`w-full pl-10 pr-4 py-2 rounded-xl border text-xs transition-all outline-none shadow-sm ${
+                  darkMode 
+                    ? "bg-slate-900 border-slate-800 text-white focus:border-blue-500" 
+                    : "bg-white border-slate-200 text-slate-800 focus:border-blue-500"
+                }`}
+              />
+            </div>
           </div>
         </div>
 
@@ -268,7 +294,6 @@ export default function ViewClassesPage() {
                   (req: any) => req.classId?._id === cls._id && req.status === 'Approved'
                 );
 
-                // Student pagination calculations
                 const currentStudentPage = studentPages[cls._id] || 1;
                 const totalStudentPages = Math.ceil(enrolledStudents.length / studentsPerPage);
                 const startIndex = (currentStudentPage - 1) * studentsPerPage;
@@ -498,14 +523,13 @@ export default function ViewClassesPage() {
                       </div>
                     )}
 
-                    {/* Enrolled Students Section with Pagination (4 students max per page) */}
+                    {/* Enrolled Students Section */}
                     <div className={`pt-4 border-t ${darkMode ? "border-slate-800" : "border-slate-100"}`}>
                       <div className="flex items-center justify-between mb-3">
                         <h4 className={`text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 ${darkMode ? "text-slate-300" : "text-slate-700"}`}>
                           <Users size={14} className="text-blue-500" /> Enrolled Students ({enrolledStudents.length})
                         </h4>
 
-                        {/* Student Pagination Arrow Buttons */}
                         {totalStudentPages > 1 && (
                           <div className="flex items-center gap-1">
                             <button
@@ -516,7 +540,6 @@ export default function ViewClassesPage() {
                                   ? "opacity-30 cursor-not-allowed bg-slate-100 dark:bg-slate-800 text-slate-400" 
                                   : darkMode ? "bg-slate-800 hover:bg-slate-700 text-slate-200" : "bg-slate-100 hover:bg-slate-200 text-slate-700"
                               }`}
-                              title="Previous Students"
                             >
                               <ChevronLeft size={14} />
                             </button>
@@ -531,7 +554,6 @@ export default function ViewClassesPage() {
                                   ? "opacity-30 cursor-not-allowed bg-slate-100 dark:bg-slate-800 text-slate-400" 
                                   : darkMode ? "bg-slate-800 hover:bg-slate-700 text-slate-200" : "bg-slate-100 hover:bg-slate-200 text-slate-700"
                               }`}
-                              title="Next Students"
                             >
                               <ChevronRight size={14} />
                             </button>
@@ -581,7 +603,6 @@ export default function ViewClassesPage() {
                 );
               })}
 
-              {/* Pagination Controls for Classes */}
               {totalPages > 1 && (
                 <div className="flex items-center justify-center gap-3 pt-4">
                   <button
