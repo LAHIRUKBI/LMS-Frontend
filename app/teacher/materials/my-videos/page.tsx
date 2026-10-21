@@ -10,6 +10,26 @@ import PublishSuccessPopup from "@/app/components/PublishSuccessPopup";
 import DeleteConfirmPopup from "@/app/components/VideoDeleteConfirmPopup";
 import VideoUploadModal from "@/app/components/VideoUploadModal";
 
+// Helper Functions: To retrieve YouTube Video IDs, thumbnails, and links
+const getYouTubeVideoId = (url: string) => {
+  if (!url) return null;
+  const match = url.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))([\w-]{11})/);
+  return match ? match[1] : null;
+};
+
+const getVideoThumbnail = (video: any) => {
+  const ytId = video.youtubeVideoId || getYouTubeVideoId(video.fileUrl);
+  if (ytId) {
+    return `https://img.youtube.com/vi/${ytId}/hqdefault.jpg`;
+  }
+  return null;
+};
+
+const getVideoPlayUrl = (fileUrl: string) => {
+  if (!fileUrl) return "#";
+  return fileUrl.startsWith("http") ? fileUrl : `http://localhost:5000${fileUrl}`;
+};
+
 export default function MyVideosPage() {
   const [videos, setVideos] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -106,7 +126,7 @@ export default function MyVideosPage() {
       }, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      
+
       setVideos(videos.map(video => video._id === selectedVideoForPublish._id ? res.data.material : video));
       setPublishedItemName(selectedVideoForPublish.title);
       setPublishModalOpen(false);
@@ -136,14 +156,14 @@ export default function MyVideosPage() {
     try {
       const updatedClassIds = (video.classIds || []).map((c: any) => c._id || c).filter((id: string) => id !== classIdToRemove);
       const token = localStorage.getItem("token");
-      
+
       const res = await axios.put(`http://localhost:5000/api/materials/${video._id}/publish`, {
         classIds: updatedClassIds,
         isFree: video.isFree
       }, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      
+
       setVideos(videos.map(item => item._id === video._id ? res.data.material : item));
     } catch (err: any) {
       alert("Failed to remove class.");
@@ -163,7 +183,7 @@ export default function MyVideosPage() {
       const matchesSearch = 
         video.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
         video.subject.toLowerCase().includes(searchTerm.toLowerCase());
-        
+
       let matchesTab = true;
       if (activeTab === "published") matchesTab = video.isPublished;
       else if (activeTab === "approved") matchesTab = video.status === "approved" && !video.isPublished;
@@ -190,7 +210,7 @@ export default function MyVideosPage() {
 
   return (
     <div className={`p-4 sm:p-6 min-h-screen transition-colors duration-300 font-sans w-full overflow-x-hidden ${darkMode ? "bg-slate-950" : "bg-slate-50/80"}`}>
-      
+
       <PublishSuccessPopup 
         isOpen={isPublishPopupOpen} 
         onClose={() => setIsPublishPopupOpen(false)} 
@@ -255,7 +275,7 @@ export default function MyVideosPage() {
                   const isSelected = selectedClassIds.includes(cls._id);
                   return (
                     <div 
-                      key={cls._id}
+                      key={cls._id} 
                       onClick={() => toggleClassSelection(cls._id)}
                       className={`p-3 rounded-xl border cursor-pointer flex items-center justify-between transition-all ${
                         isSelected 
@@ -266,7 +286,7 @@ export default function MyVideosPage() {
                       <div>
                         <div className="flex items-center gap-1.5">
                           <span className="font-bold text-xs">{cls.grade}</span>
-                          <span className="text-[10px] opacity-70">({cls.medium} - {cls.mode})</span>
+                          <span className="text-[10px] opacity-70">({cls.medium} {cls.mode})</span>
                         </div>
                         <p className="text-[10px] opacity-60 mt-0.5">{cls.day} | {cls.startTime} - {cls.endTime}</p>
                       </div>
@@ -296,7 +316,7 @@ export default function MyVideosPage() {
       )}
 
       <div className="w-full max-w-6xl mx-auto px-2 sm:px-0">
-        <div className="mb-5 flex flex-col gap-4">
+        <div className="mb-6 flex flex-col gap-4">
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-3 min-w-0">
               <div className={`flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-2xl shadow-sm shrink-0 ${darkMode ? "bg-indigo-500/10 text-indigo-400 border border-indigo-500/20" : "bg-white text-indigo-600 border border-indigo-100"}`}>
@@ -343,9 +363,8 @@ export default function MyVideosPage() {
           </div>
         </div>
 
-        {/* Responsive Filter Options (Grid for Mobile & Scrollable Tabs for Desktop) */}
+        {/* Responsive Filter Options */}
         <div className="mb-5">
-          {/* Mobile View: Grid Layout (පේළියකට 2 බැගින් තිරය ඇතුළටම ලස්සනට පෙන්වයි) */}
           <div className="grid grid-cols-2 gap-2 sm:hidden">
             {tabs.map((tab) => (
               <button
@@ -362,7 +381,6 @@ export default function MyVideosPage() {
             ))}
           </div>
 
-          {/* Desktop/Tablet View: Horizontal Scrollable Tabs */}
           <div className="hidden sm:flex overflow-x-auto gap-1.5 pb-2 scrollbar-none">
             {tabs.map((tab) => (
               <button
@@ -394,151 +412,161 @@ export default function MyVideosPage() {
         ) : (
           <>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              {paginatedVideos.map((video) => (
-                <div 
-                  key={video._id} 
-                  className={`group flex flex-col overflow-hidden rounded-2xl border transition-all hover:shadow-xl ${
-                    darkMode ? "bg-slate-900/80 border-slate-800" : "bg-white border-slate-200 shadow-sm"
-                  }`}
-                >
-                  
-                  <a 
-                    href={`http://localhost:5000${video.fileUrl}`} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className={`relative w-full aspect-video overflow-hidden group/thumb cursor-pointer block ${
-                      darkMode ? "bg-black border-b border-slate-800" : "bg-slate-100 border-b border-slate-200"
+              {paginatedVideos.map((video) => {
+                const thumbnail = getVideoThumbnail(video);
+                const playUrl = getVideoPlayUrl(video.fileUrl);
+
+                return (
+                  <div 
+                    key={video._id} 
+                    className={`group flex flex-col overflow-hidden rounded-2xl border transition-all hover:shadow-xl ${
+                      darkMode ? "bg-slate-900/80 border-slate-800" : "bg-white border-slate-200 shadow-sm"
                     }`}
                   >
-                    <video 
-                      src={`http://localhost:5000${video.fileUrl}#t=0.1`} 
-                      className="w-full h-full object-cover transition-transform duration-500 group-hover/thumb:scale-105"
-                      preload="metadata"
-                      muted
-                      playsInline
-                    />
-                    
-                    <div className="absolute inset-0 bg-black/20 group-hover/thumb:bg-black/40 flex items-center justify-center transition-colors">
-                      <div className="w-10 h-10 flex items-center justify-center rounded-full bg-white/20 backdrop-blur-sm border border-white/30 group-hover/thumb:bg-indigo-600 transition-all shadow-md">
-                        <PlayCircle size={20} className="text-white ml-0.5" />
-                      </div>
-                    </div>
 
-                    <div className="absolute top-2 right-2 flex flex-col gap-1 items-end">
-                      <div className="bg-black/70 backdrop-blur-md text-white text-[9px] px-1.5 py-0.5 rounded font-bold tracking-widest shadow-sm">
-                        MP4
-                      </div>
-                      {video.status === 'pending' && <span className="bg-amber-500/90 text-white text-[8px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wider">Pending</span>}
-                      {video.status === 'approved' && !video.isPublished && <span className="bg-emerald-500/90 text-white text-[8px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wider">Approved</span>}
-                      {video.status === 'rejected' && <span className="bg-red-500/90 text-white text-[8px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wider">Rejected</span>}
-                      {video.isPublished && <span className="bg-blue-600/90 text-white text-[8px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wider flex items-center gap-0.5"><Globe size={8} /> Published</span>}
-                      {video.isFree && <span className="bg-emerald-600/90 text-white text-[8px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wider flex items-center gap-0.5"><Gift size={8} /> Free</span>}
-                    </div>
-                  </a>
-                  
-                  <div className="flex-1 p-3.5 flex flex-col">
-                    <h3 className={`font-bold text-xs sm:text-sm line-clamp-2 mb-2 ${darkMode ? "text-slate-100" : "text-slate-800"}`} title={video.title}>
-                      {video.title}
-                    </h3>
-                    
-                    <div className={`mt-auto flex flex-col gap-1 text-[11px] font-semibold ${darkMode ? "text-slate-400" : "text-slate-500"}`}>
-                      <div className="flex items-center gap-1.5 truncate">
-                        <BookOpen size={13} className="shrink-0" /> 
-                        <span className="truncate">{video.subject} {video.grade && `• ${video.grade}`}</span>
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        <Calendar size={13} className="shrink-0" /> 
-                        <span>{new Date(video.createdAt).toLocaleDateString()}</span>
-                      </div>
-                    </div>
+                    <a 
+                      href={playUrl} 
+                      target="_blank" 
+                      rel="noopener noreferrer" 
+                      className={`relative w-full aspect-video overflow-hidden group/thumb cursor-pointer block ${
+                        darkMode ? "bg-black border-b border-slate-800" : "bg-slate-100 border-b border-slate-200"
+                      }`}
+                    >
+                      {thumbnail ? (
+                        <img 
+                          src={thumbnail} 
+                          alt={video.title} 
+                          className="w-full h-full object-cover transition-transform duration-500 group-hover/thumb:scale-105"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex flex-col items-center justify-center text-slate-500">
+                          <Film size={28} />
+                          <span className="text-[9px] font-bold mt-1 uppercase">Video</span>
+                        </div>
+                      )}
 
-                    {video.isPublished && ((video.classIds && video.classIds.length > 0) || video.isFree) && (
-                      <div className={`mt-2.5 pt-2.5 border-t flex flex-wrap gap-1 ${darkMode ? "border-slate-800" : "border-slate-100"}`}>
-                        <span className="text-[9px] font-bold text-slate-400 uppercase w-full">Published to:</span>
-                        
-                        {video.isFree && (
-                          <span className="text-[9px] px-1.5 py-0.5 rounded font-bold border flex items-center gap-1 bg-emerald-500/10 border-emerald-500/30 text-emerald-400">
-                            <Gift size={9} /> Free Page
-                            <button 
-                              onClick={async () => {
-                                const token = localStorage.getItem("token");
-                                const res = await axios.put(`http://localhost:5000/api/materials/${video._id}/publish`, {
-                                  classIds: video.classIds.map((c: any) => c._id || c),
-                                  isFree: false
-                                }, { headers: { Authorization: `Bearer ${token}` } });
-                                setVideos(videos.map(item => item._id === video._id ? res.data.material : item));
-                              }}
-                              className="hover:bg-emerald-500/20 rounded p-0.5 ml-0.5"
-                              title="Remove from Free"
-                            >
-                              <X size={9} />
-                            </button>
-                          </span>
-                        )}
+                      <div className="absolute inset-0 bg-black/20 group-hover/thumb:bg-black/40 flex items-center justify-center transition-colors">
+                        <div className="w-10 h-10 flex items-center justify-center rounded-full bg-white/20 backdrop-blur-sm border border-white/30 group-hover/thumb:bg-indigo-600 transition-all shadow-md">
+                          <PlayCircle size={20} className="text-white ml-0.5" />
+                        </div>
+                      </div>
 
-                        {video.classIds && video.classIds.map((cls: any) => {
-                          const classId = cls._id || cls;
-                          const displayTitle = cls.grade ? `${cls.grade} - ${cls.medium}` : "Class";
-                          return (
-                            <span key={classId} className={`text-[9px] px-1.5 py-0.5 rounded font-bold border flex items-center gap-1 ${darkMode ? "bg-slate-800 border-slate-700 text-indigo-400" : "bg-indigo-50 border-indigo-200 text-indigo-700"}`}>
-                              {displayTitle}
+                      <div className="absolute top-2 right-2 flex flex-col gap-1 items-end">
+                        <div className="bg-red-600/90 backdrop-blur-md text-white text-[9px] px-1.5 py-0.5 rounded font-bold tracking-widest shadow-sm">
+                          YOUTUBE
+                        </div>
+                        {video.status === 'pending' && <span className="bg-amber-500/90 text-white text-[8px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wider">Pending</span>}
+                        {video.status === 'approved' && !video.isPublished && <span className="bg-emerald-500/90 text-white text-[8px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wider">Approved</span>}
+                        {video.status === 'rejected' && <span className="bg-red-500/90 text-white text-[8px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wider">Rejected</span>}
+                        {video.isPublished && <span className="bg-blue-600/90 text-white text-[8px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wider flex items-center gap-0.5"><Globe size={8} /> Published</span>}
+                        {video.isFree && <span className="bg-emerald-600/90 text-white text-[8px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wider flex items-center gap-0.5"><Gift size={8} /> Free</span>}
+                      </div>
+                    </a>
+
+                    <div className="flex-1 p-3.5 flex flex-col">
+                      <h3 className={`font-bold text-xs sm:text-sm line-clamp-2 mb-2 ${darkMode ? "text-slate-100" : "text-slate-800"}`} title={video.title}>
+                        {video.title}
+                      </h3>
+
+                      <div className={`mt-auto flex flex-col gap-1 text-[11px] font-semibold ${darkMode ? "text-slate-400" : "text-slate-500"}`}>
+                        <div className="flex items-center gap-1.5 truncate">
+                          <BookOpen size={13} className="shrink-0" /> 
+                          <span className="truncate">{video.subject} {video.grade && `• ${video.grade}`}</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <Calendar size={13} className="shrink-0" /> 
+                          <span>{new Date(video.createdAt).toLocaleDateString()}</span>
+                        </div>
+                      </div>
+
+                      {video.isPublished && ((video.classIds && video.classIds.length > 0) || video.isFree) && (
+                        <div className={`mt-2.5 pt-2.5 border-t flex flex-wrap gap-1 ${darkMode ? "border-slate-800" : "border-slate-100"}`}>
+                          <span className="text-[9px] font-bold text-slate-400 uppercase w-full">Published to:</span>
+
+                          {video.isFree && (
+                            <span className="text-[9px] px-1.5 py-0.5 rounded font-bold border flex items-center gap-1 bg-emerald-500/10 border-emerald-500/30 text-emerald-400">
+                              <Gift size={9} /> Free Page
                               <button 
-                                onClick={() => handleRemoveSingleClass(video, classId)}
-                                className="hover:bg-indigo-500/20 rounded p-0.5 ml-0.5"
-                                title="Remove from this class"
+                                onClick={async () => {
+                                  const token = localStorage.getItem("token");
+                                  const res = await axios.put(`http://localhost:5000/api/materials/${video._id}/publish`, {
+                                    classIds: video.classIds.map((c: any) => c._id || c),
+                                    isFree: false
+                                  }, { headers: { Authorization: `Bearer ${token}` } });
+                                  setVideos(videos.map(item => item._id === video._id ? res.data.material : item));
+                                }}
+                                className="hover:bg-emerald-500/20 rounded p-0.5 ml-0.5"
+                                title="Remove from Free"
                               >
                                 <X size={9} />
                               </button>
                             </span>
-                          );
-                        })}
-                      </div>
-                    )}
-
-                    {video.status === 'rejected' && video.rejectReason && (
-                      <div className="mt-2.5 flex items-start gap-1 text-[10px] font-medium text-red-500 bg-red-500/10 px-2 py-1.5 rounded-xl border border-red-500/20">
-                        <AlertCircle size={12} className="mt-0.5 flex-shrink-0" />
-                        <span className="line-clamp-2"><strong className="font-bold">Reason:</strong> {video.rejectReason}</span>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className={`p-3 border-t flex items-center justify-between gap-2 ${darkMode ? "border-slate-800 bg-slate-900/50" : "border-slate-100 bg-slate-50/50"}`}>
-                    <div className="flex-1 flex gap-1.5">
-                      {video.status === 'approved' && (
-                        <>
-                          <button 
-                            onClick={() => openPublishModal(video)}
-                            className="flex items-center justify-center flex-1 gap-1 py-1.5 rounded-xl font-bold text-xs bg-blue-600 hover:bg-blue-500 text-white shadow-sm"
-                          >
-                            <Globe size={12} /> {video.isPublished ? "Edit" : "Publish"}
-                          </button>
-
-                          {video.isPublished && (
-                            <button 
-                              onClick={() => handleUnpublish(video._id)}
-                              className="flex items-center justify-center px-2.5 py-1.5 rounded-xl font-bold text-[11px] bg-rose-600/10 hover:bg-rose-600 text-rose-500 hover:text-white transition-all border border-rose-500/20"
-                              title="Unpublish All"
-                            >
-                              Unpublish
-                            </button>
                           )}
-                        </>
+
+                          {video.classIds && video.classIds.map((cls: any) => {
+                            const classId = cls._id || cls;
+                            const displayTitle = cls.grade ? `${cls.grade} ${cls.medium}` : "Class";
+                            return (
+                              <span key={classId} className={`text-[9px] px-1.5 py-0.5 rounded font-bold border flex items-center gap-1 ${darkMode ? "bg-slate-800 border-slate-700 text-indigo-400" : "bg-indigo-50 border-indigo-200 text-indigo-700"}`}>
+                                {displayTitle}
+                                <button 
+                                  onClick={() => handleRemoveSingleClass(video, classId)}
+                                  className="hover:bg-indigo-500/20 rounded p-0.5 ml-0.5"
+                                  title="Remove from this class"
+                                >
+                                  <X size={9} />
+                                </button>
+                              </span>
+                            );
+                          })}
+                        </div>
+                      )}
+
+                      {video.status === 'rejected' && video.rejectReason && (
+                        <div className="mt-2.5 flex items-start gap-1 text-[10px] font-medium text-red-500 bg-red-500/10 px-2 py-1.5 rounded-xl border border-red-500/20">
+                          <AlertCircle size={12} className="mt-0.5 flex-shrink-0" />
+                          <span className="line-clamp-2"><strong className="font-bold">Reason:</strong> {video.rejectReason}</span>
+                        </div>
                       )}
                     </div>
 
-                    <div className="flex items-center gap-1">
-                      <a href={`http://localhost:5000${video.fileUrl}`} target="_blank" rel="noopener noreferrer" className="p-2 rounded-xl hover:bg-slate-700/20 text-slate-400" title="Open in new tab">
-                        <ExternalLink size={15} />
-                      </a>
-                      <button onClick={() => setDeleteItem(video)} className="p-2 rounded-xl hover:bg-red-500/10 text-slate-400 hover:text-red-400" title="Delete Video">
-                        <Trash2 size={15} />
-                      </button>
-                    </div>
-                  </div>
+                    <div className={`p-3 border-t flex items-center justify-between gap-2 ${darkMode ? "border-slate-800 bg-slate-900/50" : "border-slate-100 bg-slate-50/50"}`}>
+                      <div className="flex-1 flex gap-1.5">
+                        {video.status === 'approved' && (
+                          <>
+                            <button 
+                              onClick={() => openPublishModal(video)}
+                              className="flex items-center justify-center flex-1 gap-1 py-1.5 rounded-xl font-bold text-xs bg-blue-600 hover:bg-blue-500 text-white shadow-sm"
+                            >
+                              <Globe size={12} /> {video.isPublished ? "Edit" : "Publish"}
+                            </button>
 
-                </div>
-              ))}
+                            {video.isPublished && (
+                              <button 
+                                onClick={() => handleUnpublish(video._id)}
+                                className="flex items-center justify-center px-2.5 py-1.5 rounded-xl font-bold text-[11px] bg-rose-600/10 hover:bg-rose-600 text-rose-500 hover:text-white transition-all border border-rose-500/20"
+                                title="Unpublish All"
+                              >
+                                Unpublish
+                              </button>
+                            )}
+                          </>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-1">
+                        <a href={playUrl} target="_blank" rel="noopener noreferrer" className="p-2 rounded-xl hover:bg-slate-700/20 text-slate-400" title="Open in YouTube">
+                          <ExternalLink size={15} />
+                        </a>
+                        <button onClick={() => setDeleteItem(video)} className="p-2 rounded-xl hover:bg-red-500/10 text-slate-400 hover:text-red-400" title="Delete Video">
+                          <Trash2 size={15} />
+                        </button>
+                      </div>
+                    </div>
+
+                  </div>
+                );
+              })}
             </div>
 
             {totalPages > 1 && (
@@ -546,7 +574,7 @@ export default function MyVideosPage() {
                 <span className={`text-xs font-medium text-center sm:text-left ${darkMode ? "text-slate-400" : "text-slate-500"}`}>
                   Showing page <span className="font-bold">{currentPage}</span> of <span className="font-bold">{totalPages}</span> ({filteredVideos.length} total videos)
                 </span>
-                
+
                 <div className="flex items-center gap-2 w-full sm:w-auto justify-center">
                   <button
                     onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}

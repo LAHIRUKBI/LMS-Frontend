@@ -1,7 +1,7 @@
 // src/app/components/VideoUploadModal.tsx
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState } from "react";
 import axios from "axios";
 import { useTheme } from "@/app/context/ThemeContext";
 import {
@@ -14,6 +14,8 @@ import {
   AlertCircle,
   Loader2,
   ChevronDown,
+  Link as LinkIcon,
+  PlaySquare
 } from "lucide-react";
 import UploadSuccessPopup from "@/app/components/VideoUploadSuccessPopup";
 
@@ -23,32 +25,37 @@ interface VideoUploadModalProps {
   onSuccess: () => void;
 }
 
+// Helper to extract the Video ID from a YouTube link
+const extractYouTubeId = (url: string) => {
+  if (!url) return null;
+  const regExp = /(?:youtube\.com\/(?:watch\?(?:.*&)?v=|embed\/|v\/|shorts\/|live\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
+  const match = url.trim().match(regExp);
+  return match ? match[1] : null;
+};
+
 export default function VideoUploadModal({ isOpen, onClose, onSuccess }: VideoUploadModalProps) {
   const { darkMode } = useTheme();
-  
+
   const [uploading, setUploading] = useState(false);
   const [showPopup, setShowPopup] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0); 
   const [isPopupUploading, setIsPopupUploading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
-  
+
   const [subjectCategory, setSubjectCategory] = useState("");
   const [gradeCategory, setGradeCategory] = useState("");
-  
+
   // Custom Dropdown States
   const [isSubjectOpen, setIsSubjectOpen] = useState(false);
   const [isCategoryOpen, setIsCategoryOpen] = useState(false);
   const [isSchoolGradeOpen, setIsSchoolGradeOpen] = useState(false);
   const [isUniSemesterOpen, setIsUniSemesterOpen] = useState(false);
 
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-
   const [formData, setFormData] = useState({
     title: "",
     subject: "",
     grade: "",
     description: "",
+    youtubeUrl: ""
   });
 
   if (!isOpen) return null;
@@ -57,67 +64,48 @@ export default function VideoUploadModal({ isOpen, onClose, onSuccess }: VideoUp
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0]) {
-      const file = e.target.files[0];
-      if (!file.type.startsWith("video/")) {
-        setErrorMessage("Please select a valid Video file (MP4, WebM, etc.).");
-        return;
-      }
-      setSelectedFile(file);
-      setErrorMessage("");
-    }
-  };
-
-  const removeFile = () => {
-    setSelectedFile(null);
-    if (fileInputRef.current) fileInputRef.current.value = "";
-  };
-
   const handleUpload = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage("");
 
-    if (!selectedFile) {
-      setErrorMessage("Please attach a Video file to upload.");
+    if (!formData.youtubeUrl.trim()) {
+      setErrorMessage("Please enter a valid YouTube video link.");
+      return;
+    }
+
+    const videoId = extractYouTubeId(formData.youtubeUrl);
+    if (!videoId) {
+      setErrorMessage("Please provide a valid YouTube link (e.g., https://www.youtube.com/watch?v=xxxx).");
       return;
     }
 
     setUploading(true);
     setShowPopup(true);
     setIsPopupUploading(true);
-    setUploadProgress(0); 
 
     const token = localStorage.getItem("token");
 
+    // Sending a JSON request to the backend instead of file uploads
     const uploadData = new FormData();
     uploadData.append("title", formData.title);
     uploadData.append("subject", formData.subject);
-    uploadData.append("grade", formData.grade); 
+    uploadData.append("grade", formData.grade);
     uploadData.append("description", formData.description);
     uploadData.append("type", "video");
-    uploadData.append("file", selectedFile);
+    uploadData.append("youtubeUrl", formData.youtubeUrl.trim());
 
     try {
       await axios.post("http://localhost:5000/api/materials/upload", uploadData, {
         headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "multipart/form-data",
-        },
-        onUploadProgress: (progressEvent) => {
-          if (progressEvent.total) {
-            const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
-            setUploadProgress(percentCompleted);
-          }
-        },
+          Authorization: `Bearer ${token}`
+        }
       });
 
       setTimeout(() => {
         setIsPopupUploading(false);
-        setFormData({ title: "", subject: "", grade: "", description: "" });
-        setSubjectCategory(""); 
-        setGradeCategory("");   
-        removeFile();
+        setFormData({ title: "", subject: "", grade: "", description: "", youtubeUrl: "" });
+        setSubjectCategory("");
+        setGradeCategory("");
         onSuccess();
       }, 500);
 
@@ -130,23 +118,24 @@ export default function VideoUploadModal({ isOpen, onClose, onSuccess }: VideoUp
     }
   };
 
-  const inputClass = `w-full rounded-xl border py-2.5 px-3.5 text-xs sm:text-sm outline-none focus:ring-2 pl-9 sm:pl-10 transition-colors ${
-    darkMode 
-      ? "border-slate-700 bg-slate-800 text-white focus:ring-indigo-500" 
+  const previewId = extractYouTubeId(formData.youtubeUrl);
+
+  const inputClass = `w-full rounded-xl border py-2.5 px-3.5 text-xs sm:text-sm outline-none focus:ring-2 pl-9 sm:pl-10 transition-colors ${darkMode
+      ? "border-slate-700 bg-slate-800 text-white focus:ring-indigo-500"
       : "border-slate-300 bg-white text-gray-900 focus:ring-indigo-500"
-  }`;
-  
+    }`;
+
   const labelClass = `block text-[10px] sm:text-[11px] font-bold uppercase tracking-wider mb-1.5 ${darkMode ? "text-slate-300" : "text-slate-700"}`;
 
   const subjectsList = [
-    "Mathematics", "Science", "Physics", "Chemistry", "Biology", 
+    "Mathematics", "Science", "Physics", "Chemistry", "Biology",
     "IT", "English", "Sinhala", "History", "Geography", "Commerce"
   ];
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-3 sm:p-4 overflow-y-auto">
       <div className={`w-full max-w-lg sm:max-w-2xl rounded-3xl shadow-2xl border p-4 sm:p-6 my-auto max-h-[90vh] overflow-y-auto scrollbar-thin ${darkMode ? "bg-slate-900 border-slate-800 text-white" : "bg-white border-slate-200 text-gray-900"}`}>
-        
+
         {/* Header */}
         <div className="flex items-center justify-between mb-4 pb-3 border-b dark:border-slate-800">
           <div className="flex items-center gap-3 min-w-0">
@@ -155,15 +144,15 @@ export default function VideoUploadModal({ isOpen, onClose, onSuccess }: VideoUp
             </div>
             <div className="min-w-0">
               <h2 className={`text-base sm:text-xl font-extrabold tracking-tight truncate ${darkMode ? "text-white" : "text-gray-900"}`}>
-                Upload Video Lesson
+                Add Video Lesson
               </h2>
               <p className={`mt-0.5 text-[11px] sm:text-sm font-medium truncate ${darkMode ? "text-slate-400" : "text-slate-500"}`}>
-                Add recorded lessons or tutorials for your students.
+                Add recorded YouTube lessons or tutorials for your students.
               </p>
             </div>
           </div>
-          <button 
-            onClick={onClose} 
+          <button
+            onClick={onClose}
             className={`p-2 rounded-xl transition-colors shrink-0 ${darkMode ? "text-slate-400 hover:bg-slate-800" : "text-slate-500 hover:bg-slate-100"}`}
           >
             <X size={20} />
@@ -193,44 +182,40 @@ export default function VideoUploadModal({ isOpen, onClose, onSuccess }: VideoUp
               <label className={labelClass}>Subject</label>
               <div className="relative">
                 <BookOpen size={16} className={`absolute left-3 top-1/2 -translate-y-1/2 ${darkMode ? "text-slate-500" : "text-slate-400"}`} />
-                <div 
+                <div
                   onClick={() => { setIsSubjectOpen(!isSubjectOpen); setIsCategoryOpen(false); setIsSchoolGradeOpen(false); setIsUniSemesterOpen(false); }}
-                  className={`w-full rounded-xl border py-2.5 px-3.5 pl-9 sm:pl-10 text-xs sm:text-sm cursor-pointer flex items-center justify-between transition-colors ${
-                    darkMode ? "border-slate-700 bg-slate-800 text-white" : "border-slate-300 bg-white text-gray-900"
-                  }`}
+                  className={`w-full rounded-xl border py-2.5 px-3.5 pl-9 sm:pl-10 text-xs sm:text-sm cursor-pointer flex items-center justify-between transition-colors ${darkMode ? "border-slate-700 bg-slate-800 text-white" : "border-slate-300 bg-white text-gray-900"
+                    }`}
                 >
                   <span className={!subjectCategory ? "opacity-50" : ""}>{subjectCategory || "Select Subject"}</span>
                   <ChevronDown size={14} className="opacity-60" />
                 </div>
 
                 {isSubjectOpen && (
-                  <div className={`absolute left-0 right-0 top-full mt-1 z-30 max-h-48 overflow-y-auto rounded-xl border shadow-xl p-1 ${
-                    darkMode ? "bg-slate-800 border-slate-700 text-white" : "bg-white border-slate-200 text-gray-900"
-                  }`}>
+                  <div className={`absolute left-0 right-0 top-full mt-1 z-30 max-h-48 overflow-y-auto rounded-xl border shadow-xl p-1 ${darkMode ? "bg-slate-800 border-slate-700 text-white" : "bg-white border-slate-200 text-gray-900"
+                    }`}>
                     {subjectsList.map((subj) => (
-                      <div 
+                      <div
                         key={subj}
                         onClick={() => {
                           setSubjectCategory(subj);
                           setFormData({ ...formData, subject: subj });
                           setIsSubjectOpen(false);
                         }}
-                        className={`px-3 py-2 text-xs rounded-lg cursor-pointer transition-colors ${
-                          darkMode ? "hover:bg-slate-700" : "hover:bg-slate-100"
-                        }`}
+                        className={`px-3 py-2 text-xs rounded-lg cursor-pointer transition-colors ${darkMode ? "hover:bg-slate-700" : "hover:bg-slate-100"
+                          }`}
                       >
                         {subj}
                       </div>
                     ))}
-                    <div 
+                    <div
                       onClick={() => {
                         setSubjectCategory("other");
                         setFormData({ ...formData, subject: "" });
                         setIsSubjectOpen(false);
                       }}
-                      className={`px-3 py-2 text-xs rounded-lg cursor-pointer font-bold text-indigo-500 ${
-                        darkMode ? "hover:bg-slate-700" : "hover:bg-slate-100"
-                      }`}
+                      className={`px-3 py-2 text-xs rounded-lg cursor-pointer font-bold text-indigo-500 ${darkMode ? "hover:bg-slate-700" : "hover:bg-slate-100"
+                        }`}
                     >
                       Other (Type Subject)
                     </div>
@@ -241,14 +226,14 @@ export default function VideoUploadModal({ isOpen, onClose, onSuccess }: VideoUp
               {subjectCategory === "other" && (
                 <div className="mt-2.5 relative">
                   <BookOpen size={16} className={`absolute left-3 top-1/2 -translate-y-1/2 ${darkMode ? "text-slate-500" : "text-slate-400"}`} />
-                  <input 
-                    type="text" 
-                    name="subject" 
-                    value={formData.subject} 
-                    onChange={handleChange} 
-                    required 
-                    placeholder="Type your subject" 
-                    className={inputClass} 
+                  <input
+                    type="text"
+                    name="subject"
+                    value={formData.subject}
+                    onChange={handleChange}
+                    required
+                    placeholder="Type your subject"
+                    className={inputClass}
                   />
                 </div>
               )}
@@ -257,16 +242,15 @@ export default function VideoUploadModal({ isOpen, onClose, onSuccess }: VideoUp
             {/* Grade / Batch */}
             <div className="md:col-span-2">
               <label className={labelClass}>Grade / Batch</label>
-              
+
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 sm:gap-4">
-                {/* Category Selector (Custom Dropdown) */}
+                {/* Category Selector */}
                 <div className="relative">
                   <GraduationCap size={16} className={`absolute left-3 top-1/2 -translate-y-1/2 ${darkMode ? "text-slate-500" : "text-slate-400"}`} />
-                  <div 
+                  <div
                     onClick={() => { setIsCategoryOpen(!isCategoryOpen); setIsSubjectOpen(false); setIsSchoolGradeOpen(false); setIsUniSemesterOpen(false); }}
-                    className={`w-full rounded-xl border py-2.5 px-3.5 pl-9 sm:pl-10 text-xs sm:text-sm cursor-pointer flex items-center justify-between transition-colors ${
-                      darkMode ? "border-slate-700 bg-slate-800 text-white" : "border-slate-300 bg-white text-gray-900"
-                    }`}
+                    className={`w-full rounded-xl border py-2.5 px-3.5 pl-9 sm:pl-10 text-xs sm:text-sm cursor-pointer flex items-center justify-between transition-colors ${darkMode ? "border-slate-700 bg-slate-800 text-white" : "border-slate-300 bg-white text-gray-900"
+                      }`}
                   >
                     <span className={!gradeCategory ? "opacity-50" : ""}>
                       {gradeCategory === "school" ? "School (Grade 1 - 13)" : gradeCategory === "university" ? "University (Semesters)" : gradeCategory === "other" ? "Other" : "Select Category"}
@@ -275,22 +259,21 @@ export default function VideoUploadModal({ isOpen, onClose, onSuccess }: VideoUp
                   </div>
 
                   {isCategoryOpen && (
-                    <div className={`absolute left-0 right-0 top-full mt-1 z-30 rounded-xl border shadow-xl p-1 ${
-                      darkMode ? "bg-slate-800 border-slate-700 text-white" : "bg-white border-slate-200 text-gray-900"
-                    }`}>
-                      <div 
+                    <div className={`absolute left-0 right-0 top-full mt-1 z-30 rounded-xl border shadow-xl p-1 ${darkMode ? "bg-slate-800 border-slate-700 text-white" : "bg-white border-slate-200 text-gray-900"
+                      }`}>
+                      <div
                         onClick={() => { setGradeCategory("school"); setFormData({ ...formData, grade: "" }); setIsCategoryOpen(false); }}
                         className={`px-3 py-2 text-xs rounded-lg cursor-pointer ${darkMode ? "hover:bg-slate-700" : "hover:bg-slate-100"}`}
                       >
                         School (Grade 1 - 13)
                       </div>
-                      <div 
+                      <div
                         onClick={() => { setGradeCategory("university"); setFormData({ ...formData, grade: "" }); setIsCategoryOpen(false); }}
                         className={`px-3 py-2 text-xs rounded-lg cursor-pointer ${darkMode ? "hover:bg-slate-700" : "hover:bg-slate-100"}`}
                       >
                         University (Semesters)
                       </div>
-                      <div 
+                      <div
                         onClick={() => { setGradeCategory("other"); setFormData({ ...formData, grade: "" }); setIsCategoryOpen(false); }}
                         className={`px-3 py-2 text-xs rounded-lg cursor-pointer ${darkMode ? "hover:bg-slate-700" : "hover:bg-slate-100"}`}
                       >
@@ -303,23 +286,21 @@ export default function VideoUploadModal({ isOpen, onClose, onSuccess }: VideoUp
                 {/* School Grade Custom Dropdown */}
                 {gradeCategory === "school" && (
                   <div className="relative">
-                    <div 
+                    <div
                       onClick={() => setIsSchoolGradeOpen(!isSchoolGradeOpen)}
-                      className={`w-full rounded-xl border py-2.5 px-3.5 text-xs sm:text-sm cursor-pointer flex items-center justify-between transition-colors ${
-                        darkMode ? "border-slate-700 bg-slate-800 text-white" : "border-slate-300 bg-white text-gray-900"
-                      }`}
+                      className={`w-full rounded-xl border py-2.5 px-3.5 text-xs sm:text-sm cursor-pointer flex items-center justify-between transition-colors ${darkMode ? "border-slate-700 bg-slate-800 text-white" : "border-slate-300 bg-white text-gray-900"
+                        }`}
                     >
                       <span className={!formData.grade ? "opacity-50" : ""}>{formData.grade || "Select Grade"}</span>
                       <ChevronDown size={14} className="opacity-60" />
                     </div>
 
                     {isSchoolGradeOpen && (
-                      <div className={`absolute left-0 right-0 top-full mt-1 z-30 max-h-48 overflow-y-auto rounded-xl border shadow-xl p-1 ${
-                        darkMode ? "bg-slate-800 border-slate-700 text-white" : "bg-white border-slate-200 text-gray-900"
-                      }`}>
+                      <div className={`absolute left-0 right-0 top-full mt-1 z-30 max-h-48 overflow-y-auto rounded-xl border shadow-xl p-1 ${darkMode ? "bg-slate-800 border-slate-700 text-white" : "bg-white border-slate-200 text-gray-900"
+                        }`}>
                         {[...Array(13)].map((_, i) => (
-                          <div 
-                            key={`Grade ${i+1}`}
+                          <div
+                            key={`Grade ${i + 1}`}
                             onClick={() => {
                               setFormData({ ...formData, grade: `Grade ${i + 1}` });
                               setIsSchoolGradeOpen(false);
@@ -337,31 +318,29 @@ export default function VideoUploadModal({ isOpen, onClose, onSuccess }: VideoUp
                 {/* University Semester Custom Dropdown */}
                 {gradeCategory === "university" && (
                   <div className="relative">
-                    <div 
+                    <div
                       onClick={() => setIsUniSemesterOpen(!isUniSemesterOpen)}
-                      className={`w-full rounded-xl border py-2.5 px-3.5 text-xs sm:text-sm cursor-pointer flex items-center justify-between transition-colors ${
-                        darkMode ? "border-slate-700 bg-slate-800 text-white" : "border-slate-300 bg-white text-gray-900"
-                      }`}
+                      className={`w-full rounded-xl border py-2.5 px-3.5 text-xs sm:text-sm cursor-pointer flex items-center justify-between transition-colors ${darkMode ? "border-slate-700 bg-slate-800 text-white" : "border-slate-300 bg-white text-gray-900"
+                        }`}
                     >
                       <span className={!formData.grade ? "opacity-50" : ""}>{formData.grade || "Select Semester"}</span>
                       <ChevronDown size={14} className="opacity-60" />
                     </div>
 
                     {isUniSemesterOpen && (
-                      <div className={`absolute left-0 right-0 top-full mt-1 z-30 max-h-48 overflow-y-auto rounded-xl border shadow-xl p-1 ${
-                        darkMode ? "bg-slate-800 border-slate-700 text-white" : "bg-white border-slate-200 text-gray-900"
-                      }`}>
+                      <div className={`absolute left-0 right-0 top-full mt-1 z-30 max-h-48 overflow-y-auto rounded-xl border shadow-xl p-1 ${darkMode ? "bg-slate-800 border-slate-700 text-white" : "bg-white border-slate-200 text-gray-900"
+                        }`}>
                         {[...Array(4)].map((_, yearIndex) => (
-                          <div key={`Year ${yearIndex+1}`}>
-                            <div className="px-3 py-1 text-[10px] font-bold text-indigo-400 uppercase">Year {yearIndex+1}</div>
-                            <div 
-                              onClick={() => { setFormData({ ...formData, grade: `Year ${yearIndex+1} - Semester 1` }); setIsUniSemesterOpen(false); }}
+                          <div key={`Year ${yearIndex + 1}`}>
+                            <div className="px-3 py-1 text-[10px] font-bold text-indigo-400 uppercase">Year {yearIndex + 1}</div>
+                            <div
+                              onClick={() => { setFormData({ ...formData, grade: `Year ${yearIndex + 1} Semester 1` }); setIsUniSemesterOpen(false); }}
                               className={`px-4 py-1.5 text-xs rounded-lg cursor-pointer ${darkMode ? "hover:bg-slate-700" : "hover:bg-slate-100"}`}
                             >
                               Semester 1
                             </div>
-                            <div 
-                              onClick={() => { setFormData({ ...formData, grade: `Year ${yearIndex+1} - Semester 2` }); setIsUniSemesterOpen(false); }}
+                            <div
+                              onClick={() => { setFormData({ ...formData, grade: `Year ${yearIndex + 1} Semester 2` }); setIsUniSemesterOpen(false); }}
                               className={`px-4 py-1.5 text-xs rounded-lg cursor-pointer ${darkMode ? "hover:bg-slate-700" : "hover:bg-slate-100"}`}
                             >
                               Semester 2
@@ -375,14 +354,14 @@ export default function VideoUploadModal({ isOpen, onClose, onSuccess }: VideoUp
 
                 {gradeCategory === "other" && (
                   <div>
-                    <input 
-                      type="text" 
-                      name="grade" 
-                      value={formData.grade} 
-                      onChange={handleChange} 
-                      required 
-                      placeholder="Type Grade/Batch name" 
-                      className={`w-full rounded-xl border py-2.5 px-3.5 text-xs sm:text-sm outline-none focus:ring-2 transition-colors ${darkMode ? "border-slate-700 bg-slate-800 text-white focus:ring-indigo-500" : "border-slate-300 bg-white text-gray-900 focus:ring-indigo-500"}`} 
+                    <input
+                      type="text"
+                      name="grade"
+                      value={formData.grade}
+                      onChange={handleChange}
+                      required
+                      placeholder="Type Grade/Batch name"
+                      className={`w-full rounded-xl border py-2.5 px-3.5 text-xs sm:text-sm outline-none focus:ring-2 transition-colors ${darkMode ? "border-slate-700 bg-slate-800 text-white focus:ring-indigo-500" : "border-slate-300 bg-white text-gray-900 focus:ring-indigo-500"}`}
                     />
                   </div>
                 )}
@@ -390,66 +369,53 @@ export default function VideoUploadModal({ isOpen, onClose, onSuccess }: VideoUp
             </div>
           </div>
 
+          {/* YouTube Video URL Input Field */}
+          <div>
+            <label className={labelClass}>YouTube Video URL (Public or Unlisted)</label>
+            <div className="relative">
+              <LinkIcon size={16} className={`absolute left-3 top-1/2 -translate-y-1/2 ${darkMode ? "text-slate-500" : "text-slate-400"}`} />
+              <input
+                type="url"
+                name="youtubeUrl"
+                value={formData.youtubeUrl}
+                onChange={handleChange}
+                required
+                placeholder="https://www.youtube.com/watch?v=... හෝ https://youtu.be/..."
+                className={inputClass}
+              />
+            </div>
+            <p className="text-[10px] text-slate-400 mt-1">
+              Upload the video to YouTube and paste the link here (it is best to set the video to <b>Unlisted</b> on YouTube).
+            </p>
+
+            {/* Live Video Preview if URL is valid */}
+            {previewId && (
+              <div className="mt-3 rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-800 aspect-video relative max-w-sm mx-auto shadow-sm">
+                <img
+                  src={`https://img.youtube.com/vi/${previewId}/hqdefault.jpg`}
+                  alt="YouTube Preview"
+                  className="w-full h-full object-cover"
+                />
+                <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
+                  <PlaySquare size={36} className="text-red-500 drop-shadow" />
+                </div>
+              </div>
+            )}
+          </div>
+
           {/* Description */}
           <div>
             <label className={labelClass}>Short Description (Optional)</label>
             <div className="relative">
               <AlignLeft size={16} className={`absolute left-3 top-3 ${darkMode ? "text-slate-500" : "text-slate-400"}`} />
-              <textarea 
-                name="description" 
-                value={formData.description} 
-                onChange={handleChange} 
+              <textarea
+                name="description"
+                value={formData.description}
+                onChange={handleChange}
                 rows={3}
-                placeholder="Provide a brief overview of this video lesson..." 
+                placeholder="Provide a brief overview of this video lesson..."
                 className={`w-full rounded-xl border py-2.5 px-3.5 text-xs sm:text-sm outline-none focus:ring-2 pl-9 sm:pl-10 transition-colors ${darkMode ? "border-slate-700 bg-slate-800 text-white focus:ring-indigo-500" : "border-slate-300 bg-white text-gray-900 focus:ring-indigo-500"}`}
               ></textarea>
-            </div>
-          </div>
-
-          {/* Video File Upload Area */}
-          <div>
-            <label className={labelClass}>Upload Video File</label>
-            <div 
-              onClick={() => !selectedFile && fileInputRef.current?.click()}
-              className={`mt-1 border-2 border-dashed rounded-2xl p-4 sm:p-6 flex flex-col items-center justify-center transition-all ${
-                selectedFile 
-                  ? darkMode ? "border-indigo-500 bg-indigo-500/10" : "border-indigo-400 bg-indigo-50"
-                  : darkMode ? "border-slate-600 hover:border-indigo-500 cursor-pointer bg-slate-800/30" : "border-slate-300 hover:border-indigo-400 cursor-pointer bg-slate-50/50"
-              }`}
-            >
-              {selectedFile ? (
-                <div className="flex flex-col items-center text-center">
-                  <Video className="w-9 h-9 sm:w-10 sm:h-10 text-indigo-500 mb-2" />
-                  <p className={`text-xs sm:text-sm font-bold truncate max-w-[220px] sm:max-w-xs ${darkMode ? "text-white" : "text-gray-900"}`}>{selectedFile.name}</p>
-                  <p className={`text-[10px] sm:text-xs mt-0.5 ${darkMode ? "text-slate-400" : "text-slate-500"}`}>
-                    {(selectedFile.size / (1024 * 1024)).toFixed(2)} MB
-                  </p>
-                  <button 
-                    type="button" 
-                    onClick={(e) => { e.stopPropagation(); removeFile(); }}
-                    className="mt-2.5 flex items-center gap-1 text-[11px] sm:text-xs text-red-500 hover:text-red-600 bg-red-50 dark:bg-red-500/10 px-3 py-1.5 rounded-xl transition-colors font-bold"
-                  >
-                    <X size={14} /> Remove File
-                  </button>
-                </div>
-              ) : (
-                <>
-                  <UploadCloud className={`w-9 h-9 sm:w-10 sm:h-10 mb-2 ${darkMode ? "text-slate-400" : "text-gray-400"}`} />
-                  <p className={`text-xs sm:text-sm font-bold text-center ${darkMode ? "text-slate-300" : "text-gray-700"}`}>
-                    Click to browse or drag and drop
-                  </p>
-                  <p className={`text-[10px] sm:text-xs mt-1 text-center ${darkMode ? "text-slate-500" : "text-gray-500"}`}>
-                    Supported formats: MP4, WebM (Max 500MB)
-                  </p>
-                </>
-              )}
-              <input 
-                type="file" 
-                ref={fileInputRef} 
-                onChange={handleFileChange} 
-                accept="video/*" 
-                className="hidden" 
-              />
             </div>
           </div>
 
@@ -470,12 +436,12 @@ export default function VideoUploadModal({ isOpen, onClose, onSuccess }: VideoUp
               {uploading ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  Uploading...
+                  Saving Video...
                 </>
               ) : (
                 <>
                   <UploadCloud size={16} />
-                  Upload Video
+                  Save Video Lesson
                 </>
               )}
             </button>
@@ -483,14 +449,14 @@ export default function VideoUploadModal({ isOpen, onClose, onSuccess }: VideoUp
         </form>
       </div>
 
-      <UploadSuccessPopup 
-        isOpen={showPopup} 
+      <UploadSuccessPopup
+        isOpen={showPopup}
         onClose={() => {
           setShowPopup(false);
           onClose();
-        }} 
+        }}
         isUploading={isPopupUploading}
-        progress={uploadProgress}
+        progress={100}
         message="Your Video lesson has been successfully added to the system and is now pending admin approval."
       />
     </div>
