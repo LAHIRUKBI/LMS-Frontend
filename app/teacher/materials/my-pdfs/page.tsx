@@ -28,6 +28,19 @@ import PublishSuccessPopup from "@/app/components/PublishSuccessPopup";
 import DeleteConfirmPopup from "@/app/components/MeterialsDeleteConfirmPopup";
 import MaterialUploadModal from "@/app/components/MaterialUploadModal";
 
+// Helper Functions: For Correctly Retrieving Cloudinary URLs and Local URLs
+const getImageUrl = (imageSource: any) => {
+  if (!imageSource) return null;
+  const rawUrl = typeof imageSource === "object" ? imageSource.url : imageSource;
+  if (!rawUrl || typeof rawUrl !== "string") return null;
+  return rawUrl.startsWith("http") ? rawUrl : `http://localhost:5000${rawUrl}`;
+};
+
+const getPdfViewUrl = (fileUrl: string) => {
+  if (!fileUrl) return "#";
+  return fileUrl.startsWith("http") ? fileUrl : `http://localhost:5000${fileUrl}`;
+};
+
 export default function MyPDFsPage() {
   const [pdfs, setPdfs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -43,7 +56,7 @@ export default function MyPDFsPage() {
   // Upload Modal State
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
 
-  // Pagination State (4 items per page as requested)
+  // Pagination State (4 items per page)
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 4;
 
@@ -199,7 +212,7 @@ export default function MyPDFsPage() {
     });
   }, [pdfs, searchTerm, activeTab]);
 
-  // Pagination Logic (4 items per page)
+  // Pagination Logic
   const totalPages = Math.ceil(filteredPdfs.length / itemsPerPage);
   const paginatedPdfs = useMemo(() => {
     const start = (currentPage - 1) * itemsPerPage;
@@ -296,7 +309,7 @@ export default function MyPDFsPage() {
                       <div>
                         <div className="flex items-center gap-1.5">
                           <span className="font-bold text-xs">{cls.grade}</span>
-                          <span className="text-[10px] opacity-70">({cls.medium} - {cls.mode})</span>
+                          <span className="text-[10px] opacity-70">({cls.medium} {cls.mode})</span>
                         </div>
                         <p className="text-[10px] opacity-60 mt-0.5">{cls.day} | {cls.startTime} - {cls.endTime}</p>
                       </div>
@@ -375,9 +388,9 @@ export default function MyPDFsPage() {
           </div>
         </div>
 
-        {/* Responsive Filter Options (Grid for Mobile & Scrollable Tabs for Desktop) */}
+        {/* Filter Options */}
         <div className="mb-5">
-          {/* Mobile View: Grid Layout (පේළියකට 2 බැගින් තිරය ඇතුළටම ලස්සනට පෙන්වයි) */}
+          {/* Mobile View */}
           <div className="grid grid-cols-2 gap-2 sm:hidden">
             {tabs.map((tab) => (
               <button
@@ -394,7 +407,7 @@ export default function MyPDFsPage() {
             ))}
           </div>
 
-          {/* Desktop/Tablet View: Horizontal Scrollable Tabs */}
+          {/* Desktop View */}
           <div className="hidden sm:flex overflow-x-auto gap-1.5 pb-2 scrollbar-none">
             {tabs.map((tab) => (
               <button
@@ -426,135 +439,146 @@ export default function MyPDFsPage() {
         ) : (
           <>
             <div className="grid grid-cols-1 gap-3.5">
-              {paginatedPdfs.map((pdf) => (
-                <div 
-                  key={pdf._id} 
-                  className={`group flex flex-col gap-3 p-4 rounded-2xl border transition-all ${
-                    darkMode ? "bg-slate-900/80 border-slate-800" : "bg-white border-slate-200 shadow-sm"
-                  }`}
-                >
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <div className="flex items-start sm:items-center gap-3 flex-1 min-w-0">
-                      
-                      <div className={`relative w-12 h-16 sm:w-14 sm:h-18 rounded-xl overflow-hidden flex-shrink-0 border flex items-center justify-center ${darkMode ? "bg-slate-800 border-slate-700" : "bg-slate-100 border-slate-200"}`}>
-                        {pdf.coverImage || pdf.thumbnail ? (
-                          <img 
-                            src={pdf.coverImage ? (pdf.coverImage.startsWith('http') ? pdf.coverImage : `http://localhost:5000${pdf.coverImage}`) : (pdf.thumbnail.startsWith('http') ? pdf.thumbnail : `http://localhost:5000${pdf.thumbnail}`)} 
-                            alt={pdf.title} 
-                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                          />
-                        ) : (
-                          <div className="flex flex-col items-center justify-center text-orange-500">
-                            <FileText size={18} />
-                            <span className="text-[8px] font-bold mt-0.5 uppercase">PDF</span>
-                          </div>
-                        )}
-                      </div>
+              {paginatedPdfs.map((pdf) => {
+                const coverSrc = getImageUrl(pdf.coverImage) || getImageUrl(pdf.thumbnail);
 
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-1.5 mb-1.5 flex-wrap">
-                          <h3 className={`font-bold text-xs sm:text-sm truncate max-w-full ${darkMode ? "text-slate-200" : "text-slate-800"}`}>{pdf.title}</h3>
-                          {pdf.status === 'pending' && <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400">Pending</span>}
-                          {pdf.status === 'approved' && !pdf.isPublished && <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400">Ready to Publish</span>}
-                          {pdf.status === 'rejected' && <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-red-500/10 text-red-400">Rejected</span>}
-                          {pdf.isPublished && <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400 flex items-center gap-1"><Globe size={9} /> Published</span>}
-                          {pdf.isFree && <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 flex items-center gap-1"><Gift size={9} /> Free</span>}
-                        </div>
+                return (
+                  <div 
+                    key={pdf._id} 
+                    className={`group flex flex-col gap-3 p-4 rounded-2xl border transition-all ${
+                      darkMode ? "bg-slate-900/80 border-slate-800" : "bg-white border-slate-200 shadow-sm"
+                    }`}
+                  >
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div className="flex items-start sm:items-center gap-3 flex-1 min-w-0">
                         
-                        <div className={`flex items-center flex-wrap gap-x-2.5 gap-y-1 text-[11px] font-medium ${darkMode ? "text-slate-400" : "text-slate-500"}`}>
-                          <span className="flex items-center gap-1"><BookOpen size={11} className="shrink-0" /> {pdf.subject}</span>
-                          {pdf.grade && <span>• {pdf.grade}</span>}
-                          <span className="flex items-center gap-1">• <Calendar size={11} className="shrink-0" /> {new Date(pdf.createdAt).toLocaleDateString()}</span>
+                        {/* Thumbnail / Cover Image */}
+                        <div className={`relative w-12 h-16 sm:w-14 sm:h-18 rounded-xl overflow-hidden flex-shrink-0 border flex items-center justify-center ${darkMode ? "bg-slate-800 border-slate-700" : "bg-slate-100 border-slate-200"}`}>
+                          {coverSrc ? (
+                            <img 
+                              src={coverSrc} 
+                              alt={pdf.title} 
+                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                            />
+                          ) : (
+                            <div className="flex flex-col items-center justify-center text-orange-500">
+                              <FileText size={18} />
+                              <span className="text-[8px] font-bold mt-0.5 uppercase">PDF</span>
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-1.5 mb-1.5 flex-wrap">
+                            <h3 className={`font-bold text-xs sm:text-sm truncate max-w-full ${darkMode ? "text-slate-200" : "text-slate-800"}`}>{pdf.title}</h3>
+                            {pdf.status === 'pending' && <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-400">Pending</span>}
+                            {pdf.status === 'approved' && !pdf.isPublished && <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400">Ready to Publish</span>}
+                            {pdf.status === 'rejected' && <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-red-500/10 text-red-400">Rejected</span>}
+                            {pdf.isPublished && <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400 flex items-center gap-1"><Globe size={9} /> Published</span>}
+                            {pdf.isFree && <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 flex items-center gap-1"><Gift size={9} /> Free</span>}
+                          </div>
+                          
+                          <div className={`flex items-center flex-wrap gap-x-2.5 gap-y-1 text-[11px] font-medium ${darkMode ? "text-slate-400" : "text-slate-500"}`}>
+                            <span className="flex items-center gap-1"><BookOpen size={11} className="shrink-0" /> {pdf.subject}</span>
+                            {pdf.grade && <span>• {pdf.grade}</span>}
+                            <span className="flex items-center gap-1"><Calendar size={11} className="shrink-0" /> {new Date(pdf.createdAt).toLocaleDateString()}</span>
+                          </div>
                         </div>
                       </div>
-                    </div>
 
-                    <div className="flex items-center justify-end sm:justify-start gap-2 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100 dark:border-slate-800">
-                      {pdf.status === 'approved' && (
-                        <>
-                          <button 
-                            onClick={() => openPublishModal(pdf)}
-                            className="flex items-center gap-1 px-3 py-1.5 rounded-xl font-bold text-[11px] bg-orange-600 hover:bg-orange-700 text-white shadow-sm shadow-orange-600/20"
-                          >
-                            <Globe size={12} /> {pdf.isPublished ? "Edit" : "Publish"}
-                          </button>
-
-                          {pdf.isPublished && (
+                      {/* Action Buttons */}
+                      <div className="flex items-center justify-end sm:justify-start gap-2 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100 dark:border-slate-800">
+                        {pdf.status === 'approved' && (
+                          <>
                             <button 
-                              onClick={() => handleUnpublish(pdf._id)}
-                              className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl font-bold text-[11px] bg-rose-600/10 hover:bg-rose-600 text-rose-500 hover:text-white transition-all border border-rose-500/20"
-                              title="Unpublish Completely"
+                              onClick={() => openPublishModal(pdf)}
+                              className="flex items-center gap-1 px-3 py-1.5 rounded-xl font-bold text-[11px] bg-orange-600 hover:bg-orange-700 text-white shadow-sm shadow-orange-600/20"
                             >
-                              Unpublish
+                              <Globe size={12} /> {pdf.isPublished ? "Edit" : "Publish"}
                             </button>
-                          )}
-                        </>
-                      )}
 
-                      <a href={`http://localhost:5000${pdf.fileUrl}`} target="_blank" rel="noopener noreferrer" className="p-2 rounded-xl border border-slate-200 dark:border-slate-700 text-[11px] font-bold flex items-center gap-1 hover:bg-slate-500/10">
-                        <Eye size={13} /> View
-                      </a>
+                            {pdf.isPublished && (
+                              <button 
+                                onClick={() => handleUnpublish(pdf._id)}
+                                className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl font-bold text-[11px] bg-rose-600/10 hover:bg-rose-600 text-rose-500 hover:text-white transition-all border border-rose-500/20"
+                                title="Unpublish Completely"
+                              >
+                                Unpublish
+                              </button>
+                            )}
+                          </>
+                        )}
 
-                      <button onClick={() => setDeleteItem(pdf)} className="p-2 rounded-xl text-rose-500 hover:bg-rose-500/10">
-                        <Trash2 size={15} />
-                      </button>
-                    </div>
-                  </div>
+                        <a 
+                          href={getPdfViewUrl(pdf.fileUrl)} 
+                          target="_blank" 
+                          rel="noopener noreferrer" 
+                          className="p-2 rounded-xl border border-slate-200 dark:border-slate-700 text-[11px] font-bold flex items-center gap-1 hover:bg-slate-500/10"
+                        >
+                          <Eye size={13} /> View
+                        </a>
 
-                  {pdf.status === 'rejected' && (pdf.rejectReason || pdf.adminRejectReason || pdf.reason) && (
-                    <div className={`mt-1 p-2.5 rounded-xl border text-[11px] flex items-start gap-1.5 ${darkMode ? "bg-red-500/10 border-red-500/20 text-red-300" : "bg-red-50 border-red-200 text-red-700"}`}>
-                      <AlertCircle size={13} className="mt-0.5 flex-shrink-0" />
-                      <div>
-                        <span className="font-bold block mb-0.5">Rejection Reason:</span>
-                        <span>{pdf.rejectReason || pdf.adminRejectReason || pdf.reason}</span>
+                        <button onClick={() => setDeleteItem(pdf)} className="p-2 rounded-xl text-rose-500 hover:bg-rose-500/10">
+                          <Trash2 size={15} />
+                        </button>
                       </div>
                     </div>
-                  )}
 
-                  {pdf.isPublished && ((pdf.classIds && pdf.classIds.length > 0) || pdf.isFree) && (
-                    <div className={`mt-1 pt-2.5 border-t flex flex-wrap items-center gap-1.5 ${darkMode ? "border-slate-800" : "border-slate-100"}`}>
-                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mr-1">Published to:</span>
-                      
-                      {pdf.isFree && (
-                        <span className="text-[10px] px-2 py-0.5 rounded-lg font-bold border flex items-center gap-1 bg-emerald-500/10 border-emerald-500/30 text-emerald-400">
-                          <Gift size={10} /> Free Page
-                          <button 
-                            onClick={async () => {
-                              const token = localStorage.getItem("token");
-                              const res = await axios.put(`http://localhost:5000/api/materials/${pdf._id}/publish`, {
-                                classIds: pdf.classIds.map((c: any) => c._id || c),
-                                isFree: false
-                              }, { headers: { Authorization: `Bearer ${token}` } });
-                              setPdfs(pdfs.map(item => item._id === pdf._id ? res.data.material : item));
-                            }}
-                            className="hover:bg-emerald-500/20 rounded p-0.5 ml-0.5"
-                            title="Remove from Free"
-                          >
-                            <X size={10} />
-                          </button>
-                        </span>
-                      )}
+                    {pdf.status === 'rejected' && (pdf.rejectReason || pdf.adminRejectReason || pdf.reason) && (
+                      <div className={`mt-1 p-2.5 rounded-xl border text-[11px] flex items-start gap-1.5 ${darkMode ? "bg-red-500/10 border-red-500/20 text-red-300" : "bg-red-50 border-red-200 text-red-700"}`}>
+                        <AlertCircle size={13} className="mt-0.5 flex-shrink-0" />
+                        <div>
+                          <span className="font-bold block mb-0.5">Rejection Reason:</span>
+                          <span>{pdf.rejectReason || pdf.adminRejectReason || pdf.reason}</span>
+                        </div>
+                      </div>
+                    )}
 
-                      {pdf.classIds && pdf.classIds.map((cls: any) => {
-                        const classId = cls._id || cls;
-                        const displayTitle = cls.grade ? `${cls.grade} - ${cls.medium} (${cls.mode})` : "Class";
-                        return (
-                          <span key={classId} className={`text-[10px] px-2 py-0.5 rounded-lg font-bold border flex items-center gap-1 ${darkMode ? "bg-slate-800 border-slate-700 text-orange-400" : "bg-orange-50 border-orange-200 text-orange-700"}`}>
-                            {displayTitle}
+                    {pdf.isPublished && ((pdf.classIds && pdf.classIds.length > 0) || pdf.isFree) && (
+                      <div className={`mt-1 pt-2.5 border-t flex flex-wrap items-center gap-1.5 ${darkMode ? "border-slate-800" : "border-slate-100"}`}>
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mr-1">Published to:</span>
+                        
+                        {pdf.isFree && (
+                          <span className="text-[10px] px-2 py-0.5 rounded-lg font-bold border flex items-center gap-1 bg-emerald-500/10 border-emerald-500/30 text-emerald-400">
+                            <Gift size={10} /> Free Page
                             <button 
-                              onClick={() => handleRemoveSingleClass(pdf, classId)}
-                              className="hover:bg-orange-500/20 rounded p-0.5 ml-0.5"
-                              title="Remove from this class"
+                              onClick={async () => {
+                                const token = localStorage.getItem("token");
+                                const res = await axios.put(`http://localhost:5000/api/materials/${pdf._id}/publish`, {
+                                  classIds: pdf.classIds.map((c: any) => c._id || c),
+                                  isFree: false
+                                }, { headers: { Authorization: `Bearer ${token}` } });
+                                setPdfs(pdfs.map(item => item._id === pdf._id ? res.data.material : item));
+                              }}
+                              className="hover:bg-emerald-500/20 rounded p-0.5 ml-0.5"
+                              title="Remove from Free"
                             >
                               <X size={10} />
                             </button>
                           </span>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              ))}
+                        )}
+
+                        {pdf.classIds && pdf.classIds.map((cls: any) => {
+                          const classId = cls._id || cls;
+                          const displayTitle = cls.grade ? `${cls.grade} ${cls.medium} (${cls.mode})` : "Class";
+                          return (
+                            <span key={classId} className={`text-[10px] px-2 py-0.5 rounded-lg font-bold border flex items-center gap-1 ${darkMode ? "bg-slate-800 border-slate-700 text-orange-400" : "bg-orange-50 border-orange-200 text-orange-700"}`}>
+                              {displayTitle}
+                              <button 
+                                onClick={() => handleRemoveSingleClass(pdf, classId)}
+                                className="hover:bg-orange-500/20 rounded p-0.5 ml-0.5"
+                                title="Remove from this class"
+                              >
+                                <X size={10} />
+                              </button>
+                            </span>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
 
             {totalPages > 1 && (
