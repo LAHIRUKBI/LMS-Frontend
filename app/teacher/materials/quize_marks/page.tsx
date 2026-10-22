@@ -35,7 +35,7 @@ export default function TeacherQuizMarksPage() {
       const res = await axios.get("http://localhost:5000/api/quiz/my-quizzes", {
         headers: { Authorization: `Bearer ${token}` }
       });
-      
+
       setQuizzes(res.data);
       if (res.data.length > 0) {
         setSelectedQuiz(res.data[0]);
@@ -137,6 +137,18 @@ export default function TeacherQuizMarksPage() {
     return `http://localhost:5000${photoUrl}`;
   };
 
+  const getAnswerSheetUrl = (url: string) => {
+    if (!url) return "";
+    if (url.startsWith("http")) return url;
+    return `http://localhost:5000${url.startsWith('/') ? '' : '/'}${url}`;
+  };
+
+  const getPdfUrl = (url: string) => {
+    if (!url) return "";
+    if (url.startsWith("http")) return url;
+    return `http://localhost:5000${url.startsWith('/') ? '' : '/'}${url}`;
+  };
+
   const filteredSubmissions = submissions.filter((sub) => {
     const student = sub.studentId;
     if (!student) return false;
@@ -148,7 +160,7 @@ export default function TeacherQuizMarksPage() {
 
   return (
     <div className={`p-4 sm:p-6 lg:p-8 min-h-screen transition-colors duration-300 ${darkMode ? "bg-slate-950 text-white" : "bg-slate-50 text-slate-900"}`}>
-      
+
       {/* Delete Confirmation Modal */}
       {deleteModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-fadeIn">
@@ -180,7 +192,7 @@ export default function TeacherQuizMarksPage() {
       {modalOpen && selectedStudentSub && selectedQuiz && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 overflow-y-auto">
           <div className={`w-full max-w-4xl p-6 rounded-3xl shadow-2xl border max-h-[90vh] overflow-y-auto ${darkMode ? "bg-slate-900 border-slate-800 text-white" : "bg-white border-slate-200 text-slate-900"}`}>
-            
+
             <div className="flex justify-between items-center mb-4 border-b pb-3">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-full overflow-hidden bg-slate-200 flex items-center justify-center border">
@@ -213,9 +225,9 @@ export default function TeacherQuizMarksPage() {
                 <div className="space-y-2">
                   <div className="flex justify-between items-center">
                     <span className="text-xs font-bold text-slate-400">Generated Evaluation Report (PDF):</span>
-                    <a 
-                      href={`http://localhost:5000${selectedStudentSub.evaluatedPdfUrl}`} 
-                      target="_blank" 
+                    <a
+                      href={getPdfUrl(selectedStudentSub.evaluatedPdfUrl)}
+                      target="_blank"
                       rel="noopener noreferrer"
                       className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-sm"
                     >
@@ -223,8 +235,8 @@ export default function TeacherQuizMarksPage() {
                     </a>
                   </div>
                   <div className="w-full h-[500px] rounded-2xl overflow-hidden border bg-slate-950">
-                    <iframe 
-                      src={`http://localhost:5000${selectedStudentSub.evaluatedPdfUrl}`} 
+                    <iframe
+                      src={getPdfUrl(selectedStudentSub.evaluatedPdfUrl)}
                       className="w-full h-full"
                       title="Evaluated PDF Report"
                     />
@@ -238,8 +250,84 @@ export default function TeacherQuizMarksPage() {
               )}
             </div>
 
+            {/* Student's Written Answer Sheets per Question (Cloudinary Supported) */}
+            {(() => {
+              // 1. Converting a Map or Object into a Plain JavaScript Object
+              const rawSheets = selectedStudentSub.answerSheets;
+              const sheetsMap: { [key: string]: string[] } =
+                rawSheets instanceof Map
+                  ? Object.fromEntries(rawSheets)
+                  : (rawSheets && typeof rawSheets === 'object' ? rawSheets : {});
+
+              // 2. Checking whether there are answer sheets for any question
+              const allAnswerKeys = Object.keys(sheetsMap).filter(k => Array.isArray(sheetsMap[k]) && sheetsMap[k].length > 0);
+              const hasAnySheets = allAnswerKeys.length > 0;
+
+              if (!hasAnySheets) return null;
+
+              return (
+                <div className="space-y-4 pt-4 border-t border-slate-200 dark:border-slate-800">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                      <FileText size={16} className="text-indigo-500" /> Student's Written Answer Sheets (Uploaded Pages)
+                    </h4>
+                    <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400">
+                      {allAnswerKeys.reduce((total, key) => total + sheetsMap[key].length, 0)} Total Images
+                    </span>
+                  </div>
+
+                  <div className="space-y-4">
+                    {selectedQuiz.questions.map((q: any, qIdx: number) => {
+                      const qIdStr = q._id ? q._id.toString() : "";
+                      // පRetrieving sheets using the question ID or index
+                      const sheets: string[] = sheetsMap[qIdStr] || sheetsMap[String(qIdx)] || [];
+
+                      if (!sheets || sheets.length === 0) return null;
+
+                      return (
+                        <div key={qIdStr || qIdx} className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 space-y-3">
+                          <div className="flex justify-between items-center">
+                            <p className="font-bold text-xs text-slate-800 dark:text-slate-200">
+                              Question {qIdx + 1}: {q.questionText} <span className="opacity-60 font-normal">({q.type?.toUpperCase()})</span>
+                            </p>
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-indigo-500/10 text-indigo-400">
+                              {sheets.length} Page(s)
+                            </span>
+                          </div>
+
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                            {sheets.map((sheetUrl: string, imgIdx: number) => {
+                              const fullSheetUrl = getAnswerSheetUrl(sheetUrl);
+                              return (
+                                <a
+                                  key={imgIdx}
+                                  href={fullSheetUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="block relative rounded-xl overflow-hidden border border-slate-200 dark:border-slate-700 shadow-sm group aspect-[3/4] bg-slate-950"
+                                >
+                                  <img
+                                    src={fullSheetUrl}
+                                    alt={`Answer Sheet Q${qIdx + 1} Page ${imgIdx + 1}`}
+                                    className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
+                                  />
+                                  <span className="absolute bottom-1 right-1 bg-black/75 text-white text-[10px] px-2 py-0.5 rounded-md font-semibold">
+                                    Page {imgIdx + 1} 🔍
+                                  </span>
+                                </a>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })()}
+
             <div className="mt-6 flex justify-end">
-              <button 
+              <button
                 onClick={() => setModalOpen(false)}
                 className="px-6 py-2.5 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-bold shadow-md"
               >
@@ -252,7 +340,7 @@ export default function TeacherQuizMarksPage() {
 
       {/* Main Container */}
       <div className="max-w-6xl mx-auto space-y-8">
-        
+
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
             <h1 className="text-2xl font-extrabold tracking-tight">Student Quiz Marks & Submissions</h1>
@@ -274,7 +362,7 @@ export default function TeacherQuizMarksPage() {
           </div>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-            
+
             {/* Quiz Sidebar Selector */}
             <div className={`lg:col-span-1 p-4 rounded-3xl border space-y-3 ${darkMode ? "bg-slate-900 border-slate-800" : "bg-white border-slate-200 shadow-sm"}`}>
               <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 px-2">Select Quiz</h3>
@@ -285,11 +373,10 @@ export default function TeacherQuizMarksPage() {
                     <div
                       key={quiz._id}
                       onClick={() => handleQuizSelect(quiz)}
-                      className={`p-3.5 rounded-2xl border cursor-pointer transition-all ${
-                        isSelected 
-                          ? "bg-blue-600 border-blue-600 text-white shadow-md shadow-blue-600/20" 
+                      className={`p-3.5 rounded-2xl border cursor-pointer transition-all ${isSelected
+                          ? "bg-blue-600 border-blue-600 text-white shadow-md shadow-blue-600/20"
                           : (darkMode ? "bg-slate-800/50 border-slate-800 hover:bg-slate-800 text-slate-300" : "bg-slate-50 border-slate-200 hover:bg-slate-100 text-slate-700")
-                      }`}
+                        }`}
                     >
                       <h4 className="font-bold text-sm line-clamp-1">{quiz.title}</h4>
                       <div className="flex items-center gap-2 mt-1 text-[11px] opacity-80">
@@ -303,14 +390,14 @@ export default function TeacherQuizMarksPage() {
 
             {/* Submissions List Table */}
             <div className={`lg:col-span-3 p-6 rounded-3xl border space-y-6 ${darkMode ? "bg-slate-900 border-slate-800" : "bg-white border-slate-200 shadow-sm"}`}>
-              
+
               {selectedQuiz && (
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-4 border-b border-slate-200 dark:border-slate-800">
                   <div>
                     <h2 className="text-xl font-extrabold">{selectedQuiz.title}</h2>
                     <p className="text-xs text-slate-400 mt-0.5">{selectedQuiz.description || "No description provided."}</p>
                   </div>
-                  
+
                   <div className="flex items-center gap-3 w-full sm:w-auto">
                     <button
                       onClick={handleSendAllToStudents}
@@ -321,7 +408,7 @@ export default function TeacherQuizMarksPage() {
 
                     <div className="relative w-full sm:w-64">
                       <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                      <input 
+                      <input
                         type="text"
                         placeholder="Search student..."
                         value={searchTerm}
@@ -374,11 +461,10 @@ export default function TeacherQuizMarksPage() {
                             <td className="py-3.5 text-slate-400">{student.email}</td>
                             <td className="py-3.5 opacity-80">{sub.timeTaken || 'N/A'}</td>
                             <td className="py-3.5">
-                              <span className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase ${
-                                sub.isEvaluated 
-                                  ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" 
+                              <span className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase ${sub.isEvaluated
+                                  ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
                                   : "bg-amber-500/10 text-amber-400 border border-amber-500/20"
-                              }`}>
+                                }`}>
                                 {sub.isEvaluated ? "Evaluated" : "Pending"}
                               </span>
                             </td>
@@ -392,16 +478,15 @@ export default function TeacherQuizMarksPage() {
                               >
                                 <Eye size={12} /> Review Report
                               </button>
-                              
+
                               <button
                                 onClick={(e) => handleSendToStudent(sub._id, e)}
                                 disabled={sub.isSentToStudent}
                                 title="Send score and paper to student profile"
-                                className={`px-2.5 py-1.5 rounded-xl font-bold shadow-sm transition-all inline-flex items-center gap-1 text-[11px] ${
-                                  sub.isSentToStudent 
-                                    ? "bg-slate-500/20 text-slate-400 cursor-not-allowed" 
+                                className={`px-2.5 py-1.5 rounded-xl font-bold shadow-sm transition-all inline-flex items-center gap-1 text-[11px] ${sub.isSentToStudent
+                                    ? "bg-slate-500/20 text-slate-400 cursor-not-allowed"
                                     : "bg-emerald-600 hover:bg-emerald-700 text-white"
-                                }`}
+                                  }`}
                               >
                                 <Send size={12} /> {sub.isSentToStudent ? "Sent" : "Send to Student"}
                               </button>

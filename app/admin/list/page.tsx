@@ -45,8 +45,10 @@ export default function AdminListPage() {
     }
   }, []);
 
+  // A helper function compatible with both Cloudinary HTTPS URLs and local backend paths
   const formatImageUrl = (path: string) => {
     if (!path) return "";
+    if (path.startsWith("http")) return path;
     const cleanPath = path.replace(/\\/g, '/');
     return `http://localhost:5000/${cleanPath.startsWith('/') ? cleanPath.substring(1) : cleanPath}`;
   };
