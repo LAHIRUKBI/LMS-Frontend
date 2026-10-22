@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from "react";
 import axios from "axios";
-import { Trash2, User, Phone } from "lucide-react";
+import { Trash2, User, Phone, ShieldPlus } from "lucide-react";
 import DeleteConfirmationModal from "@/app/components/AdminDeleteConfirmationModal";
+import AdminRegisterModal from "@/app/components/AdminRegisterModal";
 import { useTheme } from "@/app/context/ThemeContext";
 
 interface AdminUser {
@@ -25,6 +26,7 @@ export default function AdminListPage() {
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedAdmin, setSelectedAdmin] = useState<{ id: string; name: string } | null>(null);
+  const [isAddAdminOpen, setIsAddAdminOpen] = useState(false);
 
   // To check if the logged-in user is a Super Admin
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
@@ -103,9 +105,19 @@ export default function AdminListPage() {
       <div className={`p-8 rounded-2xl shadow-sm border transition-colors duration-300 ${
         darkMode ? "bg-slate-900 border-slate-800 text-white" : "bg-white border-slate-200 text-slate-900"
       }`}>
-        <h2 className={`text-2xl font-bold mb-6 ${darkMode ? "text-white" : "text-slate-900"}`}>
-          Registered Admin List
-        </h2>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+          <h2 className={`text-2xl font-bold ${darkMode ? "text-white" : "text-slate-900"}`}>
+            Registered Admin List
+          </h2>
+
+          <button
+            onClick={() => setIsAddAdminOpen(true)}
+            className="flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-all duration-200 hover:bg-blue-700 active:scale-[0.98] shrink-0"
+          >
+            <ShieldPlus size={18} />
+            <span>Add Administrator</span>
+          </button>
+        </div>
 
         {error && <div className="p-4 mb-4 text-sm text-red-700 bg-red-100 dark:bg-red-500/10 dark:text-red-300 rounded-md">{error}</div>}
         {success && <div className="p-4 mb-4 text-sm text-green-700 bg-green-100 dark:bg-green-500/10 dark:text-green-300 rounded-md">{success}</div>}
@@ -194,6 +206,13 @@ export default function AdminListPage() {
           </div>
         )}
       </div>
+
+      {/* Add Administrator Modal */}
+      <AdminRegisterModal
+        isOpen={isAddAdminOpen}
+        onClose={() => setIsAddAdminOpen(false)}
+        onAdminAdded={fetchAdmins}
+      />
 
       <DeleteConfirmationModal
         isOpen={isModalOpen}

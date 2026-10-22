@@ -40,7 +40,7 @@ export default function TeacherQuizCreator() {
 
   const [currentType, setCurrentType] = useState<QuestionType>("mcq");
   const [currentText, setCurrentText] = useState("");
-  
+
   const [currentImageFile, setCurrentImageFile] = useState<File | null>(null);
   const [imagePreviewUrl, setImagePreviewUrl] = useState<string | null>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
@@ -64,7 +64,6 @@ export default function TeacherQuizCreator() {
   });
   const [showReviewModal, setShowReviewModal] = useState(false);
 
-  // Custom Dropdown Open States
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -211,7 +210,7 @@ export default function TeacherQuizCreator() {
     };
 
     setQuestions([...questions, newQuestion]);
-    
+
     setCurrentText("");
     setCurrentImageFile(null);
     setImagePreviewUrl(null);
@@ -274,7 +273,6 @@ export default function TeacherQuizCreator() {
     }
   };
 
-  // Helper labels mapping for duration and types
   const durationLabels: { [key: string]: string } = {
     "30": "30 Mins",
     "60": "1 Hour",
@@ -298,7 +296,6 @@ export default function TeacherQuizCreator() {
         darkMode ? "bg-slate-900 text-slate-100 border-slate-800" : "bg-white text-slate-900 border-slate-200"
       }`}
     >
-      
       {/* Custom Notification Modal */}
       {notification.show && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
@@ -397,8 +394,7 @@ export default function TeacherQuizCreator() {
             Design your quiz questions cleanly and submit them seamlessly for admin approval.
           </p>
         </div>
-        
-        {/* Quick Stats Badges */}
+
         <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto">
           <div className={`px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl flex items-center gap-2 text-xs font-semibold shadow-sm border ${
             darkMode ? "bg-slate-800/80 border-slate-700/60 text-slate-300" : "bg-slate-50 border-slate-200 text-slate-700"
@@ -459,7 +455,7 @@ export default function TeacherQuizCreator() {
           <h2 className={`font-bold text-sm sm:text-base ${darkMode ? "text-slate-200" : "text-slate-800"}`}>
             Step 1: Enter Basic Quiz Details
           </h2>
-          
+
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
             <div className="sm:col-span-2">
               <label className={`block text-xs font-bold uppercase tracking-wider mb-2 ${darkMode ? "text-slate-300" : "text-slate-600"}`}>Quiz Title</label>
@@ -473,8 +469,7 @@ export default function TeacherQuizCreator() {
                 }`}
               />
             </div>
-            
-            {/* Duration (Custom Responsive Dropdown) */}
+
             <div className="relative">
               <label className={`block text-xs font-bold uppercase tracking-wider mb-2 flex items-center gap-1.5 ${darkMode ? "text-slate-300" : "text-slate-600"}`}>
                 <Clock size={14} className="text-indigo-500 shrink-0" /> Duration
@@ -544,7 +539,6 @@ export default function TeacherQuizCreator() {
       {/* STEP 2: Add Questions & Review */}
       {step === 2 && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 sm:gap-8">
-          
           {/* Left Column: Form Inputs */}
           <div className={`lg:col-span-7 p-3 sm:p-6 rounded-2xl border shadow-sm backdrop-blur-md space-y-6 overflow-hidden box-border ${
             darkMode ? "bg-slate-800/40 border-slate-700" : "bg-slate-50 border-slate-200"
@@ -561,10 +555,9 @@ export default function TeacherQuizCreator() {
                 <ArrowLeft size={14} /> Edit Basic Details
               </button>
             </div>
-            
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              
-              {/* Question Type (Custom Responsive Dropdown) */}
+              {/* Question Type */}
               <div className="relative">
                 <label className={`block text-xs font-bold uppercase tracking-wider mb-1.5 ${darkMode ? "text-slate-300" : "text-slate-600"}`}>Question Type</label>
                 <div
@@ -820,7 +813,6 @@ export default function TeacherQuizCreator() {
               </div>
             )}
 
-            {/* Correct Answer input for Short Answer (Optional reference) */}
             {currentType === "short" && (
               <div>
                 <label className={`block text-xs font-bold uppercase tracking-wider mb-1.5 ${darkMode ? "text-slate-300" : "text-slate-600"}`}>
@@ -845,7 +837,7 @@ export default function TeacherQuizCreator() {
             </button>
           </div>
 
-          {/* Right Column: Added Questions List Preview & Submit Button */}
+          {/* Right Column: Added Questions List */}
           <div className={`lg:col-span-5 p-3 sm:p-6 rounded-2xl border shadow-sm flex flex-col justify-between backdrop-blur-md overflow-hidden box-border ${
             darkMode ? "bg-slate-800/40 border-slate-700" : "bg-slate-50 border-slate-200"
           }`}>
@@ -887,7 +879,7 @@ export default function TeacherQuizCreator() {
                           <p className={`font-bold text-sm leading-snug break-words ${darkMode ? "text-white" : "text-slate-800"}`}>
                             {index + 1}. {q.questionText}
                           </p>
-                          
+
                           {q.imageUrl && (
                             <span className="text-[11px] text-slate-500 font-semibold flex items-center gap-1 break-words">📷 Image attached: {q.imageUrl}</span>
                           )}

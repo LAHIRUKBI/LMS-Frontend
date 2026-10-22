@@ -17,9 +17,11 @@ import {
   User,
   ExternalLink,
   FileDown,
+  UserPlus,
 } from "lucide-react";
 import { useTheme } from "@/app/context/ThemeContext";
 import DeleteConfirmPopup from "@/app/components/TeacherDeleteConfirmPopup";
+import AddTeacherModal from "@/app/components/AddTeacherModal";
 
 interface Qualification {
   institution: string;
@@ -48,6 +50,13 @@ interface Teacher {
   qualifications?: Qualification[];
 }
 
+// Cloudinary URL හෝ Local Backend URL නිවැරදිව ලබා දෙන Helper ශ්‍රිතය
+const getTeacherPhotoUrl = (photo?: string) => {
+  if (!photo) return null;
+  if (photo.startsWith("http")) return photo;
+  return `http://localhost:5000/profile_photos/${photo}`;
+};
+
 export default function TeacherListPage() {
   const [teachers, setTeachers] = useState<Teacher[]>([]);
   const [search, setSearch] = useState("");
@@ -56,24 +65,26 @@ export default function TeacherListPage() {
   const [success, setSuccess] = useState("");
 
   const [teacherToDelete, setTeacherToDelete] = useState<Teacher | null>(null);
+  const [isAddTeacherOpen, setIsAddTeacherOpen] = useState(false);
 
   const { darkMode } = useTheme();
 
+  const fetchTeachers = async () => {
+    const token = localStorage.getItem("token");
+    try {
+      const res = await axios.get("http://localhost:5000/api/admin/teachers", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setTeachers(res.data);
+    } catch (err) {
+      console.error(err);
+      setError("An error occurred while fetching teacher data.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchTeachers = async () => {
-      const token = localStorage.getItem("token");
-      try {
-        const res = await axios.get("http://localhost:5000/api/admin/teachers", {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        setTeachers(res.data);
-      } catch (err) {
-        console.error(err);
-        setError("An error occurred while fetching teacher data.");
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchTeachers();
   }, []);
 
@@ -113,7 +124,7 @@ export default function TeacherListPage() {
       doc.setFontSize(20);
       doc.setFont("helvetica", "bold");
       doc.text("LMS Learning Management System", 14, 18);
-      
+
       doc.setFontSize(11);
       doc.setFont("helvetica", "normal");
       doc.text(`Teacher Complete Profile Report - ID: ${t.teacherId}`, 14, 27);
@@ -228,14 +239,16 @@ export default function TeacherListPage() {
     }
   };
 
-  // Profile Photo එක ක්ලික් කළ විට ඩවුන්ලෝඩ් කරගැනීමේ ෆන්ෂන් එක
-  const downloadProfilePhoto = async (photoFilename: string, teacherName: string) => {
+  // Profile Photo එක ක්ලික් කළ විට ඩවුන්ලෝඩ් කරගැනීමේ ෆන්ෂන් එක (Cloudinary & Local Safe)
+  const downloadProfilePhoto = async (photoPath: string, teacherName: string) => {
     try {
-      const imageUrl = `http://localhost:5000/profile_photos/${photoFilename}`;
+      const imageUrl = getTeacherPhotoUrl(photoPath);
+      if (!imageUrl) return;
+
       const response = await fetch(imageUrl);
       const blob = await response.blob();
       const blobUrl = window.URL.createObjectURL(blob);
-      
+
       const link = document.createElement("a");
       link.href = blobUrl;
       link.download = `${teacherName.replace(/\s+/g, '_')}_Profile_Photo.jpg`;
@@ -245,6 +258,8 @@ export default function TeacherListPage() {
       window.URL.revokeObjectURL(blobUrl);
     } catch (err) {
       console.error("Photo download error:", err);
+      const fallbackUrl = getTeacherPhotoUrl(photoPath);
+      if (fallbackUrl) window.open(fallbackUrl, "_blank");
     }
   };
 
@@ -264,6 +279,15 @@ export default function TeacherListPage() {
         darkMode ? "bg-slate-900" : "bg-slate-50"
       }`}
     >
+      {/* Add Teacher Modal Popup */}
+      <AddTeacherModal
+        isOpen={isAddTeacherOpen}
+        onClose={() => setIsAddTeacherOpen(false)}
+        onTeacherAdded={() => {
+          fetchTeachers();
+        }}
+      />
+
       {/* Delete Confirmation Popup */}
       {teacherToDelete && (
         <DeleteConfirmPopup
@@ -301,24 +325,36 @@ export default function TeacherListPage() {
               </p>
             </div>
           </div>
-          <div className="relative w-full sm:w-72">
-            <Search
-              size={18}
-              className={`absolute left-3 top-1/2 -translate-y-1/2 ${
-                darkMode ? "text-slate-500" : "text-slate-400"
-              }`}
-            />
-            <input
-              type="text"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search..."
-              className={`w-full rounded-lg border py-2.5 pl-10 pr-4 text-sm font-medium outline-none transition-all duration-200 focus:ring-2 ${
-                darkMode
-                  ? "border-slate-600 bg-slate-800 text-white placeholder-slate-500 focus:border-blue-500 focus:ring-blue-500/40"
-                  : "border-slate-300 bg-white text-slate-900 placeholder-slate-400 focus:border-blue-500 focus:ring-blue-500/30"
-              }`}
-            />
+
+          {/* Action Buttons: Add Teacher & Search Bar */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
+            <button
+              onClick={() => setIsAddTeacherOpen(true)}
+              className="flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-all duration-200 hover:bg-blue-700 active:scale-[0.98] shrink-0"
+            >
+              <UserPlus size={18} />
+              <span>Add Teacher</span>
+            </button>
+
+            <div className="relative w-full sm:w-72">
+              <Search
+                size={18}
+                className={`absolute left-3 top-1/2 -translate-y-1/2 ${
+                  darkMode ? "text-slate-500" : "text-slate-400"
+                }`}
+              />
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search..."
+                className={`w-full rounded-lg border py-2.5 pl-10 pr-4 text-sm font-medium outline-none transition-all duration-200 focus:ring-2 ${
+                  darkMode
+                    ? "border-slate-600 bg-slate-800 text-white placeholder-slate-500 focus:border-blue-500 focus:ring-blue-500/40"
+                    : "border-slate-300 bg-white text-slate-900 placeholder-slate-400 focus:border-blue-500 focus:ring-blue-500/30"
+                }`}
+              />
+            </div>
           </div>
         </div>
 
@@ -424,222 +460,226 @@ export default function TeacherListPage() {
                     darkMode ? "divide-slate-700" : "divide-slate-100"
                   }`}
                 >
-                  {filteredTeachers.map((t) => (
-                    <tr
-                      key={t._id}
-                      className={`transition-colors ${
-                        darkMode ? "hover:bg-slate-700/50" : "hover:bg-slate-50"
-                      }`}
-                    >
-                      {/* ID & Subject */}
-                      <td className="px-3 py-4 sm:px-4 align-top">
-                        <div className="flex flex-col gap-2 items-start">
-                          <span
-                            className={`inline-flex items-center rounded-md px-2.5 py-1 text-xs font-bold ${
-                              darkMode
-                                ? "bg-slate-700 text-slate-300"
-                                : "bg-slate-100 text-slate-700"
-                            }`}
-                          >
-                            {t.teacherId}
-                          </span>
-                          <span
-                            className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold break-words max-w-[120px] leading-tight ${
-                              darkMode
-                                ? "bg-blue-500/20 text-blue-300"
-                                : "bg-blue-100 text-blue-700"
-                            }`}
-                          >
-                            <BookOpen size={10} className="flex-shrink-0" />
-                            {t.subject}
-                          </span>
-                        </div>
-                      </td>
+                  {filteredTeachers.map((t) => {
+                    const photoSrc = getTeacherPhotoUrl(t.profilePhoto);
 
-                      {/* Name, Email & Clickable/Downloadable Profile Photo */}
-                      <td
-                        className={`px-3 py-4 sm:px-4 align-top font-medium ${
-                          darkMode ? "text-white" : "text-slate-900"
+                    return (
+                      <tr
+                        key={t._id}
+                        className={`transition-colors ${
+                          darkMode ? "hover:bg-slate-700/50" : "hover:bg-slate-50"
                         }`}
                       >
-                        <div className="flex items-start gap-3">
-                          <div 
-                            onClick={() => t.profilePhoto && downloadProfilePhoto(t.profilePhoto, t.name)}
-                            title={t.profilePhoto ? "Click to download profile photo" : "No photo"}
-                            className={`h-10 w-10 flex-shrink-0 rounded-full overflow-hidden flex items-center justify-center mt-0.5 cursor-pointer transition-transform hover:scale-110 ${darkMode ? "bg-slate-700" : "bg-slate-200"}`}
-                          >
-                            {t.profilePhoto ? (
-                              <img 
-                                src={`http://localhost:5000/profile_photos/${t.profilePhoto}`} 
-                                alt={t.name} 
-                                className="h-full w-full object-cover" 
-                              />
-                            ) : (
-                              <User size={20} className={darkMode ? "text-slate-500" : "text-slate-400"} />
-                            )}
-                          </div>
-                          <div className="flex flex-col">
-                            <span className="text-sm font-semibold break-words max-w-[140px] leading-tight">{t.name}</span>
+                        {/* ID & Subject */}
+                        <td className="px-3 py-4 sm:px-4 align-top">
+                          <div className="flex flex-col gap-2 items-start">
                             <span
-                              className={`text-xs font-normal mt-1 break-words max-w-[140px] ${
-                                darkMode ? "text-slate-400" : "text-gray-500"
+                              className={`inline-flex items-center rounded-md px-2.5 py-1 text-xs font-bold ${
+                                darkMode
+                                  ? "bg-slate-700 text-slate-300"
+                                  : "bg-slate-100 text-slate-700"
                               }`}
                             >
-                              {t.email}
+                              {t.teacherId}
+                            </span>
+                            <span
+                              className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold break-words max-w-[120px] leading-tight ${
+                                darkMode
+                                  ? "bg-blue-500/20 text-blue-300"
+                                  : "bg-blue-100 text-blue-700"
+                              }`}
+                            >
+                              <BookOpen size={10} className="flex-shrink-0" />
+                              {t.subject}
                             </span>
                           </div>
-                        </div>
-                      </td>
+                        </td>
 
-                      {/* Contact Info (Phone & Address) */}
-                      <td className="px-3 py-4 sm:px-4 align-top">
-                        <div
-                          className={`flex flex-col gap-2 text-xs ${
-                            darkMode ? "text-slate-300" : "text-slate-600"
+                        {/* Name, Email & Clickable/Downloadable Profile Photo */}
+                        <td
+                          className={`px-3 py-4 sm:px-4 align-top font-medium ${
+                            darkMode ? "text-white" : "text-slate-900"
                           }`}
                         >
-                          {t.phone ? (
-                            <div className="flex items-start gap-1.5">
-                              <Phone size={14} className="opacity-70 mt-0.5 flex-shrink-0" /> 
-                              <span className="break-words max-w-[120px]">{t.phone}</span>
-                            </div>
-                          ) : (
-                            <span className="opacity-40 italic">No Phone</span>
-                          )}
-                          
-                          {t.address ? (
-                            <div className="flex items-start gap-1.5">
-                              <MapPin size={14} className="opacity-70 mt-0.5 flex-shrink-0" /> 
-                              <span className="break-words max-w-[120px] leading-tight">{t.address}</span>
-                            </div>
-                          ) : (
-                            <span className="opacity-40 italic">No Address</span>
-                          )}
-                        </div>
-                      </td>
-
-                      {/* Qualifications */}
-                      <td className="px-3 py-4 sm:px-4 align-top">
-                        {t.qualifications && t.qualifications.length > 0 ? (
-                          <div className="flex flex-col gap-3 max-w-[180px]">
-                            {t.qualifications.map((q, idx) => (
-                              <div key={idx} className="flex flex-col text-xs">
-                                <span className={`font-semibold leading-tight break-words ${darkMode ? "text-slate-200" : "text-slate-800"}`}>
-                                  {q.degree}
-                                </span>
-                                <span className={`opacity-80 leading-tight mt-0.5 break-words ${darkMode ? "text-slate-400" : "text-slate-500"}`}>
-                                  {q.institution}
-                                </span>
-                              </div>
-                            ))}
-                          </div>
-                        ) : (
-                          <span className={`text-xs opacity-40 italic ${darkMode ? "text-slate-400" : "text-slate-500"}`}>
-                            No Qualifications
-                          </span>
-                        )}
-                      </td>
-
-                      {/* Social Links */}
-                      <td className="px-3 py-4 sm:px-4 align-top">
-                        <div className="flex flex-wrap gap-1.5 max-w-[140px]">
-                          {t.website ? (
-                            <a
-                              href={t.website}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              title="Website"
-                              className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-semibold transition-colors ${
-                                darkMode ? "bg-slate-700 text-slate-200 hover:bg-slate-600" : "bg-slate-100 text-slate-700 hover:bg-slate-200"
-                              }`}
+                          <div className="flex items-start gap-3">
+                            <div 
+                              onClick={() => t.profilePhoto && downloadProfilePhoto(t.profilePhoto, t.name)}
+                              title={t.profilePhoto ? "Click to download profile photo" : "No photo"}
+                              className={`h-10 w-10 flex-shrink-0 rounded-full overflow-hidden flex items-center justify-center mt-0.5 cursor-pointer transition-transform hover:scale-110 ${darkMode ? "bg-slate-700" : "bg-slate-200"}`}
                             >
-                              <Globe size={11} />
-                              Website
-                            </a>
-                          ) : null}
+                              {photoSrc ? (
+                                <img 
+                                  src={photoSrc} 
+                                  alt={t.name} 
+                                  className="h-full w-full object-cover" 
+                                />
+                              ) : (
+                                <User size={20} className={darkMode ? "text-slate-500" : "text-slate-400"} />
+                              )}
+                            </div>
+                            <div className="flex flex-col">
+                              <span className="text-sm font-semibold break-words max-w-[140px] leading-tight">{t.name}</span>
+                              <span
+                                className={`text-xs font-normal mt-1 break-words max-w-[140px] ${
+                                  darkMode ? "text-slate-400" : "text-gray-500"
+                                }`}
+                              >
+                                {t.email}
+                              </span>
+                            </div>
+                          </div>
+                        </td>
 
-                          {t.socialLinks && t.socialLinks.length > 0 ? (
-                            t.socialLinks.map((s, sIdx) => (
+                        {/* Contact Info (Phone & Address) */}
+                        <td className="px-3 py-4 sm:px-4 align-top">
+                          <div
+                            className={`flex flex-col gap-2 text-xs ${
+                              darkMode ? "text-slate-300" : "text-slate-600"
+                            }`}
+                          >
+                            {t.phone ? (
+                              <div className="flex items-start gap-1.5">
+                                <Phone size={14} className="opacity-70 mt-0.5 flex-shrink-0" /> 
+                                <span className="break-words max-w-[120px]">{t.phone}</span>
+                              </div>
+                            ) : (
+                              <span className="opacity-40 italic">No Phone</span>
+                            )}
+
+                            {t.address ? (
+                              <div className="flex items-start gap-1.5">
+                                <MapPin size={14} className="opacity-70 mt-0.5 flex-shrink-0" /> 
+                                <span className="break-words max-w-[120px] leading-tight">{t.address}</span>
+                              </div>
+                            ) : (
+                              <span className="opacity-40 italic">No Address</span>
+                            )}
+                          </div>
+                        </td>
+
+                        {/* Qualifications */}
+                        <td className="px-3 py-4 sm:px-4 align-top">
+                          {t.qualifications && t.qualifications.length > 0 ? (
+                            <div className="flex flex-col gap-3 max-w-[180px]">
+                              {t.qualifications.map((q, idx) => (
+                                <div key={idx} className="flex flex-col text-xs">
+                                  <span className={`font-semibold leading-tight break-words ${darkMode ? "text-slate-200" : "text-slate-800"}`}>
+                                    {q.degree}
+                                  </span>
+                                  <span className={`opacity-80 leading-tight mt-0.5 break-words ${darkMode ? "text-slate-400" : "text-slate-500"}`}>
+                                    {q.institution}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <span className={`text-xs opacity-40 italic ${darkMode ? "text-slate-400" : "text-slate-500"}`}>
+                              No Qualifications
+                            </span>
+                          )}
+                        </td>
+
+                        {/* Social Links */}
+                        <td className="px-3 py-4 sm:px-4 align-top">
+                          <div className="flex flex-wrap gap-1.5 max-w-[140px]">
+                            {t.website ? (
                               <a
-                                key={sIdx}
-                                href={s.url}
+                                href={t.website}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                title={s.platform}
+                                title="Website"
                                 className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-semibold transition-colors ${
                                   darkMode ? "bg-slate-700 text-slate-200 hover:bg-slate-600" : "bg-slate-100 text-slate-700 hover:bg-slate-200"
                                 }`}
                               >
-                                <ExternalLink size={11} />
-                                {s.platform}
+                                <Globe size={11} />
+                                Website
                               </a>
-                            ))
-                          ) : (!t.website && (!t.socialLinks || t.socialLinks.length === 0)) ? (
-                            <span className={`text-xs opacity-40 italic ${darkMode ? "text-slate-400" : "text-slate-500"}`}>
-                              N/A
-                            </span>
-                          ) : null}
-                        </div>
-                      </td>
+                            ) : null}
 
-                      {/* Date & Time */}
-                      <td className="px-3 py-4 sm:px-4 align-top text-xs">
-                        {t.createdAt ? (
-                          <div className="flex flex-col">
-                            <span
-                              className={`font-semibold ${
-                                darkMode ? "text-slate-200" : "text-slate-800"
-                              }`}
-                            >
-                              {new Date(t.createdAt).toLocaleDateString()}
-                            </span>
-                            <span
-                              className={`mt-1 ${
-                                darkMode ? "text-slate-400" : "text-slate-500"
-                              }`}
-                            >
-                              {new Date(t.createdAt).toLocaleTimeString([], {
-                                hour: "2-digit",
-                                minute: "2-digit",
-                              })}
-                            </span>
+                            {t.socialLinks && t.socialLinks.length > 0 ? (
+                              t.socialLinks.map((s, sIdx) => (
+                                <a
+                                  key={sIdx}
+                                  href={s.url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  title={s.platform}
+                                  className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-semibold transition-colors ${
+                                    darkMode ? "bg-slate-700 text-slate-200 hover:bg-slate-600" : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                                  }`}
+                                >
+                                  <ExternalLink size={11} />
+                                  {s.platform}
+                                </a>
+                              ))
+                            ) : (!t.website && (!t.socialLinks || t.socialLinks.length === 0)) ? (
+                              <span className={`text-xs opacity-40 italic ${darkMode ? "text-slate-400" : "text-slate-500"}`}>
+                                N/A
+                              </span>
+                            ) : null}
                           </div>
-                        ) : (
-                          <span className="opacity-40 italic">Unknown Date</span>
-                        )}
-                      </td>
+                        </td>
 
-                      {/* Actions: Profile Download & Delete */}
-                      <td className="px-3 py-4 sm:px-4 align-top text-center">
-                        <div className="flex items-center justify-center gap-1.5">
-                          <button
-                            onClick={() => downloadTeacherProfilePDF(t)}
-                            className={`p-2 transition-colors rounded-lg flex items-center gap-1 text-xs font-semibold ${
-                              darkMode
-                                ? "bg-blue-500/10 text-blue-400 hover:bg-blue-500/20"
-                                : "bg-blue-50 text-blue-600 hover:bg-blue-100"
-                            }`}
-                            title="Download Profile PDF"
-                          >
-                            <FileDown size={16} />
-                            <span className="hidden xl:inline">PDF</span>
-                          </button>
-                          
-                          <button
-                            onClick={() => setTeacherToDelete(t)} 
-                            className={`p-2 transition-colors rounded-lg ${
-                              darkMode
-                                ? "text-red-400 hover:bg-red-500/20 hover:text-red-300"
-                                : "text-red-500 hover:bg-red-50 hover:text-red-700"
-                            }`}
-                            title="Delete Teacher"
-                          >
-                            <Trash2 size={18} />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
+                        {/* Date & Time */}
+                        <td className="px-3 py-4 sm:px-4 align-top text-xs">
+                          {t.createdAt ? (
+                            <div className="flex flex-col">
+                              <span
+                                className={`font-semibold ${
+                                  darkMode ? "text-slate-200" : "text-slate-800"
+                                }`}
+                              >
+                                {new Date(t.createdAt).toLocaleDateString()}
+                              </span>
+                              <span
+                                className={`mt-1 ${
+                                  darkMode ? "text-slate-400" : "text-slate-500"
+                                }`}
+                              >
+                                {new Date(t.createdAt).toLocaleTimeString([], {
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                })}
+                              </span>
+                            </div>
+                          ) : (
+                            <span className="opacity-40 italic">Unknown Date</span>
+                          )}
+                        </td>
+
+                        {/* Actions: Profile Download & Delete */}
+                        <td className="px-3 py-4 sm:px-4 align-top text-center">
+                          <div className="flex items-center justify-center gap-1.5">
+                            <button
+                              onClick={() => downloadTeacherProfilePDF(t)}
+                              className={`p-2 transition-colors rounded-lg flex items-center gap-1 text-xs font-semibold ${
+                                darkMode
+                                  ? "bg-blue-500/10 text-blue-400 hover:bg-blue-500/20"
+                                  : "bg-blue-50 text-blue-600 hover:bg-blue-100"
+                              }`}
+                              title="Download Profile PDF"
+                            >
+                              <FileDown size={16} />
+                              <span className="hidden xl:inline">PDF</span>
+                            </button>
+
+                            <button
+                              onClick={() => setTeacherToDelete(t)} 
+                              className={`p-2 transition-colors rounded-lg ${
+                                darkMode
+                                  ? "text-red-400 hover:bg-red-500/20 hover:text-red-300"
+                                  : "text-red-500 hover:bg-red-50 hover:text-red-700"
+                              }`}
+                              title="Delete Teacher"
+                            >
+                              <Trash2 size={18} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

@@ -1,7 +1,8 @@
+// /app/components/AdminRegisterModal.tsx
+
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import axios from "axios";
 import {
   ShieldPlus,
@@ -13,11 +14,21 @@ import {
   AlertCircle,
   Eye,
   EyeOff,
+  X,
 } from "lucide-react";
 import { useTheme } from "@/app/context/ThemeContext";
 
-export default function AdminRegisterPage() {
-  const router = useRouter();
+interface AdminRegisterModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onAdminAdded?: () => void;
+}
+
+export default function AdminRegisterModal({
+  isOpen,
+  onClose,
+  onAdminAdded,
+}: AdminRegisterModalProps) {
   const { darkMode } = useTheme();
   const [formData, setFormData] = useState({
     adminId: "",
@@ -30,6 +41,8 @@ export default function AdminRegisterPage() {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
+  if (!isOpen) return null;
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
@@ -41,7 +54,6 @@ export default function AdminRegisterPage() {
     setLoading(true);
 
     try {
-      // Get the logged-in admin's token from localStorage
       const token = localStorage.getItem("token");
 
       if (!token) {
@@ -50,13 +62,12 @@ export default function AdminRegisterPage() {
         return;
       }
 
-      // Send Register request to the backend
       const response = await axios.post(
         "http://localhost:5000/api/auth/admin-register",
         formData,
         {
           headers: {
-            Authorization: `Bearer ${token}`, // Send token for security
+            Authorization: `Bearer ${token}`,
           },
         }
       );
@@ -65,13 +76,21 @@ export default function AdminRegisterPage() {
         response.data.message || "New Admin account created successfully!"
       );
 
-      // Redirect to Login page after 2 seconds for the new admin to log in
+      setFormData({
+        adminId: "",
+        name: "",
+        email: "",
+        password: "",
+      });
+
+      if (onAdminAdded) {
+        onAdminAdded();
+      }
+
       setTimeout(() => {
-        // Remove old token since the new user needs to log in
-        localStorage.removeItem("token");
-        localStorage.removeItem("user");
-        router.push("/login");
-      }, 2000);
+        setSuccess("");
+        onClose();
+      }, 1500);
     } catch (err: any) {
       setError(
         err.response?.data?.message || "An error occurred while creating the account."
@@ -81,7 +100,6 @@ export default function AdminRegisterPage() {
     }
   };
 
-  // Reusable input + label classes (light + dark)
   const inputClass = `w-full rounded-lg border px-4 py-2.5 text-base font-medium outline-none transition-all duration-200 focus:ring-2 ${
     darkMode
       ? "border-slate-600 bg-slate-900 text-white placeholder-slate-500 focus:border-blue-500 focus:ring-blue-500/40"
@@ -93,46 +111,54 @@ export default function AdminRegisterPage() {
   }`;
 
   return (
-    <div className="mx-auto max-w-3xl">
-      {/* Page Header */}
-      <div className="mb-8">
-        <div className="mb-3 flex items-center gap-3">
-          <div
-            className={`flex h-12 w-12 items-center justify-center rounded-xl ${
-              darkMode
-                ? "bg-blue-500/20 text-blue-400"
-                : "bg-blue-100 text-blue-600"
-            }`}
-          >
-            <ShieldPlus size={24} />
-          </div>
-          <div>
-            <h1
-              className={`text-2xl font-bold tracking-tight sm:text-3xl ${
-                darkMode ? "text-white" : "text-slate-900"
-              }`}
-            >
-              Create New Admin Account
-            </h1>
-            <p
-              className={`mt-1 text-sm ${
-                darkMode ? "text-slate-400" : "text-slate-500"
-              }`}
-            >
-              Add a new administrator to the system
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* Card */}
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
       <div
-        className={`rounded-2xl border p-6 shadow-sm transition-colors duration-300 sm:p-8 ${
-          darkMode
-            ? "border-slate-700 bg-slate-800"
-            : "border-slate-200 bg-white"
+        className={`relative w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl border shadow-2xl p-6 sm:p-8 transition-all duration-300 ${
+          darkMode ? "border-slate-700 bg-slate-800" : "border-slate-200 bg-white"
         }`}
       >
+        {/* Close Button */}
+        <button
+          onClick={onClose}
+          className={`absolute top-4 right-4 p-2 rounded-xl transition-colors ${
+            darkMode
+              ? "text-slate-400 hover:text-white hover:bg-slate-700"
+              : "text-slate-500 hover:text-slate-900 hover:bg-slate-100"
+          }`}
+          aria-label="Close"
+        >
+          <X size={20} />
+        </button>
+
+        {/* Modal Header */}
+        <div className="mb-6">
+          <div className="flex items-center gap-3">
+            <div
+              className={`flex h-12 w-12 items-center justify-center rounded-xl ${
+                darkMode ? "bg-blue-500/20 text-blue-400" : "bg-blue-100 text-blue-600"
+              }`}
+            >
+              <ShieldPlus size={24} />
+            </div>
+            <div>
+              <h2
+                className={`text-2xl font-bold tracking-tight sm:text-3xl ${
+                  darkMode ? "text-white" : "text-slate-900"
+                }`}
+              >
+                Create New Admin Account
+              </h2>
+              <p
+                className={`mt-1 text-sm ${
+                  darkMode ? "text-slate-400" : "text-slate-500"
+                }`}
+              >
+                Add a new administrator to the system
+              </p>
+            </div>
+          </div>
+        </div>
+
         {/* Error / Success banners */}
         {error && (
           <div
@@ -196,6 +222,7 @@ export default function AdminRegisterPage() {
             />
           </div>
 
+          {/* Email Address */}
           <div>
             <label htmlFor="email" className={labelClass}>
               <Mail size={14} />
@@ -290,15 +317,6 @@ export default function AdminRegisterPage() {
           </div>
         </form>
       </div>
-
-      {/* Footer hint */}
-      <p
-        className={`mt-5 text-center text-xs ${
-          darkMode ? "text-slate-500" : "text-slate-400"
-        }`}
-      >
-        You will be redirected to the login page 2 seconds after account creation.
-      </p>
     </div>
   );
 }
