@@ -10,6 +10,13 @@ import ClassDeleteConfirmPopup from "@/app/components/ClassDeleteConfirmPopup";
 import CreateClassModal from "@/app/components/CreateClassModal";
 import { useTheme } from "@/app/context/ThemeContext";
 
+// Cloudinary HTTPS URLs සහ Local backend paths දෙකටම ගැලපෙන Helper ශ්‍රිතය
+const getClassCoverImageUrl = (photoUrl?: string) => {
+  if (!photoUrl) return null;
+  if (photoUrl.startsWith("http")) return photoUrl;
+  return `http://localhost:5000${photoUrl.startsWith('/') ? '' : '/'}${photoUrl}`;
+};
+
 export default function ViewClassesPage() {
   const router = useRouter();
   const { darkMode } = useTheme();
@@ -300,14 +307,15 @@ export default function ViewClassesPage() {
                 const currentStudents = enrolledStudents.slice(startIndex, startIndex + studentsPerPage);
 
                 const isEditing = editingClassId === cls._id;
+                const classCoverUrl = getClassCoverImageUrl(cls.coverImage);
 
                 return (
                   <div key={cls._id} className={`p-5 rounded-2xl border shadow-sm flex flex-col gap-4 transition-all duration-300 ${darkMode ? "bg-slate-900 border-slate-800" : "bg-white border-slate-200"}`}>
                     
                     <div className="flex flex-col md:flex-row items-start justify-between gap-4">
-                      {cls.coverImage && (
+                      {classCoverUrl && (
                         <div className={`w-full md:w-48 h-32 rounded-xl overflow-hidden border flex-shrink-0 ${darkMode ? "border-slate-800" : "border-slate-200"}`}>
-                          <img src={`http://localhost:5000${cls.coverImage}`} alt={cls.grade} className="w-full h-full object-cover" />
+                          <img src={classCoverUrl} alt={cls.grade} className="w-full h-full object-cover" />
                         </div>
                       )}
                       

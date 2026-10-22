@@ -8,6 +8,13 @@ import axios from "axios";
 import { Calendar, Clock, BookOpen, User, Loader2, ShieldAlert, Monitor, UserCheck, UserX, Trash2, Search, GraduationCap, Image as ImageIcon, Edit3, X, Check, CreditCard, ExternalLink, Users, ChevronLeft, ChevronRight, Bell, ChevronDown, ChevronUp, Link as LinkIcon, FileText, Ban } from "lucide-react";
 import { useTheme } from "@/app/context/ThemeContext";
 
+// Cloudinary HTTPS URLs සහ Local backend paths දෙකටම ගැලපෙන Helper ශ්‍රිතය
+const getClassCoverImageUrl = (photoUrl?: string) => {
+  if (!photoUrl) return null;
+  if (photoUrl.startsWith("http")) return photoUrl;
+  return `http://localhost:5000${photoUrl.startsWith('/') ? '' : '/'}${photoUrl}`;
+};
+
 export default function AdminClassViewPage() {
   const router = useRouter();
   const { darkMode } = useTheme();
@@ -557,7 +564,7 @@ export default function AdminClassViewPage() {
                       <div className="flex flex-wrap items-center gap-2 relative">
                         <div className="flex items-center gap-1.5">
                           <h3 className="font-extrabold text-xs sm:text-sm tracking-tight">{teacher?.name}</h3>
-                          
+
                           {pendingCount > 0 && (
                             <div className="relative">
                               <button
@@ -674,6 +681,8 @@ export default function AdminClassViewPage() {
                             req.studentId?.name?.toLowerCase().includes(query)
                           );
 
+                          const classCoverUrl = getClassCoverImageUrl(cls.coverImage);
+
                           return (
                             <div 
                               key={cls._id} 
@@ -688,8 +697,8 @@ export default function AdminClassViewPage() {
                                 <div className={`relative w-full h-28 rounded-xl overflow-hidden border ${
                                   darkMode ? "border-slate-700 bg-slate-900" : "border-slate-200 bg-slate-100"
                                 }`}>
-                                  {cls.coverImage ? (
-                                    <img src={`http://localhost:5000${cls.coverImage}`} alt={cls.grade} className="w-full h-full object-cover" />
+                                  {classCoverUrl ? (
+                                    <img src={classCoverUrl} alt={cls.grade} className="w-full h-full object-cover" />
                                   ) : (
                                     <div className="w-full h-full flex flex-col items-center justify-center text-slate-400 gap-0.5">
                                       <ImageIcon size={20} />
