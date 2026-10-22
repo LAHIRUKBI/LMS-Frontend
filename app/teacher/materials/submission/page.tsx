@@ -78,7 +78,7 @@ function TeacherQuizSubmissionContent() {
       const token = localStorage.getItem("token");
       const marks = essayMarksInput[subId] || {};
       const corrections = teacherCorrectionInputs[subId] || {};
-      
+
       const res = await axios.post(`http://localhost:5000/api/quiz/evaluate-essay`, {
         submissionId: subId,
         essayMarks: marks,
@@ -130,6 +130,13 @@ function TeacherQuizSubmissionContent() {
     return `http://localhost:5000${photoUrl}`;
   };
 
+  // A helper function that works with both Cloudinary HTTPS URLs and local backend paths
+  const getAnswerSheetUrl = (url: string) => {
+    if (!url) return "";
+    if (url.startsWith("http")) return url;
+    return `http://localhost:5000${url.startsWith('/') ? '' : '/'}${url}`;
+  };
+
   const isPureObjectiveQuiz = quizDetails?.questions?.every((q: any) => q.type === 'mcq' || q.type === 'single' || q.type === 'short');
 
   if (loading) {
@@ -142,28 +149,28 @@ function TeacherQuizSubmissionContent() {
 
   return (
     <div className={`p-4 sm:p-6 lg:p-8 min-h-screen transition-colors duration-300 ${darkMode ? "bg-slate-950 text-white" : "bg-slate-50 text-slate-900"}`}>
-      
-      <QuizUploadSuccessPopup 
+
+      <QuizUploadSuccessPopup
         isOpen={showSaveSuccessPopup}
         onClose={() => setShowSaveSuccessPopup(false)}
         message="Marks successfully saved to Database and paper evaluated!"
       />
 
       <div className="max-w-5xl mx-auto space-y-6">
-        
+
         {/* Top Navigation & Breadcrumb */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b pb-4">
           <div>
-            <button 
+            <button
               onClick={() => router.push("/teacher/materials/my-quize")}
               className="flex items-center gap-1.5 text-xs font-bold text-indigo-400 hover:underline mb-2"
             >
               <ArrowLeft size={16} /> Back to My Quizzes
             </button>
             <h1 className="text-2xl font-extrabold tracking-tight flex items-center gap-2">
-              Submissions for: 
-              <span 
-                onClick={() => router.push("/teacher/materials/my-quize")} 
+              Submissions for:
+              <span
+                onClick={() => router.push("/teacher/materials/my-quize")}
                 className="text-indigo-500 cursor-pointer hover:underline"
                 title="Click to go back to quiz list"
               >
@@ -176,7 +183,7 @@ function TeacherQuizSubmissionContent() {
           </div>
 
           {isPureObjectiveQuiz && submissions.length > 0 && !selectedStudentSub && (
-            <button 
+            <button
               onClick={handleCheckAllStudentMCQAndSend}
               className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-md flex items-center gap-2"
             >
@@ -188,7 +195,7 @@ function TeacherQuizSubmissionContent() {
         {/* If a student is selected for review */}
         {selectedStudentSub ? (
           <div className="space-y-6">
-            <button 
+            <button
               onClick={() => setSelectedStudentSub(null)}
               className="flex items-center gap-1.5 text-xs font-bold text-blue-600 hover:underline mb-2"
             >
@@ -212,7 +219,7 @@ function TeacherQuizSubmissionContent() {
               };
 
               let calculatedTotalScore = 0;
-              
+
               quizDetails.questions.forEach((q: any) => {
                 const qId = q._id.toString();
                 const studentAns = studentAnswers[qId];
@@ -233,15 +240,15 @@ function TeacherQuizSubmissionContent() {
                   if (isCorrect) {
                     calculatedTotalScore += Number(q.marks) || 0;
                   } else {
-                    const manualMark = essayMarksInput[sub._id]?.[qId] !== undefined 
-                      ? essayMarksInput[sub._id][qId] 
+                    const manualMark = essayMarksInput[sub._id]?.[qId] !== undefined
+                      ? essayMarksInput[sub._id][qId]
                       : getSavedEssayMark(qId);
                     calculatedTotalScore += Number(manualMark) || 0;
                   }
-                } 
+                }
                 else if (q.type === 'short' || q.type === 'essay') {
                   const hasSubQ = q.subQuestions && Array.isArray(q.subQuestions) && q.subQuestions.length > 0;
-                  
+
                   if (hasSubQ) {
                     const inputSubObj = essayMarksInput[sub._id]?.[qId];
                     if (inputSubObj && typeof inputSubObj === 'object') {
@@ -264,8 +271,8 @@ function TeacherQuizSubmissionContent() {
                 }
               });
 
-              const displayTotalScore = sub.isEvaluated && (!essayMarksInput[sub._id] || Object.keys(essayMarksInput[sub._id]).length === 0) 
-                ? (Number(sub.score) || 0) 
+              const displayTotalScore = sub.isEvaluated && (!essayMarksInput[sub._id] || Object.keys(essayMarksInput[sub._id]).length === 0)
+                ? (Number(sub.score) || 0)
                 : calculatedTotalScore;
 
               return (
@@ -291,7 +298,7 @@ function TeacherQuizSubmissionContent() {
 
                   {!isChecked ? (
                     <div className="my-4">
-                      <button 
+                      <button
                         onClick={() => handleCheckMCQ(sub._id)}
                         className="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold shadow-sm flex items-center gap-2"
                       >
@@ -301,7 +308,7 @@ function TeacherQuizSubmissionContent() {
                   ) : (
                     <div className="space-y-4 pl-3 border-l-2 border-blue-500/40 my-4">
                       <p className="text-xs font-bold text-emerald-500">✔ Auto-evaluation active (Review right/wrong marks & give custom marks/feedback if needed):</p>
-                      
+
                       {quizDetails.questions.map((q: any, qIdx: number) => {
                         const qId = q._id.toString();
                         const studentAns = studentAnswers[qId];
@@ -368,16 +375,15 @@ function TeacherQuizSubmissionContent() {
                                 </span>
 
                                 {q.type !== 'essay' && q.type !== 'short' && (
-                                  <span className={`px-2.5 py-1 rounded-lg text-xs font-bold flex items-center gap-1 ${
-                                    isCorrect ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" : "bg-rose-500/10 text-rose-500 border border-rose-500/20"
-                                  }`}>
+                                  <span className={`px-2.5 py-1 rounded-lg text-xs font-bold flex items-center gap-1 ${isCorrect ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20" : "bg-rose-500/10 text-rose-500 border border-rose-500/20"
+                                    }`}>
                                     {isCorrect ? <Check size={14} /> : <X size={14} />}
                                     {isCorrect ? "Correct" : "Incorrect"}
                                   </span>
                                 )}
                               </div>
                             </div>
-                            
+
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2">
                               <div className="p-3 rounded-lg bg-slate-100 dark:bg-slate-800/80 border">
                                 <span className="text-[10px] text-slate-400 block font-bold mb-1">Student Answer:</span>
@@ -394,31 +400,34 @@ function TeacherQuizSubmissionContent() {
                               )}
                             </div>
 
-                            {/* ළමයා විසින් උඩුගත කර ඇති පිළිතුරු කොළ පෙන්වීම */}
+                            {/* Displaying the answer sheets uploaded by the child */}
                             {sub.answerSheets && sub.answerSheets[q._id] && sub.answerSheets[q._id].length > 0 && (
                               <div className="mt-4 p-4 rounded-2xl bg-slate-100 dark:bg-slate-800 border space-y-2">
                                 <span className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
                                   <ImageIcon size={14} className="text-blue-500" /> Student's Written Answer Sheets (Click to View):
                                 </span>
                                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                                  {sub.answerSheets[q._id].map((sheetUrl: string, imgIdx: number) => (
-                                    <a 
-                                      key={imgIdx} 
-                                      href={`http://localhost:5000${sheetUrl}`} 
-                                      target="_blank" 
-                                      rel="noopener noreferrer"
-                                      className="block relative rounded-xl overflow-hidden border shadow-sm group aspect-[3/4]"
-                                    >
-                                      <img 
-                                        src={`http://localhost:5000${sheetUrl}`} 
-                                        alt={`Answer Sheet Page ${imgIdx + 1}`} 
-                                        className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
-                                      />
-                                      <span className="absolute bottom-1 right-1 bg-black/70 text-white text-[10px] px-2 py-0.5 rounded-md">
-                                        Page {imgIdx + 1} 🔍
-                                      </span>
-                                    </a>
-                                  ))}
+                                  {sub.answerSheets[q._id].map((sheetUrl: string, imgIdx: number) => {
+                                    const fullSheetUrl = getAnswerSheetUrl(sheetUrl);
+                                    return (
+                                      <a
+                                        key={imgIdx}
+                                        href={fullSheetUrl}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="block relative rounded-xl overflow-hidden border shadow-sm group aspect-[3/4]"
+                                      >
+                                        <img
+                                          src={fullSheetUrl}
+                                          alt={`Answer Sheet Page ${imgIdx + 1}`}
+                                          className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
+                                        />
+                                        <span className="absolute bottom-1 right-1 bg-black/70 text-white text-[10px] px-2 py-0.5 rounded-md">
+                                          Page {imgIdx + 1} 🔍
+                                        </span>
+                                      </a>
+                                    );
+                                  })}
                                 </div>
                               </div>
                             )}
@@ -426,7 +435,7 @@ function TeacherQuizSubmissionContent() {
                             {q.type === 'short' && (
                               <div className="mt-3 pt-2 border-t flex items-center justify-between bg-amber-500/5 p-2.5 rounded-xl border border-amber-500/20">
                                 <span className="font-bold text-xs text-amber-500">Give Short Answer Marks (Max {q.marks}):</span>
-                                <input 
+                                <input
                                   type="number"
                                   max={q.marks}
                                   min={0}
@@ -440,7 +449,7 @@ function TeacherQuizSubmissionContent() {
                             {q.type === 'mcq' && !isCorrect && (
                               <div className="mt-3 pt-2 border-t flex items-center justify-between bg-amber-500/5 p-2.5 rounded-xl border border-amber-500/20">
                                 <span className="font-bold text-xs text-amber-500">Give Custom/Partial Marks (Max {q.marks}):</span>
-                                <input 
+                                <input
                                   type="number"
                                   max={q.marks}
                                   min={0}
@@ -457,7 +466,7 @@ function TeacherQuizSubmissionContent() {
                                 {q.subQuestions.map((sq: any, sqIdx: number) => (
                                   <div key={sq._id || sqIdx} className="flex justify-between items-center gap-2 bg-slate-800/40 p-2.5 rounded-lg">
                                     <span>({sqIdx + 1}) {sq.subQuestionText} [Max {sq.marks}]</span>
-                                    <input 
+                                    <input
                                       type="number"
                                       max={sq.marks}
                                       min={0}
@@ -478,7 +487,7 @@ function TeacherQuizSubmissionContent() {
                             {q.type === 'essay' && !hasSubQ && (
                               <div className="mt-3 pt-2 border-t flex items-center justify-between bg-indigo-500/5 p-2.5 rounded-xl border border-indigo-500/20">
                                 <span className="font-bold text-xs text-indigo-400">Give Essay Marks (Max {q.marks}):</span>
-                                <input 
+                                <input
                                   type="number"
                                   max={q.marks}
                                   min={0}
@@ -515,7 +524,7 @@ function TeacherQuizSubmissionContent() {
                       </span>
                     </div>
 
-                    <button 
+                    <button
                       onClick={() => handleSendMarksToDB(sub._id, displayTotalScore)}
                       className="px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl text-xs font-bold shadow-lg flex items-center gap-2 transition"
                     >
@@ -536,18 +545,17 @@ function TeacherQuizSubmissionContent() {
           ) : (
             <div className="space-y-3">
               <p className="text-xs font-bold text-slate-400">Total Submissions Received: {submissions.length}. Click on any student to evaluate:</p>
-              
+
               {submissions.map((sub) => {
                 const student = sub.studentId;
                 if (!student) return null;
 
                 return (
-                  <div 
+                  <div
                     key={sub._id}
                     onClick={() => setSelectedStudentSub(sub)}
-                    className={`p-4 rounded-2xl border cursor-pointer flex items-center justify-between transition-all ${
-                      darkMode ? "bg-slate-900 border-slate-800 hover:border-blue-500/50" : "bg-white border-slate-200 hover:border-blue-300 shadow-sm"
-                    }`}
+                    className={`p-4 rounded-2xl border cursor-pointer flex items-center justify-between transition-all ${darkMode ? "bg-slate-900 border-slate-800 hover:border-blue-500/50" : "bg-white border-slate-200 hover:border-blue-300 shadow-sm"
+                      }`}
                   >
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-full overflow-hidden bg-slate-200 flex items-center justify-center border">
@@ -564,9 +572,8 @@ function TeacherQuizSubmissionContent() {
                     </div>
 
                     <div className="flex items-center gap-3">
-                      <span className={`px-3 py-1 rounded-full text-xs font-bold ${
-                        sub.isEvaluated ? "bg-emerald-500/10 text-emerald-500 border border-emerald-500/20" : "bg-amber-500/10 text-amber-500 border border-amber-500/20"
-                      }`}>
+                      <span className={`px-3 py-1 rounded-full text-xs font-bold ${sub.isEvaluated ? "bg-emerald-500/10 text-emerald-500 border border-emerald-500/20" : "bg-amber-500/10 text-amber-500 border border-amber-500/20"
+                        }`}>
                         {sub.isEvaluated ? `Score: ${sub.score}/${sub.maxScore}` : "Pending Evaluation"}
                       </span>
                       <span className="text-xs font-bold text-blue-600 hover:underline flex items-center gap-1">

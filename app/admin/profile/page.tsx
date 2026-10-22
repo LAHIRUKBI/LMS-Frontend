@@ -17,16 +17,17 @@ export default function AdminProfilePage() {
     email: "",
     phoneNumber: "",
   });
-  
+
   const [profilePhoto, setProfilePhoto] = useState<File | null>(null);
   const [previewImage, setPreviewImage] = useState<string>("");
 
-  // Windows file paths (\) සහ Base URL එක නිවැරදිව ගැලපීමට මෙම function එක භාවිතා කරයි.
+  // A helper function compatible with both Cloudinary HTTPS URLs and local backend paths
   const formatImageUrl = (path: string) => {
     if (!path) return "";
+    if (path.startsWith("http")) return path;
     const cleanPath = path.replace(/\\/g, '/');
     const baseUrl = `http://localhost:5000/${cleanPath.startsWith('/') ? cleanPath.substring(1) : cleanPath}`;
-    return `${baseUrl}?t=${new Date().getTime()}`; // Cache bypass කිරීම
+    return `${baseUrl}?t=${new Date().getTime()}`;
   };
 
   useEffect(() => {
@@ -50,7 +51,7 @@ export default function AdminProfilePage() {
       if (admin.profilePhoto) {
         setPreviewImage(formatImageUrl(admin.profilePhoto));
       }
-      
+
       setLoading(false);
     } catch (err) {
       setError("Failed to load profile details.");
@@ -78,7 +79,7 @@ export default function AdminProfilePage() {
 
     try {
       const token = localStorage.getItem("token");
-      
+
       const submitData = new FormData();
       submitData.append("name", formData.name);
       submitData.append("email", formData.email);
@@ -95,7 +96,7 @@ export default function AdminProfilePage() {
       });
 
       setSuccess(res.data.message || "Profile updated successfully!");
-      if (res.data.admin.profilePhoto) {
+      if (res.data.admin && res.data.admin.profilePhoto) {
         setPreviewImage(formatImageUrl(res.data.admin.profilePhoto));
       }
       setProfilePhoto(null);
@@ -130,14 +131,14 @@ export default function AdminProfilePage() {
       </div>
 
       <div className={`rounded-2xl border p-6 shadow-sm sm:p-8 ${darkMode ? "border-slate-700 bg-slate-800" : "border-slate-200 bg-white"}`}>
-        
+
         {error && (
           <div className="mb-5 flex items-start gap-2.5 rounded-lg border border-red-200 bg-red-50 p-4 text-sm font-medium text-red-700 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-300">
             <AlertCircle size={18} className="mt-0.5 flex-shrink-0" />
             <span>{error}</span>
           </div>
         )}
-        
+
         {success && (
           <div className="mb-5 flex items-start gap-2.5 rounded-lg border border-green-200 bg-green-50 p-4 text-sm font-medium text-green-700 dark:border-green-500/30 dark:bg-green-500/10 dark:text-green-300">
             <CheckCircle2 size={18} className="mt-0.5 flex-shrink-0" />
@@ -153,7 +154,7 @@ export default function AdminProfilePage() {
               ) : (
                 <User size={48} className="text-slate-400 dark:text-slate-500" />
               )}
-              
+
               <label htmlFor="photoUpload" className="absolute bottom-0 left-0 right-0 flex cursor-pointer items-center justify-center bg-black/50 py-1.5 transition-colors hover:bg-black/70">
                 <Camera size={16} className="text-white" />
                 <input

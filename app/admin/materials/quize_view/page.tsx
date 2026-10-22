@@ -3,7 +3,7 @@
 "use client";
 
 import React, { useEffect, useState, useMemo } from "react";
-import { CheckCircle, XCircle, Trash2, Image as ImageIcon, User, Eye, X } from "lucide-react";
+import { CheckCircle, XCircle, Trash2, Image as ImageIcon, User, Eye, X, ChevronLeft, ChevronRight } from "lucide-react";
 import axios from "axios";
 
 interface SubQuestion {
@@ -36,6 +36,14 @@ interface QuizSubmission {
   isNewForTable?: boolean;
 }
 
+// A helper function compatible with both Cloudinary HTTPS URLs and local backend paths
+const formatImageUrl = (photoUrl?: string) => {
+  if (!photoUrl) return "";
+  if (photoUrl.startsWith("http")) return photoUrl;
+  const cleanPath = photoUrl.replace(/\\/g, "/");
+  return `http://localhost:5000/${cleanPath.startsWith("/") ? cleanPath.substring(1) : cleanPath}`;
+};
+
 export default function AdminQuizViewPage() {
   const [quizzes, setQuizzes] = useState<QuizSubmission[]>([]);
   // State for controlling the popup modal to view questions
@@ -44,6 +52,10 @@ export default function AdminQuizViewPage() {
   // States for Rejection Modal
   const [rejectQuizItem, setRejectQuizItem] = useState<QuizSubmission | null>(null);
   const [rejectReason, setRejectReason] = useState("");
+
+  // Pagination state for each teacher card (teacherKey -> currentPage)
+  const [teacherPages, setTeacherPages] = useState<{ [key: string]: number }>({});
+  const QUIZZES_PER_PAGE = 2;
 
   useEffect(() => {
     fetchQuizzes();
@@ -77,7 +89,7 @@ export default function AdminQuizViewPage() {
       const token = localStorage.getItem("token");
       const res = await fetch(`http://localhost:5000/api/quiz/admin/quizzes/${quizId}/status`, {
         method: "PATCH",
-        headers: { 
+        headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`
         },
@@ -102,7 +114,7 @@ export default function AdminQuizViewPage() {
       const token = localStorage.getItem("token");
       const res = await fetch(`http://localhost:5000/api/quiz/admin/quizzes/${rejectQuizItem._id}/status`, {
         method: "PATCH",
-        headers: { 
+        headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`
         },
@@ -155,6 +167,13 @@ export default function AdminQuizViewPage() {
     }, {});
   }, [quizzes]);
 
+  const handleTeacherPageChange = (teacherKey: string, newPage: number) => {
+    setTeacherPages(prev => ({
+      ...prev,
+      [teacherKey]: newPage
+    }));
+  };
+
   return (
     <div className="max-w-5xl mx-auto p-6 space-y-6">
       <div className="flex justify-between items-center">
@@ -173,7 +192,7 @@ export default function AdminQuizViewPage() {
                 <h3 className="text-lg font-bold text-gray-900 dark:text-white">Question List</h3>
                 <p className="text-xs text-gray-500 dark:text-gray-400">{selectedQuizForQuestions.title} ({selectedQuizForQuestions.questions.length} questions)</p>
               </div>
-              <button 
+              <button
                 onClick={() => setSelectedQuizForQuestions(null)}
                 className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition"
               >
@@ -188,6 +207,8 @@ export default function AdminQuizViewPage() {
                   totalQMarks = q.subQuestions.reduce((s, sq) => s + sq.marks, 0);
                 }
 
+                const qImg = formatImageUrl(q.imageUrl);
+
                 return (
                   <div key={q.id || idx} className="p-4 bg-gray-50 dark:bg-gray-900 border dark:border-gray-700 rounded-lg text-sm space-y-2">
                     <div className="flex justify-between items-start">
@@ -199,15 +220,15 @@ export default function AdminQuizViewPage() {
                       </span>
                     </div>
 
-                    {q.imageUrl && (
+                    {qImg && (
                       <div className="mt-2">
                         <span className="text-xs text-gray-500 flex items-center gap-1 mb-1">
                           <ImageIcon size={14} /> Attached Image:
                         </span>
-                        <img 
-                          src={`http://localhost:5000${q.imageUrl}`} 
-                          alt="Question Visual" 
-                          className="max-h-40 rounded border border-gray-700 object-contain" 
+                        <img
+                          src={qImg}
+                          alt="Question Visual"
+                          className="max-h-40 rounded border border-gray-700 object-contain"
                           onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
                         />
                       </div>
@@ -219,7 +240,7 @@ export default function AdminQuizViewPage() {
                         <p className="text-xs font-semibold text-gray-600 dark:text-gray-400">Options:</p>
                         <ul className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
                           {q.options.map((opt, optIdx) => {
-                            const isCorrect = q.type === 'mcq' 
+                            const isCorrect = q.type === 'mcq'
                               ? (Array.isArray(q.correctAnswer) && q.correctAnswer.includes(opt))
                               : (q.correctAnswer === opt);
 
@@ -271,7 +292,7 @@ export default function AdminQuizViewPage() {
             </div>
 
             <div className="flex justify-end pt-2 border-t dark:border-gray-700">
-              <button 
+              <button
                 onClick={() => setSelectedQuizForQuestions(null)}
                 className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-lg text-xs font-bold transition hover:bg-gray-300"
               >
@@ -296,14 +317,14 @@ export default function AdminQuizViewPage() {
               onChange={(e) => setRejectReason(e.target.value)}
             ></textarea>
             <div className="flex justify-end gap-2.5 mt-4">
-              <button 
-                onClick={() => { setRejectQuizItem(null); setRejectReason(""); }} 
+              <button
+                onClick={() => { setRejectQuizItem(null); setRejectReason(""); }}
                 className="px-4 py-2 font-bold text-xs rounded-xl transition-all bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700"
               >
                 Cancel
               </button>
-              <button 
-                onClick={handleConfirmReject} 
+              <button
+                onClick={handleConfirmReject}
                 className="px-4 py-2 font-bold text-xs bg-red-600 text-white rounded-xl hover:bg-red-500 shadow-sm transition-all"
               >
                 Reject Quiz
@@ -320,21 +341,31 @@ export default function AdminQuizViewPage() {
           </p>
         ) : (
           Object.values(groupedQuizzes).map((group: any) => {
+            const teacherKey = group.teacherInfo._id || 'unknown';
             const tName = group.teacherInfo.name || "Unknown Teacher";
             const tId = group.teacherInfo.teacherId || "N/A";
             const tEmail = group.teacherInfo.email || "N/A";
             const tPhoto = group.teacherInfo.profilePhoto;
 
+            // Pagination calculation for this teacher card
+            const currentPage = teacherPages[teacherKey] || 1;
+            const totalItems = group.items.length;
+            const totalPages = Math.ceil(totalItems / QUIZZES_PER_PAGE);
+            const startIndex = (currentPage - 1) * QUIZZES_PER_PAGE;
+            const displayedQuizzes = group.items.slice(startIndex, startIndex + QUIZZES_PER_PAGE);
+
+            const teacherImageSrc = formatImageUrl(tPhoto);
+
             return (
-              <div key={group.teacherInfo._id || 'unknown'} className="bg-white dark:bg-gray-800 border dark:border-gray-700 rounded-xl shadow-sm p-6 space-y-4">
+              <div key={teacherKey} className="bg-white dark:bg-gray-800 border dark:border-gray-700 rounded-xl shadow-sm p-6 space-y-4">
                 {/* Teacher Header Bar (Rendered only once per teacher) */}
                 <div className="flex items-center justify-between pb-4 border-b dark:border-gray-700">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-full overflow-hidden flex items-center justify-center border bg-gray-100 dark:bg-slate-800 border-gray-300 dark:border-gray-700">
-                      {tPhoto ? (
-                        <img 
-                          src={`http://localhost:5000/profile_photos/${tPhoto}`} 
-                          alt={tName} 
+                      {teacherImageSrc ? (
+                        <img
+                          src={teacherImageSrc}
+                          alt={tName}
                           className="w-full h-full object-cover"
                         />
                       ) : (
@@ -345,25 +376,24 @@ export default function AdminQuizViewPage() {
                       <div className="flex items-center gap-2">
                         <h3 className="text-base font-bold text-gray-900 dark:text-white">{tName}</h3>
                         <span className="text-xs px-2 py-0.5 rounded-full font-bold bg-blue-50 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300">
-                          {group.items.length} {group.items.length === 1 ? 'Quiz' : 'Quizzes'}
+                          {totalItems} {totalItems === 1 ? 'Quiz' : 'Quizzes'}
                         </span>
                       </div>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">ID: {tId} • {tEmail}</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">ID: {tId} | {tEmail}</p>
                     </div>
                   </div>
                 </div>
 
-                {/* Quizzes List under this teacher */}
+                {/* Quizzes List under this teacher (Paginated 2 items) */}
                 <div className="space-y-4 pl-2 sm:pl-4 border-l-2 border-gray-100 dark:border-gray-700">
-                  {group.items.map((quiz: QuizSubmission) => (
-                    <div 
-                      key={quiz._id} 
-                      onClick={() => quiz.isNewForTable && handleClearQuizDot(quiz._id)} 
-                      className={`relative transition-all border dark:border-gray-700 rounded-xl shadow-sm p-5 space-y-4 ${
-                        quiz.isNewForTable 
-                          ? "bg-red-50/50 dark:bg-red-950/20 border-red-200 cursor-pointer" 
+                  {displayedQuizzes.map((quiz: QuizSubmission) => (
+                    <div
+                      key={quiz._id}
+                      onClick={() => quiz.isNewForTable && handleClearQuizDot(quiz._id)}
+                      className={`relative transition-all border dark:border-gray-700 rounded-xl shadow-sm p-5 space-y-4 ${quiz.isNewForTable
+                          ? "bg-red-50/50 dark:bg-red-950/20 border-red-200 cursor-pointer"
                           : "bg-gray-50/50 dark:bg-gray-900/50"
-                      }`}
+                        }`}
                     >
                       {/* The red Pulse Dot */}
                       {quiz.isNewForTable && (
@@ -381,10 +411,9 @@ export default function AdminQuizViewPage() {
                         </div>
 
                         <div className="flex items-center gap-2 flex-shrink-0">
-                          <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase ${
-                            quiz.status === "approved" ? "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300" :
-                            quiz.status === "rejected" ? "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300" : "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300"
-                          }`}>
+                          <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase ${quiz.status === "approved" ? "bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300" :
+                              quiz.status === "rejected" ? "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300" : "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300"
+                            }`}>
                             {quiz.status}
                           </span>
                           <button
@@ -430,6 +459,48 @@ export default function AdminQuizViewPage() {
                     </div>
                   ))}
                 </div>
+
+                {/* Pagination Controls for this Teacher */}
+                {totalPages > 1 && (
+                  <div className="flex flex-col sm:flex-row items-center justify-between pt-3 border-t dark:border-gray-700 gap-2 text-xs">
+                    <span className="text-gray-500 dark:text-gray-400">
+                      Showing <strong>{startIndex + 1}</strong> - <strong>{Math.min(startIndex + QUIZZES_PER_PAGE, totalItems)}</strong> of <strong>{totalItems}</strong> Quizzes
+                    </span>
+
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        onClick={() => handleTeacherPageChange(teacherKey, Math.max(currentPage - 1, 1))}
+                        disabled={currentPage === 1}
+                        className="p-1.5 rounded-lg border dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed transition"
+                        title="Previous Page"
+                      >
+                        <ChevronLeft size={16} />
+                      </button>
+
+                      {Array.from({ length: totalPages }, (_, pIdx) => pIdx + 1).map((pageNum) => (
+                        <button
+                          key={pageNum}
+                          onClick={() => handleTeacherPageChange(teacherKey, pageNum)}
+                          className={`w-7 h-7 rounded-lg font-bold transition flex items-center justify-center text-xs ${currentPage === pageNum
+                              ? "bg-blue-600 text-white shadow-sm"
+                              : "border dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                            }`}
+                        >
+                          {pageNum}
+                        </button>
+                      ))}
+
+                      <button
+                        onClick={() => handleTeacherPageChange(teacherKey, Math.min(currentPage + 1, totalPages))}
+                        disabled={currentPage === totalPages}
+                        className="p-1.5 rounded-lg border dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-40 disabled:cursor-not-allowed transition"
+                        title="Next Page"
+                      >
+                        <ChevronRight size={16} />
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             );
           })

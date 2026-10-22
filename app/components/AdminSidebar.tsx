@@ -135,9 +135,15 @@ export default function AdminSidebar({
     axios.get("http://localhost:5000/api/admin/profile", { headers })
       .then((res) => {
         if (res.data.profilePhoto) {
-          const cleanPath = res.data.profilePhoto.replace(/\\/g, "/");
-          const baseUrl = `http://localhost:5000/${cleanPath.startsWith("/") ? cleanPath.substring(1) : cleanPath}`;
-          setAdminProfilePhoto(`${baseUrl}?t=${new Date().getTime()}`);
+          const photo = res.data.profilePhoto;
+          // It either uses the Cloudinary HTTPS URL directly, or constructs a local path using localhost:5000.
+          if (photo.startsWith("http")) {
+            setAdminProfilePhoto(photo);
+          } else {
+            const cleanPath = photo.replace(/\\/g, "/");
+            const baseUrl = `http://localhost:5000/${cleanPath.startsWith("/") ? cleanPath.substring(1) : cleanPath}`;
+            setAdminProfilePhoto(`${baseUrl}?t=${new Date().getTime()}`);
+          }
         }
       })
       .catch(console.error);
@@ -228,23 +234,19 @@ export default function AdminSidebar({
 
       {/* Sidebar Aside */}
       <aside
-        className={`fixed top-0 bottom-0 lg:top-3 lg:bottom-3 z-50 flex flex-col transition-all duration-300 ease-in-out shadow-2xl backdrop-blur-2xl rounded-none lg:rounded-3xl border-r lg:border overflow-visible ${
-          darkMode
+        className={`fixed top-0 bottom-0 lg:top-3 lg:bottom-3 z-50 flex flex-col transition-all duration-300 ease-in-out shadow-2xl backdrop-blur-2xl rounded-none lg:rounded-3xl border-r lg:border overflow-visible ${darkMode
             ? "bg-[#0F172A]/95 lg:bg-[#0F172A]/80 border-slate-800 lg:border-slate-700/40 shadow-black/50"
             : "bg-white/95 lg:bg-white/70 border-slate-200 lg:border-white/80 shadow-indigo-500/10"
-        } ${
-          // Mobile: slide in/out full height (left-0), Desktop: fixed at left-6
-          isMobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
-        } lg:left-6 ${isCollapsed ? "lg:w-20 w-64" : "w-64"}`}
+          } ${isMobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
+          } lg:left-6 ${isCollapsed ? "lg:w-20 w-64" : "w-64"}`}
       >
         {/* Desktop Collapse Button */}
         <button
           onClick={() => setIsCollapsed(!isCollapsed)}
-          className={`hidden lg:flex absolute -right-3.5 top-8 h-7 w-7 items-center justify-center rounded-full border shadow-lg transition-transform duration-300 hover:scale-110 z-[100] ${
-            darkMode
+          className={`hidden lg:flex absolute -right-3.5 top-8 h-7 w-7 items-center justify-center rounded-full border shadow-lg transition-transform duration-300 hover:scale-110 z-[100] ${darkMode
               ? "bg-slate-900 border-slate-700 text-slate-300 hover:text-white"
               : "bg-white border-slate-200 text-slate-500 hover:text-slate-900"
-          }`}
+            }`}
           title={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
         >
           {isCollapsed ? <ChevronsRight size={16} /> : <ChevronsLeft size={16} />}
@@ -262,18 +264,15 @@ export default function AdminSidebar({
         <div className={`p-3.5 pt-4 transition-all duration-300 ${isCollapsed ? "lg:px-2.5 px-3.5" : "px-3.5"}`}>
           <Link href="/admin/profile" onClick={() => setIsMobileOpen(false)}>
             <div
-              className={`flex items-center gap-3 rounded-2xl cursor-pointer group transition-all duration-300 border backdrop-blur-md shadow-sm ${
-                isCollapsed ? "lg:p-2 lg:justify-center p-3" : "p-3"
-              } ${
-                darkMode
+              className={`flex items-center gap-3 rounded-2xl cursor-pointer group transition-all duration-300 border backdrop-blur-md shadow-sm ${isCollapsed ? "lg:p-2 lg:justify-center p-3" : "p-3"
+                } ${darkMode
                   ? "bg-slate-800/30 border-slate-700/40 hover:bg-slate-800/60 hover:border-blue-500/40"
                   : "bg-white/40 border-slate-200/40 hover:bg-white/70 hover:border-blue-200"
-              }`}
+                }`}
             >
               <div
-                className={`relative flex items-center justify-center rounded-full shadow-inner transition-transform group-hover:scale-105 overflow-hidden shrink-0 ${
-                  isCollapsed ? "lg:h-10 lg:w-10 h-11 w-11" : "h-11 w-11"
-                } ${darkMode ? "bg-slate-800 border border-slate-700" : "bg-blue-50 border border-blue-100"}`}
+                className={`relative flex items-center justify-center rounded-full shadow-inner transition-transform group-hover:scale-105 overflow-hidden shrink-0 ${isCollapsed ? "lg:h-10 lg:w-10 h-11 w-11" : "h-11 w-11"
+                  } ${darkMode ? "bg-slate-800 border border-slate-700" : "bg-blue-50 border border-blue-100"}`}
               >
                 {adminProfilePhoto ? (
                   <img src={adminProfilePhoto} alt="Admin Profile" className="h-full w-full object-cover" />
@@ -286,9 +285,8 @@ export default function AdminSidebar({
               </div>
 
               <div
-                className={`flex flex-col overflow-hidden transition-all duration-300 ${
-                  isCollapsed ? "lg:w-0 lg:opacity-0 lg:hidden w-auto opacity-100" : "w-auto opacity-100"
-                }`}
+                className={`flex flex-col overflow-hidden transition-all duration-300 ${isCollapsed ? "lg:w-0 lg:opacity-0 lg:hidden w-auto opacity-100" : "w-auto opacity-100"
+                  }`}
               >
                 <h2 className={`text-sm font-bold tracking-tight truncate ${darkMode ? "text-white" : "text-slate-900"}`}>
                   LMS Admin
@@ -314,55 +312,48 @@ export default function AdminSidebar({
                 onClick={() => handleNavClick(item.path)}
               >
                 <div
-                  className={`group flex items-center rounded-2xl px-3 py-2.5 text-sm font-medium transition-all duration-300 ease-in-out border backdrop-blur-sm relative ${
-                    isCollapsed ? "lg:justify-center lg:px-0 gap-3" : "gap-3"
-                  } ${
-                    isActive
+                  className={`group flex items-center rounded-2xl px-3 py-2.5 text-sm font-medium transition-all duration-300 ease-in-out border backdrop-blur-sm relative ${isCollapsed ? "lg:justify-center lg:px-0 gap-3" : "gap-3"
+                    } ${isActive
                       ? darkMode
                         ? "bg-blue-600/30 text-blue-300 border-blue-500/40 shadow-md shadow-blue-500/10"
                         : "bg-blue-50/80 text-blue-700 border-blue-200/70 shadow-md shadow-blue-100/60"
                       : darkMode
-                      ? "text-slate-400 bg-slate-900/10 border-slate-800/30 hover:bg-slate-800/40 hover:text-white"
-                      : "text-slate-600 bg-white/30 border-slate-200/30 hover:bg-white/60 hover:text-slate-900"
-                  }`}
+                        ? "text-slate-400 bg-slate-900/10 border-slate-800/30 hover:bg-slate-800/40 hover:text-white"
+                        : "text-slate-600 bg-white/30 border-slate-200/30 hover:bg-white/60 hover:text-slate-900"
+                    }`}
                 >
                   <Icon size={18} className="shrink-0" />
                   <span
-                    className={`transition-all duration-300 whitespace-nowrap overflow-hidden ${
-                      isCollapsed ? "lg:w-0 lg:opacity-0 lg:hidden w-auto opacity-100" : "w-auto opacity-100"
-                    }`}
+                    className={`transition-all duration-300 whitespace-nowrap overflow-hidden ${isCollapsed ? "lg:w-0 lg:opacity-0 lg:hidden w-auto opacity-100" : "w-auto opacity-100"
+                      }`}
                   >
                     {item.name}
                   </span>
 
                   {item.name === "Review Materials" && newMaterialCount > 0 && (
-                    <span className={`flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white shadow-sm ${
-                      isCollapsed ? "lg:absolute lg:top-2 lg:right-2 lg:h-2.5 lg:w-2.5 lg:p-0 ml-auto" : "ml-auto"
-                    }`}>
+                    <span className={`flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white shadow-sm ${isCollapsed ? "lg:absolute lg:top-2 lg:right-2 lg:h-2.5 lg:w-2.5 lg:p-0 ml-auto" : "ml-auto"
+                      }`}>
                       <span className={isCollapsed ? "lg:hidden" : ""}>{newMaterialCount}</span>
                     </span>
                   )}
 
                   {item.name === "Review Quiz" && newQuizCount > 0 && (
-                    <span className={`flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white shadow-sm ${
-                      isCollapsed ? "lg:absolute lg:top-2 lg:right-2 lg:h-2.5 lg:w-2.5 lg:p-0 ml-auto" : "ml-auto"
-                    }`}>
+                    <span className={`flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white shadow-sm ${isCollapsed ? "lg:absolute lg:top-2 lg:right-2 lg:h-2.5 lg:w-2.5 lg:p-0 ml-auto" : "ml-auto"
+                      }`}>
                       <span className={isCollapsed ? "lg:hidden" : ""}>{newQuizCount}</span>
                     </span>
                   )}
 
                   {item.name === "Students" && newStudentCount > 0 && (
-                    <span className={`flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white shadow-sm ${
-                      isCollapsed ? "lg:absolute lg:top-2 lg:right-2 lg:h-2.5 lg:w-2.5 lg:p-0 ml-auto" : "ml-auto"
-                    }`}>
+                    <span className={`flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white shadow-sm ${isCollapsed ? "lg:absolute lg:top-2 lg:right-2 lg:h-2.5 lg:w-2.5 lg:p-0 ml-auto" : "ml-auto"
+                      }`}>
                       <span className={isCollapsed ? "lg:hidden" : ""}>{newStudentCount}</span>
                     </span>
                   )}
 
                   {item.name === "Class view" && newClassRequestCount > 0 && (
-                    <span className={`flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white shadow-sm ${
-                      isCollapsed ? "lg:absolute lg:top-2 lg:right-2 lg:h-2.5 lg:w-2.5 lg:p-0 ml-auto" : "ml-auto"
-                    }`}>
+                    <span className={`flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white shadow-sm ${isCollapsed ? "lg:absolute lg:top-2 lg:right-2 lg:h-2.5 lg:w-2.5 lg:p-0 ml-auto" : "ml-auto"
+                      }`}>
                       <span className={isCollapsed ? "lg:hidden" : ""}>{newClassRequestCount}</span>
                     </span>
                   )}
@@ -382,17 +373,15 @@ export default function AdminSidebar({
           <div ref={notifDropdownRef} className="relative w-full">
             <button
               onClick={handleOpenAdminNotifications}
-              className={`flex w-full items-center rounded-2xl px-3 py-2.5 text-sm font-semibold transition-all duration-300 border backdrop-blur-sm shadow-sm ${
-                isCollapsed ? "lg:justify-center lg:px-0 justify-between" : "justify-between"
-              } ${
-                isNotifOpen
+              className={`flex w-full items-center rounded-2xl px-3 py-2.5 text-sm font-semibold transition-all duration-300 border backdrop-blur-sm shadow-sm ${isCollapsed ? "lg:justify-center lg:px-0 justify-between" : "justify-between"
+                } ${isNotifOpen
                   ? darkMode
                     ? "bg-blue-600/30 text-blue-300 border-blue-500/40"
                     : "bg-blue-50/80 text-blue-700 border-blue-200"
                   : darkMode
-                  ? "bg-slate-800/30 text-slate-300 border-slate-700/40 hover:bg-slate-800/60"
-                  : "bg-white/40 text-slate-600 border-slate-200/50 hover:bg-white/70"
-              }`}
+                    ? "bg-slate-800/30 text-slate-300 border-slate-700/40 hover:bg-slate-800/60"
+                    : "bg-white/40 text-slate-600 border-slate-200/50 hover:bg-white/70"
+                }`}
             >
               <span className={`flex items-center ${isCollapsed ? "lg:gap-0 gap-3" : "gap-3"}`}>
                 <div className="relative">
@@ -416,9 +405,8 @@ export default function AdminSidebar({
             {/* Dropdown Modal Container */}
             {isNotifOpen && (
               <div
-                className={`fixed sm:absolute bottom-16 sm:bottom-full sm:mb-3 left-4 right-4 sm:left-auto sm:right-auto sm:w-80 max-h-[70vh] sm:max-h-[400px] flex flex-col rounded-3xl border shadow-2xl z-50 backdrop-blur-2xl overflow-hidden ${
-                  darkMode ? "bg-slate-950/95 border-slate-800 text-slate-100" : "bg-white/95 border-slate-100 text-slate-900"
-                } ${isCollapsed ? "lg:left-full lg:ml-3" : "lg:left-full lg:ml-3"}`}
+                className={`fixed sm:absolute bottom-16 sm:bottom-full sm:mb-3 left-4 right-4 sm:left-auto sm:right-auto sm:w-80 max-h-[70vh] sm:max-h-[400px] flex flex-col rounded-3xl border shadow-2xl z-50 backdrop-blur-2xl overflow-hidden ${darkMode ? "bg-slate-950/95 border-slate-800 text-slate-100" : "bg-white/95 border-slate-100 text-slate-900"
+                  } ${isCollapsed ? "lg:left-full lg:ml-3" : "lg:left-full lg:ml-3"}`}
               >
                 <div className={`p-4 border-b flex justify-between items-center ${darkMode ? "border-slate-800" : "border-slate-100"}`}>
                   <div>
@@ -432,9 +420,8 @@ export default function AdminSidebar({
                   {adminNotifications.length > 0 && (
                     <button
                       onClick={handleClearAll}
-                      className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold uppercase transition-colors ${
-                        darkMode ? "bg-red-500/10 text-red-400 hover:bg-red-500/20" : "bg-red-50 text-red-600 hover:bg-red-100"
-                      }`}
+                      className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold uppercase transition-colors ${darkMode ? "bg-red-500/10 text-red-400 hover:bg-red-500/20" : "bg-red-50 text-red-600 hover:bg-red-100"
+                        }`}
                     >
                       <Trash2 size={12} /> Clear
                     </button>
@@ -467,19 +454,17 @@ export default function AdminSidebar({
                             setIsNotifOpen(false);
                             setIsMobileOpen(false);
                           }}
-                          className={`group relative p-3 rounded-2xl flex items-start gap-3 transition-colors ${
-                            !notif.isRead
+                          className={`group relative p-3 rounded-2xl flex items-start gap-3 transition-colors ${!notif.isRead
                               ? darkMode
                                 ? "bg-blue-950/40 hover:bg-blue-950/70"
                                 : "bg-blue-50 hover:bg-blue-100"
                               : darkMode
-                              ? "hover:bg-slate-900/50"
-                              : "hover:bg-slate-50"
-                          }`}
+                                ? "hover:bg-slate-900/50"
+                                : "hover:bg-slate-50"
+                            }`}
                         >
-                          <div className={`mt-0.5 p-2 rounded-full shrink-0 ${
-                            !notif.isRead ? "bg-blue-600 text-white" : darkMode ? "bg-slate-800 text-slate-400" : "bg-slate-100 text-slate-400"
-                          }`}>
+                          <div className={`mt-0.5 p-2 rounded-full shrink-0 ${!notif.isRead ? "bg-blue-600 text-white" : darkMode ? "bg-slate-800 text-slate-400" : "bg-slate-100 text-slate-400"
+                            }`}>
                             <Bell size={13} />
                           </div>
                           <div className="pr-6 flex-1 overflow-hidden">
@@ -508,17 +493,15 @@ export default function AdminSidebar({
 
           {/* Theme & Logout Controls */}
           <div
-            className={`rounded-2xl p-2 space-y-1.5 border backdrop-blur-md ${
-              darkMode ? "bg-slate-800/30 border-slate-700/40" : "bg-white/40 border-slate-200/50"
-            } ${isCollapsed ? "lg:p-1 lg:bg-transparent lg:border-none" : ""}`}
+            className={`rounded-2xl p-2 space-y-1.5 border backdrop-blur-md ${darkMode ? "bg-slate-800/30 border-slate-700/40" : "bg-white/40 border-slate-200/50"
+              } ${isCollapsed ? "lg:p-1 lg:bg-transparent lg:border-none" : ""}`}
           >
-            {/* Desktop Theme Toggle (Mobile has header toggle) */}
+            {/* Desktop Theme Toggle */}
             <button
               type="button"
               onClick={toggleDarkMode}
-              className={`hidden lg:flex w-full items-center rounded-xl px-3 py-2 text-sm font-semibold transition-all ${
-                isCollapsed ? "justify-center px-0 py-2.5" : "justify-between"
-              } ${darkMode ? "text-slate-300 hover:bg-slate-700/80" : "text-slate-600 hover:bg-slate-200/50"}`}
+              className={`hidden lg:flex w-full items-center rounded-xl px-3 py-2 text-sm font-semibold transition-all ${isCollapsed ? "justify-center px-0 py-2.5" : "justify-between"
+                } ${darkMode ? "text-slate-300 hover:bg-slate-700/80" : "text-slate-600 hover:bg-slate-200/50"}`}
             >
               <span className={`flex items-center ${isCollapsed ? "gap-0" : "gap-3"}`}>
                 {darkMode ? <Moon size={18} /> : <Sun size={18} />}
@@ -534,9 +517,8 @@ export default function AdminSidebar({
             {/* Logout */}
             <button
               onClick={handleLogout}
-              className={`flex w-full items-center rounded-xl px-3 py-2 text-sm font-bold transition-all ${
-                isCollapsed ? "lg:justify-center lg:px-0 justify-start gap-3" : "gap-3"
-              } ${darkMode ? "bg-red-600/10 text-red-400 hover:bg-red-600/20" : "bg-red-50 text-red-600 hover:bg-red-100"}`}
+              className={`flex w-full items-center rounded-xl px-3 py-2 text-sm font-bold transition-all ${isCollapsed ? "lg:justify-center lg:px-0 justify-start gap-3" : "gap-3"
+                } ${darkMode ? "bg-red-600/10 text-red-400 hover:bg-red-600/20" : "bg-red-50 text-red-600 hover:bg-red-100"}`}
             >
               <LogOut size={18} />
               <span className={isCollapsed ? "lg:hidden block" : "block"}>Logout</span>
