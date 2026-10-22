@@ -33,7 +33,6 @@ import {
 import { useTheme } from "@/app/context/ThemeContext";
 import { io } from "socket.io-client";
 import TeacherClassCalendar from "@/app/components/TeacherClassCalendar";
-import TeacherUploadModal from "@/app/components/TeacherUploadModal";
 
 // Date formatting helper function
 const formatTimeAgo = (dateString: string) => {
@@ -71,7 +70,6 @@ export default function TeacherDashboard() {
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [isNotifOpen, setIsNotifOpen] = useState(false);
-  const [uploadModalOpen, setUploadModalOpen] = useState(false);
 
   const unreadCount = notifications.filter(n => !n.isRead).length;
 
@@ -230,13 +228,6 @@ export default function TeacherDashboard() {
               <p className={`text-[10px] truncate max-w-[150px] font-medium ${darkMode ? "text-slate-400" : "text-slate-500"}`}>{user.subject || "Faculty Member"}</p>
             </div>
           </div>
-          <div>
-            <button onClick={() => setUploadModalOpen(true)} className="flex items-center gap-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white px-2.5 py-1.5 text-[11px] font-bold shadow-sm shadow-indigo-600/20 transition-all hover:scale-[1.02] active:scale-[0.98]">
-              <Plus size={14} strokeWidth={2.5} />
-              <span className="hidden sm:inline">Upload Material</span>
-              <span className="sm:hidden">Upload</span>
-            </button>
-          </div>
         </div>
       </nav>
 
@@ -381,15 +372,6 @@ export default function TeacherDashboard() {
 
         </div>
       </main>
-
-      {/* Imported Upload Modal Component */}
-      <TeacherUploadModal 
-        isOpen={uploadModalOpen}
-        onClose={() => setUploadModalOpen(false)}
-        darkMode={darkMode}
-        showToast={showToast}
-        onUploadSuccess={() => fetchMyStats()}
-      />
 
       {/* View Materials Drawer / Modal */}
       {materialsModalOpen && (

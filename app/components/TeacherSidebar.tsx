@@ -32,6 +32,13 @@ import {
 } from "lucide-react";
 import { useTheme } from "@/app/context/ThemeContext";
 
+// Cloudinary URL හෝ Local URL එක නිවැරදිව ලබා දෙන Helper ශ්‍රිතය
+const getProfilePhotoUrl = (photo: string) => {
+  if (!photo) return null;
+  if (photo.startsWith("http")) return photo;
+  return `http://localhost:5000/profile_photos/${photo}`;
+};
+
 export default function TeacherSidebar() {
   const pathname = usePathname();
   const router = useRouter();
@@ -52,11 +59,16 @@ export default function TeacherSidebar() {
   const [isMobileOpen, setIsMobileOpen] = useState(false);
 
   const notifDropdownRef = useRef<HTMLDivElement>(null);
+  const mobileNotifRef = useRef<HTMLDivElement>(null);
 
   // Close notification dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (notifDropdownRef.current && !notifDropdownRef.current.contains(event.target as Node)) {
+      const target = event.target as Node;
+      const clickedInsideDesktop = notifDropdownRef.current && notifDropdownRef.current.contains(target);
+      const clickedInsideMobile = mobileNotifRef.current && mobileNotifRef.current.contains(target);
+
+      if (!clickedInsideDesktop && !clickedInsideMobile) {
         setIsNotifOpen(false);
       }
     };
@@ -104,7 +116,7 @@ export default function TeacherSidebar() {
 
         const photoName = parsedUser.photo || parsedUser.profilePhoto;
         if (photoName) {
-          setTeacherPhoto(`http://localhost:5000/profile_photos/${photoName}`);
+          setTeacherPhoto(getProfilePhotoUrl(photoName));
         }
       }
     };
@@ -122,11 +134,12 @@ export default function TeacherSidebar() {
         if (data.name) setTeacherName(data.name);
 
         if (data.profilePhoto) {
-          setTeacherPhoto(`http://localhost:5000/profile_photos/${data.profilePhoto}`);
+          setTeacherPhoto(getProfilePhotoUrl(data.profilePhoto));
           const userData = localStorage.getItem("user");
           if (userData) {
             const parsedUser = JSON.parse(userData);
             parsedUser.profilePhoto = data.profilePhoto;
+            parsedUser.photo = data.profilePhoto;
             localStorage.setItem("user", JSON.stringify(parsedUser));
           }
         }
@@ -163,7 +176,7 @@ export default function TeacherSidebar() {
 
     loadUserDataLocally();
     fetchLatestProfile();
-    
+
     fetchNotifications();
     fetchTeacherNoticesCount();
 
@@ -258,10 +271,10 @@ export default function TeacherSidebar() {
   return (
     <>
       {/* --- MOBILE TOP BAR --- */}
-      <div className={`md:hidden fixed top-0 left-0 right-0 h-16 px-5 flex items-center justify-end gap-3 z-50 backdrop-blur-2xl border-b ${
+      <div className={`md:hidden fixed top-0 left-0 right-0 h-16 px-4 flex items-center justify-between z-50 backdrop-blur-2xl border-b ${
         darkMode ? "bg-[#0F172A]/80 border-slate-700/40" : "bg-white/80 border-slate-200/60"
       }`}>
-        {/* Teacher Profile Photo */}
+        {/* Left Side: Teacher Profile Photo */}
         <Link href="/teacher/profile" className="relative flex items-center justify-center rounded-full h-10 w-10 shadow-inner overflow-hidden border shrink-0">
           {teacherPhoto ? (
             <img src={teacherPhoto} alt={teacherName} className="h-full w-full object-cover rounded-full" />
@@ -273,16 +286,162 @@ export default function TeacherSidebar() {
           <div className="absolute bottom-0 right-0 h-2 w-2 rounded-full border-2 border-white bg-green-500 dark:border-slate-800"></div>
         </Link>
 
-        {/* Hamburger Button */}
-        <button
-          onClick={() => setIsMobileOpen(!isMobileOpen)}
-          className={`p-2.5 rounded-xl border transition-transform active:scale-95 ${
-            darkMode ? "bg-slate-800 border-slate-700 text-white" : "bg-white border-slate-200 text-slate-800"
-          }`}
-          title="Toggle Menu"
-        >
-          {isMobileOpen ? <X size={22} /> : <Menu size={22} />}
-        </button>
+        {/* Right Side: Notifications & Hamburger Button */}
+        <div className="flex items-center gap-2">
+          {/* Mobile Notifications Bell & Dropdown */}
+          <div ref={mobileNotifRef} className="relative">
+            <button
+              onClick={handleOpenNotifications}
+              className={`p-2.5 rounded-xl border transition-all relative ${
+                isNotifOpen
+                  ? darkMode ? "bg-indigo-600/30 border-indigo-500/40 text-indigo-300" : "bg-indigo-50 border-indigo-200 text-indigo-700"
+                  : darkMode ? "bg-slate-800 border-slate-700 text-slate-300" : "bg-white border-slate-200 text-slate-700"
+              }`}
+              title="Notifications"
+            >
+              <Bell size={18} />
+              {unreadCount > 0 && (
+                <span className="absolute -top-1.5 -right-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white shadow-sm px-1">
+                  {unreadCount}
+                </span>
+              )}
+            </button>
+
+            {/* Mobile Notifications Dropdown Modal */}
+            {isNotifOpen && (
+              <div
+                className={`fixed top-16 right-4 left-4 max-h-[75vh] flex flex-col rounded-3xl border shadow-2xl z-[100] transition-all duration-300 backdrop-blur-2xl ${
+                  darkMode ? "bg-slate-950/95 border-slate-800" : "bg-white/95 border-slate-100"
+                }`}
+              >
+                <div
+                  className={`p-4 border-b flex justify-between items-center ${
+                    darkMode ? "border-slate-800" : "border-slate-100"
+                  }`}
+                >
+                  <div>
+                    <h3 className={`font-bold text-sm ${darkMode ? "text-white" : "text-slate-900"}`}>Notifications</h3>
+                    {unreadCount === 0 && (
+                      <span className={`text-xs font-medium mt-1 block ${darkMode ? "text-slate-500" : "text-slate-400"}`}>
+                        All caught up!
+                      </span>
+                    )}
+                  </div>
+
+                  {notifications.length > 0 && (
+                    <button
+                      onClick={handleClearAll}
+                      className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wider transition-colors ${
+                        darkMode ? "bg-red-500/10 text-red-400 hover:bg-red-500/20" : "bg-red-50 text-red-600 hover:bg-red-100"
+                      }`}
+                    >
+                      <Trash2 size={12} /> Clear All
+                    </button>
+                  )}
+                </div>
+
+                <div className="flex-1 overflow-y-auto p-2 space-y-1.5">
+                  {notifications.length === 0 ? (
+                    <div className={`p-6 text-center text-sm font-medium ${darkMode ? "text-slate-500" : "text-slate-400"}`}>
+                      No notifications yet.
+                    </div>
+                  ) : (
+                    notifications.map((notif, index) => {
+                      let targetUrl = "/teacher/dashboard";
+                      if (
+                        notif.title.toLowerCase().includes("ticket") ||
+                        notif.title.toLowerCase().includes("reply")
+                      ) {
+                        targetUrl = notif.ticketId
+                          ? `/teacher/tickets?ticketId=${notif.ticketId}`
+                          : "/teacher/tickets";
+                      } else if (
+                        notif.title.toLowerCase().includes("notice") ||
+                        notif.targetType?.includes("teacher") ||
+                        notif.targetType === "everyone"
+                      ) {
+                        targetUrl = "/teacher/notice_view";
+                      }
+
+                      return (
+                        <Link
+                          href={targetUrl}
+                          key={notif._id || index}
+                          onClick={() => setIsNotifOpen(false)}
+                          className={`group relative p-3 rounded-2xl flex items-start gap-3 transition-colors duration-300 cursor-pointer ${
+                            !notif.isRead
+                              ? darkMode
+                                ? "bg-indigo-950/40 hover:bg-indigo-950/70"
+                                : "bg-indigo-50 hover:bg-indigo-100"
+                              : darkMode
+                              ? "hover:bg-slate-900/50"
+                              : "hover:bg-slate-50"
+                          }`}
+                        >
+                          <div
+                            className={`mt-1 p-2 rounded-full flex-shrink-0 ${
+                              !notif.isRead
+                                ? "bg-indigo-600 text-white shadow-md shadow-indigo-500/20"
+                                : darkMode
+                                ? "bg-slate-800 text-slate-400"
+                                : "bg-slate-100 text-slate-400"
+                            }`}
+                          >
+                            <Bell size={14} />
+                          </div>
+                          <div className="pr-6 flex-1 overflow-hidden">
+                            <h4
+                              className={`text-xs font-bold truncate ${
+                                !notif.isRead
+                                  ? darkMode
+                                    ? "text-indigo-300"
+                                    : "text-indigo-700"
+                                  : darkMode
+                                  ? "text-slate-300"
+                                  : "text-slate-800"
+                              }`}
+                            >
+                              {notif.title}
+                            </h4>
+                            <p className={`text-[11px] mt-1 leading-relaxed line-clamp-2 ${darkMode ? "text-slate-400" : "text-slate-600"}`}>
+                              {notif.message}
+                            </p>
+                            <span className={`text-[9px] font-medium mt-1.5 block ${darkMode ? "text-slate-500" : "text-slate-400"}`}>
+                              {new Date(notif.createdAt).toLocaleString()}
+                            </span>
+                          </div>
+
+                          <button
+                            onClick={(e) => handleDeleteNotification(e, notif._id)}
+                            className={`absolute top-2.5 right-2.5 p-1 rounded-lg transition-all duration-300 ${
+                              darkMode
+                                ? "hover:bg-red-500/20 text-slate-500 hover:text-red-400"
+                                : "hover:bg-red-100 text-slate-400 hover:text-red-600"
+                            }`}
+                            title="Delete"
+                          >
+                            <X size={14} />
+                          </button>
+                        </Link>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Hamburger Button */}
+          <button
+            onClick={() => setIsMobileOpen(!isMobileOpen)}
+            className={`p-2.5 rounded-xl border transition-transform active:scale-95 ${
+              darkMode ? "bg-slate-800 border-slate-700 text-white" : "bg-white border-slate-200 text-slate-800"
+            }`}
+            title="Toggle Menu"
+          >
+            {isMobileOpen ? <X size={22} /> : <Menu size={22} />}
+          </button>
+        </div>
       </div>
 
       {/* --- MOBILE OVERLAY BACKDROP --- */}
@@ -457,8 +616,8 @@ export default function TeacherSidebar() {
 
         {/* Footer: Notifications, Theme & Logout */}
         <div className="p-2.5 pb-3.5 relative space-y-2">
-          {/* Notifications Section */}
-          <div ref={notifDropdownRef} className="relative w-full">
+          {/* Notifications Section (Desktop view) */}
+          <div ref={notifDropdownRef} className="relative w-full hidden md:block">
             <button
               onClick={handleOpenNotifications}
               className={`flex w-full items-center rounded-2xl px-3 py-2.5 text-sm font-semibold transition-all duration-300 border backdrop-blur-sm shadow-sm ${
@@ -499,7 +658,7 @@ export default function TeacherSidebar() {
               )}
             </button>
 
-            {/* Notifications Dropdown (Fully mobile responsive, fixed width & padding adjustments) */}
+            {/* Notifications Dropdown (Desktop) */}
             {isNotifOpen && (
               <div
                 className={`absolute bottom-full mb-3 w-[235px] sm:w-80 max-h-[380px] flex flex-col rounded-3xl border shadow-2xl z-[100] transition-all duration-300 backdrop-blur-2xl ${

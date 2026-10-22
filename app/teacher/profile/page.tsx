@@ -40,9 +40,12 @@ interface SocialLink {
   url: string;
 }
 
-/* ------------------------------------------------------------------ */
-/*  Presentation helpers (UI only — no page logic)                    */
-/* ------------------------------------------------------------------ */
+// Profile Photo URL එක Cloudinary හෝ Local backend අනුව ලබා දෙන Helper
+const getProfilePhotoUrl = (photo: string) => {
+  if (!photo) return "";
+  if (photo.startsWith("http")) return photo;
+  return `http://localhost:5000/profile_photos/${photo}`;
+};
 
 function Field({
   id,
@@ -161,10 +164,6 @@ function Stat({ label, value, darkMode }: { label: string; value: string | numbe
   );
 }
 
-/* ------------------------------------------------------------------ */
-/*  Teacher Profile Page                                              */
-/* ------------------------------------------------------------------ */
-
 export default function TeacherProfilePage() {
   const { darkMode } = useTheme();
   const [loading, setLoading] = useState(true);
@@ -219,7 +218,7 @@ export default function TeacherProfilePage() {
         }
 
         if (data.profilePhoto) {
-          setPhotoPreview(`http://localhost:5000/profile_photos/${data.profilePhoto}`);
+          setPhotoPreview(getProfilePhotoUrl(data.profilePhoto));
         }
       } catch (err) {
         console.error("Error fetching profile:", err);
@@ -258,7 +257,6 @@ export default function TeacherProfilePage() {
     setQualifications(updated);
   };
 
-  // Social Links Functions
   const addSocialLink = () => {
     setSocialLinks([...socialLinks, { platform: "", url: "" }]);
   };
@@ -308,7 +306,7 @@ export default function TeacherProfilePage() {
 
       const updatedTeacher = res.data.teacher;
       if (updatedTeacher?.profilePhoto) {
-        setPhotoPreview(`http://localhost:5000/profile_photos/${updatedTeacher.profilePhoto}`);
+        setPhotoPreview(getProfilePhotoUrl(updatedTeacher.profilePhoto));
       }
 
       const userData = JSON.parse(localStorage.getItem("user") || "{}");
@@ -609,7 +607,7 @@ export default function TeacherProfilePage() {
             </div>
           </SectionCard>
 
-          {/* Qualifications & Certificates (Dynamic Section) */}
+          {/* Qualifications & Certificates */}
           <SectionCard
             icon={GraduationCap}
             title="Qualifications & Certificates"
@@ -804,7 +802,6 @@ export default function TeacherProfilePage() {
               />
             </div>
 
-            {/* Dynamic Social Links List */}
             {socialLinks.length > 0 && (
               <div className="mt-6 border-t pt-6 dark:border-slate-800">
                 <h4 className={`text-sm font-semibold mb-4 ${darkMode ? "text-slate-200" : "text-slate-800"}`}>
