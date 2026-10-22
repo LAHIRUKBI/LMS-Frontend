@@ -140,7 +140,7 @@ export default function MyPDFsPage() {
       }, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      
+
       setPdfs(pdfs.map(pdf => pdf._id === selectedPdfForPublish._id ? res.data.material : pdf));
       setPublishedItemName(selectedPdfForPublish.title);
       setPublishModalOpen(false);
@@ -172,14 +172,14 @@ export default function MyPDFsPage() {
     try {
       const updatedClassIds = (pdf.classIds || []).map((c: any) => c._id || c).filter((id: string) => id !== classIdToRemove);
       const token = localStorage.getItem("token");
-      
+
       const res = await axios.put(`http://localhost:5000/api/materials/${pdf._id}/publish`, {
         classIds: updatedClassIds,
         isFree: pdf.isFree
       }, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      
+
       setPdfs(pdfs.map(item => item._id === pdf._id ? res.data.material : item));
     } catch (err: any) {
       alert("Failed to remove class.");
@@ -201,7 +201,7 @@ export default function MyPDFsPage() {
       const matchesSearch = 
         pdf.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
         pdf.subject.toLowerCase().includes(searchTerm.toLowerCase());
-        
+
       let matchesTab = true;
       if (activeTab === "published") matchesTab = pdf.isPublished;
       else if (activeTab === "approved") matchesTab = pdf.status === "approved" && !pdf.isPublished;
@@ -230,7 +230,7 @@ export default function MyPDFsPage() {
 
   return (
     <div className={`p-4 sm:p-6 min-h-screen transition-colors duration-300 font-sans w-full overflow-x-hidden ${darkMode ? "bg-slate-950" : "bg-slate-50/80"}`}>
-      
+
       <PublishSuccessPopup 
         isOpen={isPublishPopupOpen} 
         onClose={() => setIsPublishPopupOpen(false)} 
@@ -296,9 +296,11 @@ export default function MyPDFsPage() {
               <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1 mb-4">
                 {teacherClasses.map((cls) => {
                   const isSelected = selectedClassIds.includes(cls._id);
+                  const classNameToDisplay = cls.grade === "Other" ? (cls.customGradeName || "Other") : cls.grade;
+
                   return (
                     <div 
-                      key={cls._id}
+                      key={cls._id} 
                       onClick={() => toggleClassSelection(cls._id)}
                       className={`p-3 rounded-xl border cursor-pointer flex items-center justify-between transition-all ${
                         isSelected 
@@ -308,7 +310,7 @@ export default function MyPDFsPage() {
                     >
                       <div>
                         <div className="flex items-center gap-1.5">
-                          <span className="font-bold text-xs">{cls.grade}</span>
+                          <span className="font-bold text-xs">{classNameToDisplay}</span>
                           <span className="text-[10px] opacity-70">({cls.medium} {cls.mode})</span>
                         </div>
                         <p className="text-[10px] opacity-60 mt-0.5">{cls.day} | {cls.startTime} - {cls.endTime}</p>
@@ -451,7 +453,7 @@ export default function MyPDFsPage() {
                   >
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                       <div className="flex items-start sm:items-center gap-3 flex-1 min-w-0">
-                        
+
                         {/* Thumbnail / Cover Image */}
                         <div className={`relative w-12 h-16 sm:w-14 sm:h-18 rounded-xl overflow-hidden flex-shrink-0 border flex items-center justify-center ${darkMode ? "bg-slate-800 border-slate-700" : "bg-slate-100 border-slate-200"}`}>
                           {coverSrc ? (
@@ -477,7 +479,7 @@ export default function MyPDFsPage() {
                             {pdf.isPublished && <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-400 flex items-center gap-1"><Globe size={9} /> Published</span>}
                             {pdf.isFree && <span className="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 flex items-center gap-1"><Gift size={9} /> Free</span>}
                           </div>
-                          
+
                           <div className={`flex items-center flex-wrap gap-x-2.5 gap-y-1 text-[11px] font-medium ${darkMode ? "text-slate-400" : "text-slate-500"}`}>
                             <span className="flex items-center gap-1"><BookOpen size={11} className="shrink-0" /> {pdf.subject}</span>
                             {pdf.grade && <span>• {pdf.grade}</span>}
@@ -537,7 +539,7 @@ export default function MyPDFsPage() {
                     {pdf.isPublished && ((pdf.classIds && pdf.classIds.length > 0) || pdf.isFree) && (
                       <div className={`mt-1 pt-2.5 border-t flex flex-wrap items-center gap-1.5 ${darkMode ? "border-slate-800" : "border-slate-100"}`}>
                         <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mr-1">Published to:</span>
-                        
+
                         {pdf.isFree && (
                           <span className="text-[10px] px-2 py-0.5 rounded-lg font-bold border flex items-center gap-1 bg-emerald-500/10 border-emerald-500/30 text-emerald-400">
                             <Gift size={10} /> Free Page
@@ -560,7 +562,9 @@ export default function MyPDFsPage() {
 
                         {pdf.classIds && pdf.classIds.map((cls: any) => {
                           const classId = cls._id || cls;
-                          const displayTitle = cls.grade ? `${cls.grade} ${cls.medium} (${cls.mode})` : "Class";
+                          const className = cls.grade === "Other" ? (cls.customGradeName || "Other") : cls.grade;
+                          const displayTitle = className ? `${className} ${cls.medium || ""} (${cls.mode || ""})`.trim() : "Class";
+                          
                           return (
                             <span key={classId} className={`text-[10px] px-2 py-0.5 rounded-lg font-bold border flex items-center gap-1 ${darkMode ? "bg-slate-800 border-slate-700 text-orange-400" : "bg-orange-50 border-orange-200 text-orange-700"}`}>
                               {displayTitle}
@@ -586,7 +590,7 @@ export default function MyPDFsPage() {
                 <span className={`text-xs font-medium text-center sm:text-left ${darkMode ? "text-slate-400" : "text-slate-500"}`}>
                   Showing page <span className="font-bold">{currentPage}</span> of <span className="font-bold">{totalPages}</span> ({filteredPdfs.length} total items)
                 </span>
-                
+
                 <div className="flex items-center gap-2 w-full sm:w-auto justify-center">
                   <button
                     onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
