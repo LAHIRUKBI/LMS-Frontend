@@ -6,7 +6,7 @@ import { useSearchParams } from "next/navigation";
 import { useTheme } from "@/app/context/ThemeContext";
 import { MessageSquare, CheckCircle, Trash2, X, Send, Search, Loader2, User, Clock, CheckCircle2, Paperclip, FileText, ExternalLink } from "lucide-react";
 
-export default function AdminTicketsPage() {
+function AdminTicketsContent() {
   const { darkMode } = useTheme();
   const searchParams = useSearchParams();
   const ticketIdParam = searchParams.get("ticketId");
@@ -392,5 +392,20 @@ export default function AdminTicketsPage() {
         </div>
       )}
     </div>
+  );
+}
+
+export default function AdminTicketsPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex flex-col justify-center items-center gap-3 bg-slate-950 text-white">
+          <Loader2 className="animate-spin text-blue-500" size={36} />
+          <span className="text-sm font-medium text-slate-400">Loading Helpdesk...</span>
+        </div>
+      }
+    >
+      <AdminTicketsContent />
+    </Suspense>
   );
 }
