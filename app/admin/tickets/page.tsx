@@ -22,7 +22,7 @@ function AdminTicketsContent() {
   const fetchTickets = async () => {
     try {
       const token = localStorage.getItem("token");
-      const res = await axios.get("http://localhost:5000/api/tickets/admin/all", {
+      const res = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/tickets/admin/all`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setTickets(res.data);
@@ -57,7 +57,7 @@ function AdminTicketsContent() {
         formData.append("attachment", replyFile);
       }
 
-      const res = await axios.post(`http://localhost:5000/api/tickets/${selectedTicket._id}/reply`, formData, {
+      const res = await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/api/tickets/${selectedTicket._id}/reply`, formData, {
         headers: { 
           Authorization: `Bearer ${token}`,
           "Content-Type": "multipart/form-data"
@@ -76,7 +76,7 @@ function AdminTicketsContent() {
     if(!confirm("Are you sure you want to close this ticket?")) return;
     try {
       const token = localStorage.getItem("token");
-      await axios.put(`http://localhost:5000/api/tickets/admin/${id}/close`, {}, {
+      await axios.put(`${process.env.NEXT_PUBLIC_API_URL}/api/tickets/admin/${id}/close`, {}, {
         headers: { Authorization: `Bearer ${token}` }
       });
       fetchTickets();
@@ -90,7 +90,7 @@ function AdminTicketsContent() {
     if(!confirm("Are you sure you want to permanently delete this ticket and all its attachments?")) return;
     try {
       const token = localStorage.getItem("token");
-      await axios.delete(`http://localhost:5000/api/tickets/admin/${id}`, {
+      await axios.delete(`${process.env.NEXT_PUBLIC_API_URL}/api/tickets/admin/${id}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setTickets(tickets.filter(t => t._id !== id));
@@ -212,7 +212,7 @@ function AdminTicketsContent() {
                   <div className={`mt-auto pt-4 flex items-center gap-3 border-t ${darkMode ? "border-slate-800" : "border-slate-100"}`}>
                     <div className={`w-9 h-9 rounded-full overflow-hidden flex items-center justify-center border ${darkMode ? "border-slate-700 bg-slate-800" : "border-slate-200 bg-slate-100"}`}>
                       {ticket.teacherId?.profilePhoto ? (
-                        <img src={`http://localhost:5000/profile_photos/${ticket.teacherId.profilePhoto}`} className="w-full h-full object-cover" alt="" />
+                        <img src={`${process.env.NEXT_PUBLIC_API_URL}/profile_photos/${ticket.teacherId.profilePhoto}`} className="w-full h-full object-cover" alt="" />
                       ) : <User size={16} className={darkMode ? "text-slate-500" : "text-slate-400"} />}
                     </div>
                     <div className="min-w-0 flex-1">
@@ -272,7 +272,7 @@ function AdminTicketsContent() {
               <div className="flex items-center gap-4">
                 <div className={`w-11 h-11 rounded-full overflow-hidden flex items-center justify-center border shadow-sm ${darkMode ? "border-slate-700 bg-slate-800" : "border-slate-200 bg-slate-100"}`}>
                   {selectedTicket.teacherId?.profilePhoto ? (
-                    <img src={`http://localhost:5000/profile_photos/${selectedTicket.teacherId.profilePhoto}`} className="w-full h-full object-cover" alt="" />
+                    <img src={`${process.env.NEXT_PUBLIC_API_URL}/profile_photos/${selectedTicket.teacherId.profilePhoto}`} className="w-full h-full object-cover" alt="" />
                   ) : <User size={20} className={darkMode ? "text-slate-500" : "text-slate-400"} />}
                 </div>
                 <div>
@@ -300,11 +300,11 @@ function AdminTicketsContent() {
                   {selectedTicket.attachmentUrl && (
                     <div className="mt-3 pt-3 border-t border-slate-700/20">
                       {selectedTicket.attachmentType === 'image' ? (
-                        <a href={`http://localhost:5000${selectedTicket.attachmentUrl}`} target="_blank" rel="noopener noreferrer">
-                          <img src={`http://localhost:5000${selectedTicket.attachmentUrl}`} alt="Attachment" className="rounded-xl max-h-48 object-cover hover:opacity-95 transition-opacity" />
+                        <a href={`${process.env.NEXT_PUBLIC_API_URL}${selectedTicket.attachmentUrl}`} target="_blank" rel="noopener noreferrer">
+                          <img src={`${process.env.NEXT_PUBLIC_API_URL}${selectedTicket.attachmentUrl}`} alt="Attachment" className="rounded-xl max-h-48 object-cover hover:opacity-95 transition-opacity" />
                         </a>
                       ) : (
-                        <a href={`http://localhost:5000${selectedTicket.attachmentUrl}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-xs font-bold underline bg-slate-500/10 p-2.5 rounded-xl">
+                        <a href={`${process.env.NEXT_PUBLIC_API_URL}${selectedTicket.attachmentUrl}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-xs font-bold underline bg-slate-500/10 p-2.5 rounded-xl">
                           <FileText size={16} /> View Attached Document <ExternalLink size={14} />
                         </a>
                       )}
@@ -333,11 +333,11 @@ function AdminTicketsContent() {
                       {reply.attachmentUrl && (
                         <div className="mt-3 pt-3 border-t border-white/20">
                           {reply.attachmentType === 'image' ? (
-                            <a href={`http://localhost:5000${reply.attachmentUrl}`} target="_blank" rel="noopener noreferrer">
-                              <img src={`http://localhost:5000${reply.attachmentUrl}`} alt="Reply Attachment" className="rounded-xl max-h-48 object-cover hover:opacity-95 transition-opacity" />
+                            <a href={`${process.env.NEXT_PUBLIC_API_URL}${reply.attachmentUrl}`} target="_blank" rel="noopener noreferrer">
+                              <img src={`${process.env.NEXT_PUBLIC_API_URL}${reply.attachmentUrl}`} alt="Reply Attachment" className="rounded-xl max-h-48 object-cover hover:opacity-95 transition-opacity" />
                             </a>
                           ) : (
-                            <a href={`http://localhost:5000${reply.attachmentUrl}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-xs font-bold underline bg-white/10 p-2.5 rounded-xl">
+                            <a href={`${process.env.NEXT_PUBLIC_API_URL}${reply.attachmentUrl}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-xs font-bold underline bg-white/10 p-2.5 rounded-xl">
                               <FileText size={16} /> View Attached Document <ExternalLink size={14} />
                             </a>
                           )}

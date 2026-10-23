@@ -89,7 +89,7 @@ export default function AdminNoticePage() {
   const handleDeleteNotice = async (id: string) => {
     if (!confirm('Are you sure you want to delete this notice?')) return;
     try {
-      const res = await fetch(`http://localhost:5000/api/admin/notices/${id}`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/admin/notices/${id}`, {
         method: 'DELETE',
       });
       const data = await res.json();
@@ -148,7 +148,7 @@ export default function AdminNoticePage() {
       cleanPath = `/profile_photos${cleanPath}`;
     }
 
-    return `http://localhost:5000${cleanPath}`;
+    return `${process.env.NEXT_PUBLIC_API_URL}${cleanPath}`;
   };
 
   const getRecipientCount = () => {
@@ -483,7 +483,7 @@ export default function AdminNoticePage() {
         <div className="space-y-3">
           {noticesList.length > 0 ? (
             noticesList.map((notice) => {
-              const noticeImgUrl = notice.image ? `http://localhost:5000${notice.image}` : null;
+              const noticeImgUrl = notice.image ? `${process.env.NEXT_PUBLIC_API_URL}${notice.image}` : null;
               return (
                 <div key={notice._id} className={`p-4 rounded-xl border transition-all duration-200 flex flex-col md:flex-row items-start md:items-center justify-between gap-3 shadow-sm ${darkMode ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200'}`}>
                   

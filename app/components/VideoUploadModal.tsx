@@ -95,7 +95,7 @@ export default function VideoUploadModal({ isOpen, onClose, onSuccess }: VideoUp
     uploadData.append("youtubeUrl", formData.youtubeUrl.trim());
 
     try {
-      await axios.post("http://localhost:5000/api/materials/upload", uploadData, {
+      await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/api/materials/upload", uploadData, {
         headers: {
           Authorization: `Bearer ${token}`
         }

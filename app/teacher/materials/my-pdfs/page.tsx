@@ -33,12 +33,12 @@ const getImageUrl = (imageSource: any) => {
   if (!imageSource) return null;
   const rawUrl = typeof imageSource === "object" ? imageSource.url : imageSource;
   if (!rawUrl || typeof rawUrl !== "string") return null;
-  return rawUrl.startsWith("http") ? rawUrl : `http://localhost:5000${rawUrl}`;
+  return rawUrl.startsWith("http") ? rawUrl : `${process.env.NEXT_PUBLIC_API_URL}${rawUrl}`;
 };
 
 const getPdfViewUrl = (fileUrl: string) => {
   if (!fileUrl) return "#";
-  return fileUrl.startsWith("http") ? fileUrl : `http://localhost:5000${fileUrl}`;
+  return fileUrl.startsWith("http") ? fileUrl : `${process.env.NEXT_PUBLIC_API_URL}${fileUrl}`;
 };
 
 export default function MyPDFsPage() {
@@ -81,7 +81,7 @@ export default function MyPDFsPage() {
   const fetchPdfs = async () => {
     const token = localStorage.getItem("token");
     try {
-      const res = await axios.get("http://localhost:5000/api/materials/my-materials", {
+      const res = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/materials/my-materials`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const filteredPdfs = res.data.filter((m: any) => m.type === "pdf" || m.type === "paper");
@@ -97,7 +97,7 @@ export default function MyPDFsPage() {
   const fetchTeacherClasses = async () => {
     try {
       const token = localStorage.getItem("token");
-      const res = await axios.get("http://localhost:5000/api/classes/my-classes", {
+      const res = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/classes/my-classes`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setTeacherClasses(res.data);
@@ -111,7 +111,7 @@ export default function MyPDFsPage() {
     if (!deleteItem) return;
     try {
       const token = localStorage.getItem("token");
-      await axios.delete(`http://localhost:5000/api/materials/${deleteItem._id}`, {
+      await axios.delete(`${process.env.NEXT_PUBLIC_API_URL}/api/materials/${deleteItem._id}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setPdfs(pdfs.filter((pdf) => pdf._id !== deleteItem._id));
@@ -134,7 +134,7 @@ export default function MyPDFsPage() {
     if (!selectedPdfForPublish) return;
     try {
       const token = localStorage.getItem("token");
-      const res = await axios.put(`http://localhost:5000/api/materials/${selectedPdfForPublish._id}/publish`, {
+      const res = await axios.put(`${process.env.NEXT_PUBLIC_API_URL}/api/materials/${selectedPdfForPublish._id}/publish`, {
         classIds: selectedClassIds,
         isFree: isFreeChecked
       }, {
@@ -155,7 +155,7 @@ export default function MyPDFsPage() {
   const handleUnpublish = async (id: string) => {
     try {
       const token = localStorage.getItem("token");
-      const res = await axios.put(`http://localhost:5000/api/materials/${id}/publish`, {
+      const res = await axios.put(`${process.env.NEXT_PUBLIC_API_URL}/api/materials/${id}/publish`, {
         classIds: [],
         isFree: false
       }, {
@@ -173,7 +173,7 @@ export default function MyPDFsPage() {
       const updatedClassIds = (pdf.classIds || []).map((c: any) => c._id || c).filter((id: string) => id !== classIdToRemove);
       const token = localStorage.getItem("token");
 
-      const res = await axios.put(`http://localhost:5000/api/materials/${pdf._id}/publish`, {
+      const res = await axios.put(`${process.env.NEXT_PUBLIC_API_URL}/api/materials/${pdf._id}/publish`, {
         classIds: updatedClassIds,
         isFree: pdf.isFree
       }, {
@@ -546,7 +546,7 @@ export default function MyPDFsPage() {
                             <button 
                               onClick={async () => {
                                 const token = localStorage.getItem("token");
-                                const res = await axios.put(`http://localhost:5000/api/materials/${pdf._id}/publish`, {
+                                const res = await axios.put(`${process.env.NEXT_PUBLIC_API_URL}/api/materials/${pdf._id}/publish`, {
                                   classIds: pdf.classIds.map((c: any) => c._id || c),
                                   isFree: false
                                 }, { headers: { Authorization: `Bearer ${token}` } });

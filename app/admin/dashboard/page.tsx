@@ -85,31 +85,31 @@ export default function AdminDashboard() {
   const fetchDashboardStats = async (token: string) => {
     try {
       const [teachersRes, adminsRes, materialsRes, studentsRes, classesRes, requestsRes, quizzesRes, adsRes, notifRes] = await Promise.all([
-        axios.get("http://localhost:5000/api/admin/teachers", {
+        axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/admin/teachers`, {
           headers: { Authorization: `Bearer ${token}` },
         }),
-        axios.get("http://localhost:5000/api/admin/admins", {
+        axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/admin/admins`, {
           headers: { Authorization: `Bearer ${token}` },
         }),
-        axios.get("http://localhost:5000/api/materials/admin/all", {
+        axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/materials/admin/all`, {
           headers: { Authorization: `Bearer ${token}` },
         }).catch(() => ({ data: [] })),
-        axios.get("http://localhost:5000/api/admin/students", {
+        axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/admin/students`, {
           headers: { Authorization: `Bearer ${token}` },
         }).catch(() => ({ data: [] })),
-        axios.get("http://localhost:5000/api/classes/all", {
+        axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/classes/all`, {
           headers: { Authorization: `Bearer ${token}` },
         }).catch(() => ({ data: [] })),
-        axios.get("http://localhost:5000/api/classes/requests/all", {
+        axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/classes/requests/all`, {
           headers: { Authorization: `Bearer ${token}` },
         }).catch(() => ({ data: [] })),
-        axios.get("http://localhost:5000/api/quiz/admin/quizzes", {
+        axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/quiz/admin/quizzes`, {
           headers: { Authorization: `Bearer ${token}` },
         }).catch(() => ({ data: [] })),
-        axios.get("http://localhost:5000/api/ads/admin/all", {
+        axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/ads/admin/all`, {
           headers: { Authorization: `Bearer ${token}` },
         }).catch(() => ({ data: [] })),
-        axios.get("http://localhost:5000/api/notifications/system/all", {
+        axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/notifications/system/all`, {
           headers: { Authorization: `Bearer ${token}` },
         }).catch(() => ({ data: [] })),
       ]);
@@ -145,15 +145,15 @@ export default function AdminDashboard() {
   const getProfileImageUrl = (photoUrl: string) => {
     if (!photoUrl) return null;
     if (photoUrl.startsWith("http")) return photoUrl;
-    if (photoUrl.startsWith("/")) return `http://localhost:5000${photoUrl}`;
-    return `http://localhost:5000/profile_photos/${photoUrl}`;
+    if (photoUrl.startsWith("/")) return `${process.env.NEXT_PUBLIC_API_URL}${photoUrl}`;
+    return `${process.env.NEXT_PUBLIC_API_URL}/profile_photos/${photoUrl}`;
   };
 
   const formatAdminImageUrl = (path: string) => {
     if (!path) return "";
     if (path.startsWith("http")) return path;
     const cleanPath = path.replace(/\\/g, '/');
-    return `http://localhost:5000/${cleanPath.startsWith('/') ? cleanPath.substring(1) : cleanPath}`;
+    return `${process.env.NEXT_PUBLIC_API_URL}/${cleanPath.startsWith('/') ? cleanPath.substring(1) : cleanPath}`;
   };
 
   if (!user) {

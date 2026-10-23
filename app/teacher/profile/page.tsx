@@ -44,7 +44,7 @@ interface SocialLink {
 const getProfilePhotoUrl = (photo: string) => {
   if (!photo) return "";
   if (photo.startsWith("http")) return photo;
-  return `http://localhost:5000/profile_photos/${photo}`;
+  return `${process.env.NEXT_PUBLIC_API_URL}/profile_photos/${photo}`;
 };
 
 function Field({
@@ -193,7 +193,7 @@ export default function TeacherProfilePage() {
     const fetchProfile = async () => {
       const token = localStorage.getItem("token");
       try {
-        const res = await axios.get(`http://localhost:5000/api/teacher/profile`, {
+        const res = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/teacher/profile`, {
           headers: { Authorization: `Bearer ${token}` }
         });
 
@@ -293,7 +293,7 @@ export default function TeacherProfilePage() {
     }
 
     try {
-      const res = await axios.put(`http://localhost:5000/api/teacher/profile`, updateData, {
+      const res = await axios.put(`${process.env.NEXT_PUBLIC_API_URL}/api/teacher/profile`, updateData, {
         headers: { 
           Authorization: `Bearer ${token}`,
           'Content-Type': 'multipart/form-data' 

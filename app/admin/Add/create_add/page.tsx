@@ -141,7 +141,7 @@ export default function CreateAdPage() {
         }
       }
 
-      const res = await axios.post("http://localhost:5000/api/ads/create", formData, {
+      const res = await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/api/ads/create`, formData, {
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "multipart/form-data",

@@ -73,7 +73,7 @@ export default function AdminDashboardSettings() {
 
   const fetchSettings = async () => {
     try {
-      const res = await axios.get("http://localhost:5000/api/dashboard/settings");
+      const res = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/dashboard/settings`);
       setSettings(res.data);
     } catch (err) {
       console.error("Error fetching settings:", err);
@@ -86,7 +86,7 @@ export default function AdminDashboardSettings() {
     if (!mediaPath) return "";
     if (mediaPath.startsWith("http") || mediaPath.startsWith("blob:")) return mediaPath;
     const cleanPath = mediaPath.startsWith("/") ? mediaPath : `/${mediaPath}`;
-    return `http://localhost:5000${cleanPath}`;
+    return `${process.env.NEXT_PUBLIC_API_URL}${cleanPath}`;
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -264,7 +264,7 @@ export default function AdminDashboardSettings() {
       Object.keys(badgeAvatarFiles).forEach((key) => formData.append("badgeAvatarFiles", badgeAvatarFiles[Number(key)]));
       Object.keys(featureIconFiles).forEach((key) => formData.append(`featureIconFile_${key}`, featureIconFiles[Number(key)]));
 
-      const res = await axios.put("http://localhost:5000/api/dashboard/settings", formData, {
+      const res = await axios.put(`${process.env.NEXT_PUBLIC_API_URL}/api/dashboard/settings`, formData, {
         headers: { 
           Authorization: `Bearer ${token}`,
           "Content-Type": "multipart/form-data"

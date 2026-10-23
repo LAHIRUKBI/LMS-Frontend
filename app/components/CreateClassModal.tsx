@@ -219,7 +219,7 @@ export default function CreateClassModal({ isOpen, onClose, onClassCreated }: Cr
       if (description) formData.append("description", description);
       if (coverImage) formData.append("coverImage", coverImage);
 
-      const res = await axios.post("http://localhost:5000/api/classes/create", formData, {
+      const res = await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/api/classes/create`, formData, {
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "multipart/form-data"

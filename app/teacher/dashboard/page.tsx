@@ -80,11 +80,11 @@ export default function TeacherDashboard() {
     if (token && userData) {
       const parsedUser = JSON.parse(userData);
 
-      axios.get("http://localhost:5000/api/notifications", {
+      axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/notifications`, {
         headers: { Authorization: `Bearer ${token}` }
       }).then(res => setNotifications(res.data)).catch(console.error);
 
-      const socket = io("http://localhost:5000");
+      const socket = io(`${process.env.NEXT_PUBLIC_API_URL}`);
       if (parsedUser.id) socket.emit("join_user_room", parsedUser.id);
 
       socket.on("receive_notification", (newNotif) => {
@@ -128,7 +128,7 @@ export default function TeacherDashboard() {
   const fetchMyStats = async (token?: string) => {
     try {
       const currentToken = token || localStorage.getItem("token");
-      const res = await axios.get("http://localhost:5000/api/materials/my-materials", {
+      const res = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/materials/my-materials`, {
         headers: { Authorization: `Bearer ${currentToken}` },
       });
 
@@ -155,7 +155,7 @@ export default function TeacherDashboard() {
 
   const fetchTeacherClasses = async (token: string) => {
     try {
-      const res = await axios.get("http://localhost:5000/api/classes/my-classes", {
+      const res = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/classes/my-classes`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setTeacherClasses(res.data);

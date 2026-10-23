@@ -25,7 +25,7 @@ function TicketContent() {
   const fetchTickets = async () => {
     try {
       const token = localStorage.getItem("token");
-      const res = await axios.get("http://localhost:5000/api/tickets/my-tickets", {
+      const res = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/tickets/my-tickets`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setTickets(res.data);
@@ -60,7 +60,7 @@ function TicketContent() {
         formData.append("attachment", attachmentFile);
       }
 
-      await axios.post("http://localhost:5000/api/tickets", formData, {
+      await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/api/tickets`, formData, {
         headers: { 
           Authorization: `Bearer ${token}`,
           "Content-Type": "multipart/form-data"
@@ -86,7 +86,7 @@ function TicketContent() {
         formData.append("attachment", replyFile);
       }
 
-      const res = await axios.post(`http://localhost:5000/api/tickets/${selectedTicket._id}/reply`, formData, {
+      const res = await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/api/tickets/${selectedTicket._id}/reply`, formData, {
         headers: { 
           Authorization: `Bearer ${token}`,
           "Content-Type": "multipart/form-data"
@@ -299,11 +299,11 @@ function TicketContent() {
                   {selectedTicket.attachmentUrl && (
                     <div className="mt-3 pt-3 border-t border-white/20">
                       {selectedTicket.attachmentType === 'image' ? (
-                        <a href={`http://localhost:5000${selectedTicket.attachmentUrl}`} target="_blank" rel="noopener noreferrer">
-                          <img src={`http://localhost:5000${selectedTicket.attachmentUrl}`} alt="Attachment" className="rounded-2xl max-h-48 w-full object-cover hover:opacity-95 transition-opacity" />
+                        <a href={`${process.env.NEXT_PUBLIC_API_URL}${selectedTicket.attachmentUrl}`} target="_blank" rel="noopener noreferrer">
+                          <img src={`${process.env.NEXT_PUBLIC_API_URL}${selectedTicket.attachmentUrl}`} alt="Attachment" className="rounded-2xl max-h-48 w-full object-cover hover:opacity-95 transition-opacity" />
                         </a>
                       ) : (
-                        <a href={`http://localhost:5000${selectedTicket.attachmentUrl}`} target="_blank" rel="noopener noreferrer" className="flex items-center justify-between text-xs font-bold underline bg-white/10 p-3 rounded-2xl">
+                        <a href={`${process.env.NEXT_PUBLIC_API_URL}${selectedTicket.attachmentUrl}`} target="_blank" rel="noopener noreferrer" className="flex items-center justify-between text-xs font-bold underline bg-white/10 p-3 rounded-2xl">
                           <span className="flex items-center gap-2"><FileText size={16} /> View Attached Document</span> <ExternalLink size={14} />
                         </a>
                       )}
@@ -332,11 +332,11 @@ function TicketContent() {
                       {reply.attachmentUrl && (
                         <div className="mt-3 pt-3 border-t border-white/20">
                           {reply.attachmentType === 'image' ? (
-                            <a href={`http://localhost:5000${reply.attachmentUrl}`} target="_blank" rel="noopener noreferrer">
-                              <img src={`http://localhost:5000${reply.attachmentUrl}`} alt="Reply Attachment" className="rounded-2xl max-h-48 w-full object-cover hover:opacity-95 transition-opacity" />
+                            <a href={`${process.env.NEXT_PUBLIC_API_URL}${reply.attachmentUrl}`} target="_blank" rel="noopener noreferrer">
+                              <img src={`${process.env.NEXT_PUBLIC_API_URL}${reply.attachmentUrl}`} alt="Reply Attachment" className="rounded-2xl max-h-48 w-full object-cover hover:opacity-95 transition-opacity" />
                             </a>
                           ) : (
-                            <a href={`http://localhost:5000${reply.attachmentUrl}`} target="_blank" rel="noopener noreferrer" className="flex items-center justify-between text-xs font-bold underline bg-white/10 p-3 rounded-2xl">
+                            <a href={`${process.env.NEXT_PUBLIC_API_URL}${reply.attachmentUrl}`} target="_blank" rel="noopener noreferrer" className="flex items-center justify-between text-xs font-bold underline bg-white/10 p-3 rounded-2xl">
                               <span className="flex items-center gap-2"><FileText size={16} /> View Attached Document</span> <ExternalLink size={14} />
                             </a>
                           )}

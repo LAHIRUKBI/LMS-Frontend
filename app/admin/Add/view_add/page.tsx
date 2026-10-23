@@ -55,7 +55,7 @@ export default function ViewAdsPage() {
   const fetchAds = async () => {
     try {
       const token = localStorage.getItem("token");
-      const res = await axios.get("http://localhost:5000/api/ads/admin/all", {
+      const res = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/ads/admin/all`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setAds(res.data);
@@ -71,7 +71,7 @@ export default function ViewAdsPage() {
     
     try {
       const token = localStorage.getItem("token");
-      await axios.delete(`http://localhost:5000/api/ads/admin/${id}`, {
+      await axios.delete(`${process.env.NEXT_PUBLIC_API_URL}/api/ads/admin/${id}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setAds(ads.filter(ad => ad._id !== id));
@@ -211,7 +211,7 @@ export default function ViewAdsPage() {
       
       if (newVideo) formData.append("video", newVideo);
 
-      const res = await axios.put(`http://localhost:5000/api/ads/admin/${editingAd._id}`, formData, {
+      const res = await axios.put(`${process.env.NEXT_PUBLIC_API_URL}/api/ads/admin/${editingAd._id}`, formData, {
         headers: { 
           Authorization: `Bearer ${token}`,
           "Content-Type": "multipart/form-data"
@@ -235,7 +235,7 @@ export default function ViewAdsPage() {
     if (!mediaPath) return "";
     if (mediaPath.startsWith("http")) return mediaPath;
     const cleanPath = mediaPath.startsWith("/") ? mediaPath : `/${mediaPath}`;
-    return `http://localhost:5000${cleanPath}?v=${Date.now()}`;
+    return `${process.env.NEXT_PUBLIC_API_URL}${cleanPath}?v=${Date.now()}`;
   };
 
   const nextImage = (adId: string, maxImages: number) => {

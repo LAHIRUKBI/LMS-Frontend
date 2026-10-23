@@ -45,7 +45,7 @@ export default function TeacherNoticeView() {
         return;
       }
 
-      const res = await axios.get(`http://localhost:5000/api/admin/teacher/notices/${teacherId}`, {
+      const res = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/admin/teacher/notices/${teacherId}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       
@@ -87,7 +87,7 @@ export default function TeacherNoticeView() {
       ) : notices.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {notices.map((notice) => {
-            const imgUrl = notice.image ? `http://localhost:5000${notice.image}` : null;
+            const imgUrl = notice.image ? `${process.env.NEXT_PUBLIC_API_URL}${notice.image}` : null;
             
             return (
               <div 
@@ -177,7 +177,7 @@ export default function TeacherNoticeView() {
             {selectedNotice.image && (
               <div className={`w-full flex items-center justify-center flex-shrink-0 border-b ${darkMode ? "bg-slate-950 border-slate-800" : "bg-slate-100 border-slate-200"}`}>
                 <img 
-                  src={`http://localhost:5000${selectedNotice.image}`} 
+                  src={`${process.env.NEXT_PUBLIC_API_URL}${selectedNotice.image}`} 
                   alt={selectedNotice.title} 
                   className="w-full h-auto max-h-[60vh] object-contain" 
                 />

@@ -26,7 +26,7 @@ export default function AdminProfilePage() {
     if (!path) return "";
     if (path.startsWith("http")) return path;
     const cleanPath = path.replace(/\\/g, '/');
-    const baseUrl = `http://localhost:5000/${cleanPath.startsWith('/') ? cleanPath.substring(1) : cleanPath}`;
+    const baseUrl = `${process.env.NEXT_PUBLIC_API_URL}/${cleanPath.startsWith('/') ? cleanPath.substring(1) : cleanPath}`;
     return `${baseUrl}?t=${new Date().getTime()}`;
   };
 
@@ -37,7 +37,7 @@ export default function AdminProfilePage() {
   const fetchProfile = async () => {
     try {
       const token = localStorage.getItem("token");
-      const res = await axios.get("http://localhost:5000/api/admin/profile", {
+      const res = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/admin/profile`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -88,7 +88,7 @@ export default function AdminProfilePage() {
         submitData.append("profilePhoto", profilePhoto);
       }
 
-      const res = await axios.put("http://localhost:5000/api/admin/profile", submitData, {
+      const res = await axios.put(`${process.env.NEXT_PUBLIC_API_URL}/api/admin/profile`, submitData, {
         headers: { 
           Authorization: `Bearer ${token}`,
           "Content-Type": "multipart/form-data" 

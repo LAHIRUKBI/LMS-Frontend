@@ -29,12 +29,12 @@ function TeacherQuizSubmissionContent() {
     if (!quizId) return;
     try {
       const token = localStorage.getItem("token");
-      const quizRes = await axios.get(`http://localhost:5000/api/quiz/${quizId}`, {
+      const quizRes = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/quiz/${quizId}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setQuizDetails(quizRes.data);
 
-      const subRes = await axios.get(`http://localhost:5000/api/quiz/${quizId}/submissions`, {
+      const subRes = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/quiz/${quizId}/submissions`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setSubmissions(subRes.data);
@@ -79,7 +79,7 @@ function TeacherQuizSubmissionContent() {
       const marks = essayMarksInput[subId] || {};
       const corrections = teacherCorrectionInputs[subId] || {};
 
-      const res = await axios.post(`http://localhost:5000/api/quiz/evaluate-essay`, {
+      const res = await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/api/quiz/evaluate-essay`, {
         submissionId: subId,
         essayMarks: marks,
         teacherCorrections: corrections,
@@ -108,7 +108,7 @@ function TeacherQuizSubmissionContent() {
     if (!quizDetails) return;
     try {
       const token = localStorage.getItem("token");
-      const res = await axios.post(`http://localhost:5000/api/quiz/${quizDetails._id}/evaluate-all-mcq`, {}, {
+      const res = await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/api/quiz/${quizDetails._id}/evaluate-all-mcq`, {}, {
         headers: { Authorization: `Bearer ${token}` }
       });
 
@@ -127,14 +127,14 @@ function TeacherQuizSubmissionContent() {
   const getStudentProfileImageUrl = (photoUrl: string) => {
     if (!photoUrl) return null;
     if (photoUrl.startsWith("http")) return photoUrl;
-    return `http://localhost:5000${photoUrl}`;
+    return `${process.env.NEXT_PUBLIC_API_URL}${photoUrl}`;
   };
 
   // A helper function that works with both Cloudinary HTTPS URLs and local backend paths
   const getAnswerSheetUrl = (url: string) => {
     if (!url) return "";
     if (url.startsWith("http")) return url;
-    return `http://localhost:5000${url.startsWith('/') ? '' : '/'}${url}`;
+    return `${process.env.NEXT_PUBLIC_API_URL}${url.startsWith('/') ? '' : '/'}${url}`;
   };
 
   const isPureObjectiveQuiz = quizDetails?.questions?.every((q: any) => q.type === 'mcq' || q.type === 'single' || q.type === 'short');

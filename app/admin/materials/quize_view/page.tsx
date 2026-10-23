@@ -41,7 +41,7 @@ const formatImageUrl = (photoUrl?: string) => {
   if (!photoUrl) return "";
   if (photoUrl.startsWith("http")) return photoUrl;
   const cleanPath = photoUrl.replace(/\\/g, "/");
-  return `http://localhost:5000/${cleanPath.startsWith("/") ? cleanPath.substring(1) : cleanPath}`;
+  return `${process.env.NEXT_PUBLIC_API_URL}/${cleanPath.startsWith("/") ? cleanPath.substring(1) : cleanPath}`;
 };
 
 export default function AdminQuizViewPage() {
@@ -63,7 +63,7 @@ export default function AdminQuizViewPage() {
 
   const fetchQuizzes = () => {
     const token = localStorage.getItem("token");
-    fetch("http://localhost:5000/api/quiz/admin/quizzes", {
+    fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/quiz/admin/quizzes`, {
       headers: { Authorization: `Bearer ${token}` }
     })
       .then((res) => res.json())
@@ -75,7 +75,7 @@ export default function AdminQuizViewPage() {
   const handleClearQuizDot = async (quizId: string) => {
     try {
       const token = localStorage.getItem("token");
-      await axios.put(`http://localhost:5000/api/quiz/admin/${quizId}/clear-dot`, {}, {
+      await axios.put(`${process.env.NEXT_PUBLIC_API_URL}/api/quiz/admin/${quizId}/clear-dot`, {}, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setQuizzes(prev => prev.map(q => q._id === quizId ? { ...q, isNewForTable: false } : q));
@@ -87,7 +87,7 @@ export default function AdminQuizViewPage() {
   const handleUpdateStatus = async (quizId: string, status: "approved") => {
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch(`http://localhost:5000/api/quiz/admin/quizzes/${quizId}/status`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/quiz/admin/quizzes/${quizId}/status`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
@@ -112,7 +112,7 @@ export default function AdminQuizViewPage() {
 
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch(`http://localhost:5000/api/quiz/admin/quizzes/${rejectQuizItem._id}/status`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/quiz/admin/quizzes/${rejectQuizItem._id}/status`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
@@ -137,7 +137,7 @@ export default function AdminQuizViewPage() {
 
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch(`http://localhost:5000/api/quiz/admin/quizzes/${quizId}`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/quiz/admin/quizzes/${quizId}`, {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token}` }
       });

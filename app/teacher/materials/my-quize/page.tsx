@@ -85,7 +85,7 @@ export default function TeacherMyQuizzesPage() {
   const fetchMyQuizzes = async () => {
     try {
       const token = localStorage.getItem("token");
-      const res = await axios.get("http://localhost:5000/api/quiz/my-quizzes", {
+      const res = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/quiz/my-quizzes`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       const fetchedQuizzes = res.data;
@@ -106,7 +106,7 @@ export default function TeacherMyQuizzesPage() {
       for (const q of fetchedQuizzes) {
         if (q.isPublished) {
           try {
-            const subRes = await axios.get(`http://localhost:5000/api/quiz/${q._id}/submissions`, {
+            const subRes = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/quiz/${q._id}/submissions`, {
               headers: { Authorization: `Bearer ${token}` }
             });
             const subs = subRes.data || [];
@@ -134,7 +134,7 @@ export default function TeacherMyQuizzesPage() {
   const fetchTeacherClasses = async () => {
     try {
       const token = localStorage.getItem("token");
-      const res = await axios.get("http://localhost:5000/api/classes/my-classes", {
+      const res = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/classes/my-classes`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setTeacherClasses(res.data);
@@ -197,7 +197,7 @@ export default function TeacherMyQuizzesPage() {
         endTime: classScheduleData[cId]?.endTime || null,
       }));
 
-      const res = await axios.put(`http://localhost:5000/api/quiz/${selectedQuizForPublish._id}/publish`, {
+      const res = await axios.put(`${process.env.NEXT_PUBLIC_API_URL}/api/quiz/${selectedQuizForPublish._id}/publish`, {
         classIds: selectedClassIds,
         classSchedules: formattedSchedules
       }, {
@@ -217,7 +217,7 @@ export default function TeacherMyQuizzesPage() {
   const handleUnpublish = async (id: string) => {
     try {
       const token = localStorage.getItem("token");
-      const res = await axios.put(`http://localhost:5000/api/quiz/${id}/publish`, {
+      const res = await axios.put(`${process.env.NEXT_PUBLIC_API_URL}/api/quiz/${id}/publish`, {
         classIds: [],
         classSchedules: []
       }, {
@@ -244,7 +244,7 @@ export default function TeacherMyQuizzesPage() {
         return cId !== classIdToRemove;
       });
 
-      const res = await axios.put(`http://localhost:5000/api/quiz/${quiz._id}/publish`, {
+      const res = await axios.put(`${process.env.NEXT_PUBLIC_API_URL}/api/quiz/${quiz._id}/publish`, {
         classIds: updatedClassIds,
         classSchedules: updatedSchedules
       }, {
@@ -279,7 +279,7 @@ export default function TeacherMyQuizzesPage() {
     if (!quizToDelete) return;
     try {
       const token = localStorage.getItem("token");
-      await axios.delete(`http://localhost:5000/api/quiz/${quizToDelete}`, {
+      await axios.delete(`${process.env.NEXT_PUBLIC_API_URL}/api/quiz/${quizToDelete}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setDeleteModalOpen(false);
@@ -833,7 +833,7 @@ export default function TeacherMyQuizzesPage() {
                                       <ImageIcon size={12} /> Included Image:
                                     </span>
                                     <img 
-                                      src={`http://localhost:5000${q.imageUrl}`} 
+                                      src={`${process.env.NEXT_PUBLIC_API_URL}${q.imageUrl}`} 
                                       alt="Question Visual" 
                                       className="max-h-36 rounded-xl border border-slate-700 object-contain" 
                                       onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }}
