@@ -50,13 +50,13 @@ export default function AdminListPage() {
     if (!path) return "";
     if (path.startsWith("http")) return path;
     const cleanPath = path.replace(/\\/g, '/');
-    return `http://localhost:5000/${cleanPath.startsWith('/') ? cleanPath.substring(1) : cleanPath}`;
+    return `${process.env.NEXT_PUBLIC_API_URL}/${cleanPath.startsWith('/') ? cleanPath.substring(1) : cleanPath}`;
   };
 
   const fetchAdmins = async () => {
     const token = localStorage.getItem("token");
     try {
-      const res = await axios.get("http://localhost:5000/api/admin/admins", {
+      const res = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/admin/admins`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setAdmins(res.data);
@@ -89,7 +89,7 @@ export default function AdminListPage() {
 
     try {
       const token = localStorage.getItem("token");
-      const res = await axios.delete(`http://localhost:5000/api/admin/admins/${selectedAdmin.id}`, {
+      const res = await axios.delete(`${process.env.NEXT_PUBLIC_API_URL}/api/admin/admins/${selectedAdmin.id}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
 

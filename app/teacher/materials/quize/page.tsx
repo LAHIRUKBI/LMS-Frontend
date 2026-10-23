@@ -253,7 +253,7 @@ export default function TeacherQuizCreator() {
 
     try {
       const token = localStorage.getItem("token");
-      const response = await axios.post("http://localhost:5000/api/quiz/quizzes", formData, {
+      const response = await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/api/quiz/quizzes`, formData, {
         headers: { 
           "Content-Type": "multipart/form-data",
           Authorization: `Bearer ${token}`

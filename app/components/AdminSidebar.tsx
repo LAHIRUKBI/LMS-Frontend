@@ -73,7 +73,7 @@ export default function AdminSidebar({
 
     if (path === "/admin/student/student_view" && newStudentCount > 0) {
       try {
-        await axios.put("http://localhost:5000/api/admin/students/clear-sidebar", {}, { headers });
+        await axios.put(`${process.env.NEXT_PUBLIC_API_URL}/api/admin/students/clear-sidebar", {}, { headers });
         setNewStudentCount(0);
       } catch (error) {
         console.error(error);
@@ -82,7 +82,7 @@ export default function AdminSidebar({
 
     if (path === "/admin/materials/quize_view" && newQuizCount > 0) {
       try {
-        await axios.put("http://localhost:5000/api/quiz/admin/clear-sidebar", {}, { headers });
+        await axios.put(`${process.env.NEXT_PUBLIC_API_URL}/api/quiz/admin/clear-sidebar", {}, { headers });
         setNewQuizCount(0);
       } catch (error) {
         console.error(error);
@@ -95,7 +95,7 @@ export default function AdminSidebar({
 
     if (path === "/admin/materials/review" && newMaterialCount > 0) {
       try {
-        await axios.put("http://localhost:5000/api/materials/admin/clear-sidebar", {}, { headers });
+        await axios.put(`${process.env.NEXT_PUBLIC_API_URL}/api/materials/admin/clear-sidebar", {}, { headers });
         setNewMaterialCount(0);
       } catch (error) {
         console.error(error);
@@ -109,30 +109,30 @@ export default function AdminSidebar({
 
     const headers = { Authorization: `Bearer ${token}` };
 
-    axios.get("http://localhost:5000/api/notifications/admin", { headers })
+    axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/notifications/admin", { headers })
       .then((res) => setAdminNotifications(res.data))
       .catch(console.error);
 
-    axios.get("http://localhost:5000/api/admin/students/new-count", { headers })
+    axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/admin/students/new-count", { headers })
       .then((res) => setNewStudentCount(res.data.count))
       .catch(console.error);
 
-    axios.get("http://localhost:5000/api/materials/admin/new-count", { headers })
+    axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/materials/admin/new-count", { headers })
       .then((res) => setNewMaterialCount(res.data.count))
       .catch(console.error);
 
-    axios.get("http://localhost:5000/api/quiz/admin/new-count", { headers })
+    axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/quiz/admin/new-count", { headers })
       .then((res) => setNewQuizCount(res.data.count))
       .catch(console.error);
 
-    axios.get("http://localhost:5000/api/classes/requests/all", { headers })
+    axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/classes/requests/all", { headers })
       .then((res) => {
         const pending = res.data.filter((r: any) => r.status === "Pending");
         setNewClassRequestCount(pending.length);
       })
       .catch(console.error);
 
-    axios.get("http://localhost:5000/api/admin/profile", { headers })
+    axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/admin/profile", { headers })
       .then((res) => {
         if (res.data.profilePhoto) {
           const photo = res.data.profilePhoto;
@@ -141,14 +141,14 @@ export default function AdminSidebar({
             setAdminProfilePhoto(photo);
           } else {
             const cleanPath = photo.replace(/\\/g, "/");
-            const baseUrl = `http://localhost:5000/${cleanPath.startsWith("/") ? cleanPath.substring(1) : cleanPath}`;
+            const baseUrl = `${process.env.NEXT_PUBLIC_API_URL}/${cleanPath.startsWith("/") ? cleanPath.substring(1) : cleanPath}`;
             setAdminProfilePhoto(`${baseUrl}?t=${new Date().getTime()}`);
           }
         }
       })
       .catch(console.error);
 
-    const socket = io("http://localhost:5000");
+    const socket = io(`${process.env.NEXT_PUBLIC_API_URL}");
     socket.emit("join_admin_room");
     socket.on("receive_admin_notification", (newNotif) => {
       setAdminNotifications((prev) => [newNotif, ...prev]);
@@ -164,7 +164,7 @@ export default function AdminSidebar({
     if (!isNotifOpen && unreadCount > 0) {
       try {
         const token = localStorage.getItem("token");
-        await axios.put("http://localhost:5000/api/notifications/admin/mark-read", {}, {
+        await axios.put(`${process.env.NEXT_PUBLIC_API_URL}/api/notifications/admin/mark-read", {}, {
           headers: { Authorization: `Bearer ${token}` },
         });
         setAdminNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
@@ -180,7 +180,7 @@ export default function AdminSidebar({
     if (!confirm("Are you sure you want to clear all notifications?")) return;
     try {
       const token = localStorage.getItem("token");
-      await axios.delete("http://localhost:5000/api/notifications/admin/clear-all", {
+      await axios.delete(`${process.env.NEXT_PUBLIC_API_URL}/api/notifications/admin/clear-all", {
         headers: { Authorization: `Bearer ${token}` },
       });
       setAdminNotifications([]);
@@ -194,7 +194,7 @@ export default function AdminSidebar({
     e.stopPropagation();
     try {
       const token = localStorage.getItem("token");
-      await axios.delete(`http://localhost:5000/api/notifications/admin/${id}`, {
+      await axios.delete(`${process.env.NEXT_PUBLIC_API_URL}/api/notifications/admin/${id}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setAdminNotifications((prev) => prev.filter((n) => n._id !== id));

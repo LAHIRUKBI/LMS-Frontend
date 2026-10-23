@@ -30,7 +30,7 @@ export default function AddFAQPage() {
   const fetchFAQs = async () => {
     try {
       const token = localStorage.getItem("token");
-      const res = await axios.get("http://localhost:5000/api/faqs/admin-all", {
+      const res = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/faqs/admin-all`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setFaqs(res.data);
@@ -61,7 +61,7 @@ export default function AddFAQPage() {
 
     try {
       const token = localStorage.getItem("token");
-      const res = await axios.post("http://localhost:5000/api/faqs/add", formData, {
+      const res = await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/api/faqs/add`, formData, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setSuccess(res.data.message || "FAQ added successfully!");
@@ -79,7 +79,7 @@ export default function AddFAQPage() {
       const token = localStorage.getItem("token");
       const replyText = replies[id] || ""; // ඇඩ්මින් ලියූ reply එක
 
-      const res = await axios.put(`http://localhost:5000/api/faqs/${id}/publish`, { answer: replyText }, {
+      const res = await axios.put(`${process.env.NEXT_PUBLIC_API_URL}/api/faqs/${id}/publish`, { answer: replyText }, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setSuccess(res.data.message || "Successfully posted to FAQ!");
@@ -94,7 +94,7 @@ export default function AddFAQPage() {
 
     try {
       const token = localStorage.getItem("token");
-      await axios.delete(`http://localhost:5000/api/faqs/${id}`, {
+      await axios.delete(`${process.env.NEXT_PUBLIC_API_URL}/api/faqs/${id}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setSuccess("Deleted successfully!");

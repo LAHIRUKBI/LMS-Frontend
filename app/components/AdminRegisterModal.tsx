@@ -63,7 +63,7 @@ export default function AdminRegisterModal({
       }
 
       const response = await axios.post(
-        "http://localhost:5000/api/auth/admin-register",
+        `${process.env.NEXT_PUBLIC_API_URL}/api/auth/admin-register",
         formData,
         {
           headers: {

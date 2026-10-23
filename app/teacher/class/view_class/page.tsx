@@ -14,7 +14,7 @@ import { useTheme } from "@/app/context/ThemeContext";
 const getClassCoverImageUrl = (photoUrl?: string) => {
   if (!photoUrl) return null;
   if (photoUrl.startsWith("http")) return photoUrl;
-  return `http://localhost:5000${photoUrl.startsWith('/') ? '' : '/'}${photoUrl}`;
+  return `${process.env.NEXT_PUBLIC_API_URL}${photoUrl.startsWith('/') ? '' : '/'}${photoUrl}`;
 };
 
 export default function ViewClassesPage() {
@@ -72,10 +72,10 @@ export default function ViewClassesPage() {
 
     try {
       const [classesRes, requestsRes] = await Promise.all([
-        axios.get("http://localhost:5000/api/classes/my-classes", {
+        axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/classes/my-classes`, {
           headers: { Authorization: `Bearer ${currentToken}` }
         }),
-        axios.get("http://localhost:5000/api/classes/requests/all", {
+        axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/classes/requests/all`, {
           headers: { Authorization: `Bearer ${currentToken}` }
         })
       ]);
@@ -94,7 +94,7 @@ export default function ViewClassesPage() {
 
     try {
       const token = localStorage.getItem("token");
-      await axios.delete(`http://localhost:5000/api/classes/${deleteClassId}`, {
+      await axios.delete(`${process.env.NEXT_PUBLIC_API_URL}/api/classes/${deleteClassId}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setClasses(classes.filter((c) => c._id !== deleteClassId));
@@ -119,7 +119,7 @@ export default function ViewClassesPage() {
   const handleForceOpenNow = async (cls: any) => {
     try {
       const token = localStorage.getItem("token");
-      const res = await axios.put(`http://localhost:5000/api/classes/teacher/update/${cls._id}`, {
+      const res = await axios.put(`${process.env.NEXT_PUBLIC_API_URL}/api/classes/teacher/update/${cls._id}`, {
         onlineLink: cls.onlineLink,
         provideLater: false,
         linkDisplayMode: 'immediate',
@@ -140,7 +140,7 @@ export default function ViewClassesPage() {
   const handleUpdateClassSubmit = async (classId: string) => {
     try {
       const token = localStorage.getItem("token");
-      const res = await axios.put(`http://localhost:5000/api/classes/teacher/update/${classId}`, {
+      const res = await axios.put(`${process.env.NEXT_PUBLIC_API_URL}/api/classes/teacher/update/${classId}`, {
         onlineLink: editProvideLater ? "" : editOnlineLink,
         provideLater: editProvideLater,
         linkDisplayMode: editLinkDisplayMode,
@@ -163,7 +163,7 @@ export default function ViewClassesPage() {
   const handleCloseLink = async (classId: string) => {
     try {
       const token = localStorage.getItem("token");
-      const res = await axios.put(`http://localhost:5000/api/classes/teacher/update/${classId}`, {
+      const res = await axios.put(`${process.env.NEXT_PUBLIC_API_URL}/api/classes/teacher/update/${classId}`, {
         onlineLink: "",
         provideLater: true,
         linkStartDateTime: null,
@@ -184,9 +184,9 @@ export default function ViewClassesPage() {
     if (!photoUrl) return null;
     if (photoUrl.startsWith("http")) return photoUrl;
     if (photoUrl.startsWith("/")) {
-      return `http://localhost:5000${photoUrl}`;
+      return `${process.env.NEXT_PUBLIC_API_URL}${photoUrl}`;
     }
-    return `http://localhost:5000/Student_profile_photos/${photoUrl}`;
+    return `${process.env.NEXT_PUBLIC_API_URL}/Student_profile_photos/${photoUrl}`;
   };
 
   // Filtered Classes based on Search Query

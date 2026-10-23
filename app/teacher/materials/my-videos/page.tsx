@@ -27,7 +27,7 @@ const getVideoThumbnail = (video: any) => {
 
 const getVideoPlayUrl = (fileUrl: string) => {
   if (!fileUrl) return "#";
-  return fileUrl.startsWith("http") ? fileUrl : `http://localhost:5000${fileUrl}`;
+  return fileUrl.startsWith("http") ? fileUrl : `${process.env.NEXT_PUBLIC_API_URL}${fileUrl}`;
 };
 
 export default function MyVideosPage() {
@@ -71,7 +71,7 @@ export default function MyVideosPage() {
   const fetchVideos = async () => {
     const token = localStorage.getItem("token");
     try {
-      const res = await axios.get("http://localhost:5000/api/materials/my-materials", {
+      const res = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/materials/my-materials`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       const filteredVideos = res.data.filter((m: any) => m.type === "video");
@@ -86,7 +86,7 @@ export default function MyVideosPage() {
   const fetchTeacherClasses = async () => {
     try {
       const token = localStorage.getItem("token");
-      const res = await axios.get("http://localhost:5000/api/classes/my-classes", {
+      const res = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/classes/my-classes`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setTeacherClasses(res.data);
@@ -99,7 +99,7 @@ export default function MyVideosPage() {
     if (!deleteItem) return;
     try {
       const token = localStorage.getItem("token");
-      await axios.delete(`http://localhost:5000/api/materials/${deleteItem._id}`, {
+      await axios.delete(`${process.env.NEXT_PUBLIC_API_URL}/api/materials/${deleteItem._id}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setVideos(videos.filter((video) => video._id !== deleteItem._id));
@@ -120,7 +120,7 @@ export default function MyVideosPage() {
     if (!selectedVideoForPublish) return;
     try {
       const token = localStorage.getItem("token");
-      const res = await axios.put(`http://localhost:5000/api/materials/${selectedVideoForPublish._id}/publish`, {
+      const res = await axios.put(`${process.env.NEXT_PUBLIC_API_URL}/api/materials/${selectedVideoForPublish._id}/publish`, {
         classIds: selectedClassIds,
         isFree: isFreeChecked
       }, {
@@ -140,7 +140,7 @@ export default function MyVideosPage() {
   const handleUnpublish = async (id: string) => {
     try {
       const token = localStorage.getItem("token");
-      const res = await axios.put(`http://localhost:5000/api/materials/${id}/publish`, {
+      const res = await axios.put(`${process.env.NEXT_PUBLIC_API_URL}/api/materials/${id}/publish`, {
         classIds: [],
         isFree: false
       }, {
@@ -157,7 +157,7 @@ export default function MyVideosPage() {
       const updatedClassIds = (video.classIds || []).map((c: any) => c._id || c).filter((id: string) => id !== classIdToRemove);
       const token = localStorage.getItem("token");
 
-      const res = await axios.put(`http://localhost:5000/api/materials/${video._id}/publish`, {
+      const res = await axios.put(`${process.env.NEXT_PUBLIC_API_URL}/api/materials/${video._id}/publish`, {
         classIds: updatedClassIds,
         isFree: video.isFree
       }, {
@@ -489,7 +489,7 @@ export default function MyVideosPage() {
                               <button 
                                 onClick={async () => {
                                   const token = localStorage.getItem("token");
-                                  const res = await axios.put(`http://localhost:5000/api/materials/${video._id}/publish`, {
+                                  const res = await axios.put(`${process.env.NEXT_PUBLIC_API_URL}/api/materials/${video._id}/publish`, {
                                     classIds: video.classIds.map((c: any) => c._id || c),
                                     isFree: false
                                   }, { headers: { Authorization: `Bearer ${token}` } });

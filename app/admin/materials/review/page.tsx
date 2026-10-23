@@ -39,12 +39,12 @@ const getCoverImageUrl = (material: any) => {
     : material.coverImage;
 
   if (!rawUrl || typeof rawUrl !== "string") return null;
-  return rawUrl.startsWith("http") ? rawUrl : `http://localhost:5000${rawUrl}`;
+  return rawUrl.startsWith("http") ? rawUrl : `${process.env.NEXT_PUBLIC_API_URL}${rawUrl}`;
 };
 
 const getFileViewUrl = (material: any) => {
   if (!material || !material.fileUrl) return "#";
-  return material.fileUrl.startsWith("http") ? material.fileUrl : `http://localhost:5000${material.fileUrl}`;
+  return material.fileUrl.startsWith("http") ? material.fileUrl : `${process.env.NEXT_PUBLIC_API_URL}${material.fileUrl}`;
 };
 
 export default function ReviewMaterialsPage() {
@@ -101,7 +101,7 @@ export default function ReviewMaterialsPage() {
   const fetchMaterials = async () => {
     const token = localStorage.getItem("token");
     try {
-      const res = await axios.get("http://localhost:5000/api/materials/admin/all", {
+      const res = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/materials/admin/all`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setMaterials(res.data);
@@ -116,7 +116,7 @@ export default function ReviewMaterialsPage() {
   const handleClearCardDot = async (materialId: string) => {
     try {
       const token = localStorage.getItem("token");
-      await axios.put(`http://localhost:5000/api/materials/admin/${materialId}/clear-dot`, {}, {
+      await axios.put(`${process.env.NEXT_PUBLIC_API_URL}/api/materials/admin/${materialId}/clear-dot`, {}, {
         headers: { Authorization: `Bearer ${token}` }
       });
       // Removing the dot from the local state immediately.
@@ -134,7 +134,7 @@ export default function ReviewMaterialsPage() {
   const handleStatusUpdate = async (id: string, newStatus: string, reason: string = "") => {
     try {
       const token = localStorage.getItem("token");
-      await axios.put(`http://localhost:5000/api/materials/admin/${id}/status`,
+      await axios.put(`${process.env.NEXT_PUBLIC_API_URL}/api/materials/admin/${id}/status`,
         { status: newStatus, rejectReason: reason },
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -151,7 +151,7 @@ export default function ReviewMaterialsPage() {
     if (!deleteItem) return;
     try {
       const token = localStorage.getItem("token");
-      await axios.delete(`http://localhost:5000/api/materials/admin/${deleteItem._id}`, {
+      await axios.delete(`${process.env.NEXT_PUBLIC_API_URL}/api/materials/admin/${deleteItem._id}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setDeleteItem(null);
@@ -315,7 +315,7 @@ export default function ReviewMaterialsPage() {
                       <div className={`w-8 h-8 rounded-full overflow-hidden flex items-center justify-center border shadow-sm ${darkMode ? "border-slate-700 bg-slate-800" : "border-white bg-slate-200"}`}>
                         {group.teacherInfo.profilePhoto ? (
                           <img
-                            src={group.teacherInfo.profilePhoto.startsWith('http') ? group.teacherInfo.profilePhoto : `http://localhost:5000/profile_photos/${group.teacherInfo.profilePhoto}`}
+                            src={group.teacherInfo.profilePhoto.startsWith('http') ? group.teacherInfo.profilePhoto : `${process.env.NEXT_PUBLIC_API_URL}/profile_photos/${group.teacherInfo.profilePhoto}`}
                             alt={group.teacherInfo.name}
                             className="w-full h-full object-cover"
                           />

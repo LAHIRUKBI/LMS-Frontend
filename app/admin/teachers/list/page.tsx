@@ -54,7 +54,7 @@ interface Teacher {
 const getTeacherPhotoUrl = (photo?: string) => {
   if (!photo) return null;
   if (photo.startsWith("http")) return photo;
-  return `http://localhost:5000/profile_photos/${photo}`;
+  return `${process.env.NEXT_PUBLIC_API_URL}/profile_photos/${photo}`;
 };
 
 export default function TeacherListPage() {
@@ -72,7 +72,7 @@ export default function TeacherListPage() {
   const fetchTeachers = async () => {
     const token = localStorage.getItem("token");
     try {
-      const res = await axios.get("http://localhost:5000/api/admin/teachers", {
+      const res = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/admin/teachers`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setTeachers(res.data);
@@ -94,7 +94,7 @@ export default function TeacherListPage() {
     try {
       const token = localStorage.getItem("token");
       const res = await axios.delete(
-        `http://localhost:5000/api/admin/teachers/${id}`,
+        `${process.env.NEXT_PUBLIC_API_URL}/api/admin/teachers/${id}`,
         {
           headers: { Authorization: `Bearer ${token}` },
         }

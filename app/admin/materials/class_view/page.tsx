@@ -12,7 +12,7 @@ import { useTheme } from "@/app/context/ThemeContext";
 const getClassCoverImageUrl = (photoUrl?: string) => {
   if (!photoUrl) return null;
   if (photoUrl.startsWith("http")) return photoUrl;
-  return `http://localhost:5000${photoUrl.startsWith('/') ? '' : '/'}${photoUrl}`;
+  return `${process.env.NEXT_PUBLIC_API_URL}${photoUrl.startsWith('/') ? '' : '/'}${photoUrl}`;
 };
 
 export default function AdminClassViewPage() {
@@ -79,10 +79,10 @@ export default function AdminClassViewPage() {
   const fetchData = async (token: string) => {
     try {
       const [classesRes, requestsRes] = await Promise.all([
-        axios.get("http://localhost:5000/api/classes/all", {
+        axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/classes/all`, {
           headers: { Authorization: `Bearer ${token}` }
         }),
-        axios.get("http://localhost:5000/api/classes/requests/all", {
+        axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/classes/requests/all`, {
           headers: { Authorization: `Bearer ${token}` }
         })
       ]);
@@ -122,7 +122,7 @@ export default function AdminClassViewPage() {
         return;
       }
 
-      await axios.put("http://localhost:5000/api/classes/requests/status", { requestId, status }, {
+      await axios.put(`${process.env.NEXT_PUBLIC_API_URL}/api/classes/requests/status`, { requestId, status }, {
         headers: { Authorization: `Bearer ${token}` }
       });
       await fetchData(token);
@@ -142,7 +142,7 @@ export default function AdminClassViewPage() {
         return;
       }
 
-      await axios.delete(`http://localhost:5000/api/classes/requests/${requestId}`, {
+      await axios.delete(`${process.env.NEXT_PUBLIC_API_URL}/api/classes/requests/${requestId}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       await fetchData(token);
@@ -162,7 +162,7 @@ export default function AdminClassViewPage() {
         return;
       }
 
-      await axios.put("http://localhost:5000/api/classes/requests/approve-all", { classId }, {
+      await axios.put(`${process.env.NEXT_PUBLIC_API_URL}/api/classes/requests/approve-all`, { classId }, {
         headers: { Authorization: `Bearer ${token}` }
       });
       await fetchData(token);
@@ -181,7 +181,7 @@ export default function AdminClassViewPage() {
         return;
       }
 
-      await axios.put("http://localhost:5000/api/classes/requests/block-all", { classId }, {
+      await axios.put(`${process.env.NEXT_PUBLIC_API_URL}/api/classes/requests/block-all`, { classId }, {
         headers: { Authorization: `Bearer ${token}` }
       });
       await fetchData(token);
@@ -210,7 +210,7 @@ export default function AdminClassViewPage() {
         formData.append("coverImage", editCoverImage);
       }
 
-      await axios.put(`http://localhost:5000/api/classes/admin/update/${editingClass._id}`, formData, {
+      await axios.put(`${process.env.NEXT_PUBLIC_API_URL}/api/classes/admin/update/${editingClass._id}`, formData, {
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "multipart/form-data"
@@ -240,7 +240,7 @@ export default function AdminClassViewPage() {
 
     try {
       const token = localStorage.getItem("token");
-      const res = await axios.get(`http://localhost:5000/api/free-card/student/request/${student._id}?classId=${classId}`, {
+      const res = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/free-card/student/request/${student._id}?classId=${classId}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setFreeCardData(res.data);
@@ -283,16 +283,16 @@ export default function AdminClassViewPage() {
   const getProfileImageUrl = (photoUrl: string) => {
     if (!photoUrl) return null;
     if (photoUrl.startsWith("http")) return photoUrl;
-    return `http://localhost:5000/profile_photos/${photoUrl}`;
+    return `${process.env.NEXT_PUBLIC_API_URL}/profile_photos/${photoUrl}`;
   };
 
   const getStudentProfileImageUrl = (photoUrl: string) => {
     if (!photoUrl) return null;
     if (photoUrl.startsWith("http")) return photoUrl;
     if (photoUrl.startsWith("/")) {
-      return `http://localhost:5000${photoUrl}`;
+      return `${process.env.NEXT_PUBLIC_API_URL}${photoUrl}`;
     }
-    return `http://localhost:5000/Student_profile_photos/${photoUrl}`;
+    return `${process.env.NEXT_PUBLIC_API_URL}/Student_profile_photos/${photoUrl}`;
   };
 
   const handleSearchChange = (classId: string, value: string) => {
@@ -451,7 +451,7 @@ export default function AdminClassViewPage() {
                         {freeCardData.files.map((fileUrl: string, idx: number) => (
                           <a
                             key={idx}
-                            href={`http://localhost:5000${fileUrl}`}
+                            href={`${process.env.NEXT_PUBLIC_API_URL}${fileUrl}`}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="flex items-center justify-between p-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 transition-colors text-[11px] font-semibold text-blue-600 dark:text-blue-400"

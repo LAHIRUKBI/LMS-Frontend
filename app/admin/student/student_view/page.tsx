@@ -75,7 +75,7 @@ export default function AdminStudentView() {
   useEffect(() => {
     fetchStudents();
 
-    const socket = io("http://localhost:5000");
+    const socket = io(`${process.env.NEXT_PUBLIC_API_URL}`);
 
     socket.on("student_online", (data: { studentId: string; isOnline: boolean }) => {
       setStudents(prevStudents =>
@@ -94,7 +94,7 @@ export default function AdminStudentView() {
   const fetchStudents = async () => {
     try {
       const token = localStorage.getItem("token");
-      const res = await axios.get("http://localhost:5000/api/admin/students", {
+      const res = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/admin/students`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setStudents(res.data);
@@ -110,7 +110,7 @@ export default function AdminStudentView() {
   const handleClearRowDot = async (studentId: string) => {
     try {
       const token = localStorage.getItem("token");
-      await axios.put(`http://localhost:5000/api/admin/students/${studentId}/clear-dot`, {}, {
+      await axios.put(`${process.env.NEXT_PUBLIC_API_URL}/api/admin/students/${studentId}/clear-dot`, {}, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setStudents(prevStudents => 
@@ -128,7 +128,7 @@ export default function AdminStudentView() {
     if (!singleDeleteStudent) return;
     try {
       const token = localStorage.getItem("token");
-      await axios.delete(`http://localhost:5000/api/admin/students/${singleDeleteStudent._id}`, {
+      await axios.delete(`${process.env.NEXT_PUBLIC_API_URL}/api/admin/students/${singleDeleteStudent._id}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setStudents(students.filter(s => s._id !== singleDeleteStudent._id));
@@ -142,7 +142,7 @@ export default function AdminStudentView() {
   const handleDeleteAllStudents = async () => {
     try {
       const token = localStorage.getItem("token");
-      await axios.delete("http://localhost:5000/api/admin/students", {
+      await axios.delete(`${process.env.NEXT_PUBLIC_API_URL}/api/admin/students`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setStudents([]);
@@ -251,7 +251,7 @@ export default function AdminStudentView() {
   const getProfileImageUrl = (url: string) => {
     if (!url) return null;
     if (url.startsWith("http")) return url;
-    return `http://localhost:5000${url}`;
+    return `${process.env.NEXT_PUBLIC_API_URL}${url}`;
   };
 
   if (loading) {

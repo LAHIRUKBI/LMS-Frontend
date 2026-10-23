@@ -32,7 +32,7 @@ export default function TeacherQuizMarksPage() {
   const fetchTeacherQuizzes = async () => {
     try {
       const token = localStorage.getItem("token");
-      const res = await axios.get("http://localhost:5000/api/quiz/my-quizzes", {
+      const res = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/quiz/my-quizzes`, {
         headers: { Authorization: `Bearer ${token}` }
       });
 
@@ -52,7 +52,7 @@ export default function TeacherQuizMarksPage() {
     setSubLoading(true);
     try {
       const token = localStorage.getItem("token");
-      const res = await axios.get(`http://localhost:5000/api/quiz/${quizId}/submissions`, {
+      const res = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/quiz/${quizId}/submissions`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setSubmissions(res.data);
@@ -84,7 +84,7 @@ export default function TeacherQuizMarksPage() {
     if (!subToDelete) return;
     try {
       const token = localStorage.getItem("token");
-      await axios.delete(`http://localhost:5000/api/quiz/submission/${subToDelete}`, {
+      await axios.delete(`${process.env.NEXT_PUBLIC_API_URL}/api/quiz/submission/${subToDelete}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setDeleteModalOpen(false);
@@ -101,7 +101,7 @@ export default function TeacherQuizMarksPage() {
     e.stopPropagation();
     try {
       const token = localStorage.getItem("token");
-      const res = await axios.put(`http://localhost:5000/api/quiz/submission/${subId}/send`, {}, {
+      const res = await axios.put(`${process.env.NEXT_PUBLIC_API_URL}/api/quiz/submission/${subId}/send`, {}, {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (res.status === 200) {
@@ -119,7 +119,7 @@ export default function TeacherQuizMarksPage() {
     if (!selectedQuiz) return;
     try {
       const token = localStorage.getItem("token");
-      const res = await axios.put(`http://localhost:5000/api/quiz/${selectedQuiz._id}/send-all`, {}, {
+      const res = await axios.put(`${process.env.NEXT_PUBLIC_API_URL}/api/quiz/${selectedQuiz._id}/send-all`, {}, {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (res.status === 200) {
@@ -134,19 +134,19 @@ export default function TeacherQuizMarksPage() {
   const getStudentProfileImageUrl = (photoUrl: string) => {
     if (!photoUrl) return null;
     if (photoUrl.startsWith("http")) return photoUrl;
-    return `http://localhost:5000${photoUrl}`;
+    return `${process.env.NEXT_PUBLIC_API_URL}${photoUrl}`;
   };
 
   const getAnswerSheetUrl = (url: string) => {
     if (!url) return "";
     if (url.startsWith("http")) return url;
-    return `http://localhost:5000${url.startsWith('/') ? '' : '/'}${url}`;
+    return `${process.env.NEXT_PUBLIC_API_URL}${url.startsWith('/') ? '' : '/'}${url}`;
   };
 
   const getPdfUrl = (url: string) => {
     if (!url) return "";
     if (url.startsWith("http")) return url;
-    return `http://localhost:5000${url.startsWith('/') ? '' : '/'}${url}`;
+    return `${process.env.NEXT_PUBLIC_API_URL}${url.startsWith('/') ? '' : '/'}${url}`;
   };
 
   const filteredSubmissions = submissions.filter((sub) => {

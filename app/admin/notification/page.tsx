@@ -62,10 +62,10 @@ export default function AdminNotificationManager() {
       const token = localStorage.getItem("token");
       const headers = { Authorization: `Bearer ${token}` };
 
-      const notifRes = await axios.get("http://localhost:5000/api/notifications/system/all", { headers });
+      const notifRes = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/notifications/system/all`, { headers });
       setNotifications(notifRes.data);
 
-      const settingsRes = await axios.get("http://localhost:5000/api/notifications/system/settings", { headers });
+      const settingsRes = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/notifications/system/settings`, { headers });
       if (settingsRes.data && settingsRes.data.autoDeleteDays) {
         setAutoDeleteDays(settingsRes.data.autoDeleteDays);
       }
@@ -130,7 +130,7 @@ export default function AdminNotificationManager() {
 
     try {
       const token = localStorage.getItem("token");
-      await axios.post("http://localhost:5000/api/notifications/system/bulk-delete", 
+      await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/api/notifications/system/bulk-delete`, 
         { ids: selectedIds },
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -148,7 +148,7 @@ export default function AdminNotificationManager() {
     if (!confirm("Are you sure you want to delete this notification?")) return;
     try {
       const token = localStorage.getItem("token");
-      await axios.delete(`http://localhost:5000/api/notifications/admin/${id}`, {
+      await axios.delete(`${process.env.NEXT_PUBLIC_API_URL}/api/notifications/admin/${id}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       showMessage("Notification deleted.");
@@ -162,7 +162,7 @@ export default function AdminNotificationManager() {
     setSavingSettings(true);
     try {
       const token = localStorage.getItem("token");
-      await axios.put("http://localhost:5000/api/notifications/system/settings", 
+      await axios.put(`${process.env.NEXT_PUBLIC_API_URL}/api/notifications/system/settings`, 
         { autoDeleteDays },
         { headers: { Authorization: `Bearer ${token}` } }
       );
