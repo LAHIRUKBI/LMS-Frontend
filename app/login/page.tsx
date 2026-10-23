@@ -52,7 +52,7 @@ export default function LoginPage() {
       const delayPromise = new Promise((resolve) => setTimeout(resolve, 3000));
 
       const [response] = await Promise.all([
-        axios.post("http://localhost:5000/api/auth/login", credentials),
+        axios.post("${process.env.NEXT_PUBLIC_API_URL}/api/auth/login", credentials),
         delayPromise,
       ]);
 
