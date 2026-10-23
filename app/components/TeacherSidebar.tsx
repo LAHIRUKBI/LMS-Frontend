@@ -83,7 +83,7 @@ export default function TeacherSidebar() {
     const token = localStorage.getItem("token");
     if (!token) return;
     try {
-      const res = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/notifications", {
+      const res = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/notifications`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setNotifications(res.data);
@@ -97,7 +97,7 @@ export default function TeacherSidebar() {
     try {
       const token = localStorage.getItem("token");
       if (!token) return;
-      const res = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/teacher/notices", {
+      const res = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/teacher/notices`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       const unread = res.data.filter((n: any) => !n.isRead).length;
@@ -126,7 +126,7 @@ export default function TeacherSidebar() {
       if (!token) return;
 
       try {
-        const res = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/teacher/profile", {
+        const res = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/teacher/profile`, {
           headers: { Authorization: `Bearer ${token}` },
         });
 
@@ -154,7 +154,7 @@ export default function TeacherSidebar() {
 
       if (token && userData) {
         const parsedUser = JSON.parse(userData);
-        const socket = io(`${process.env.NEXT_PUBLIC_API_URL}");
+        const socket = io(`${process.env.NEXT_PUBLIC_API_URL}`);
 
         if (parsedUser.id || parsedUser._id) {
           socket.emit("join_user_room", parsedUser.id || parsedUser._id);
@@ -209,7 +209,7 @@ export default function TeacherSidebar() {
       try {
         const token = localStorage.getItem("token");
         await axios.put(
-          `${process.env.NEXT_PUBLIC_API_URL}/api/notifications/mark-read",
+          `${process.env.NEXT_PUBLIC_API_URL}/api/notifications/mark-read`,
           {},
           {
             headers: { Authorization: `Bearer ${token}` },
@@ -232,7 +232,7 @@ export default function TeacherSidebar() {
 
     try {
       const token = localStorage.getItem("token");
-      await axios.delete(`${process.env.NEXT_PUBLIC_API_URL}/api/notifications/clear-all", {
+      await axios.delete(`${process.env.NEXT_PUBLIC_API_URL}/api/notifications/clear-all`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setNotifications([]);
