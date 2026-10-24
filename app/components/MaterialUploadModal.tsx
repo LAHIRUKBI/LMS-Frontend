@@ -4,7 +4,7 @@
 import { useState, useRef } from "react";
 import axios from "axios";
 import { useTheme } from "@/app/context/ThemeContext";
-import { UploadCloud, FileText, BookOpen, GraduationCap, AlignLeft, X, Image as ImageIcon, ChevronDown } from "lucide-react";
+import { UploadCloud, FileText, BookOpen, GraduationCap, AlignLeft, X, Image as ImageIcon, ChevronDown, ExternalLink, AlertTriangle } from "lucide-react";
 import UploadSuccessPopup from "@/app/components/PdfUploadSuccessPopup";
 
 interface MaterialUploadModalProps {
@@ -18,6 +18,7 @@ export default function MaterialUploadModal({ isOpen, onClose, onSuccess }: Mate
   const [uploading, setUploading] = useState(false);
   const [showPopup, setShowPopup] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const [showCompressSuggestion, setShowCompressSuggestion] = useState(false);
   
   // Material Type එක තෝරා ගැනීමට (Default එක 'pdf' වේ)
   const [materialType, setMaterialType] = useState<"pdf" | "paper">("pdf");
@@ -56,10 +57,23 @@ export default function MaterialUploadModal({ isOpen, onClose, onSuccess }: Mate
       const file = e.target.files[0];
       if (file.type !== "application/pdf") {
         setErrorMessage("Please select a valid PDF file.");
+        setShowCompressSuggestion(false);
         return;
       }
+
+      // 9MB File Size Validation (9 * 1024 * 1024 bytes)
+      const MAX_PDF_SIZE = 9 * 1024 * 1024;
+      if (file.size > MAX_PDF_SIZE) {
+        setErrorMessage(`The file size (${(file.size / (1024 * 1024)).toFixed(2)} MB) is too large. The PDF file size must be a maximum of 9MB. Please compress it using one of the websites below and try again.`);
+        setShowCompressSuggestion(true);
+        setSelectedFile(null);
+        if (fileInputRef.current) fileInputRef.current.value = "";
+        return;
+      }
+
       setSelectedFile(file);
       setErrorMessage("");
+      setShowCompressSuggestion(false);
     }
   };
 
@@ -82,6 +96,8 @@ export default function MaterialUploadModal({ isOpen, onClose, onSuccess }: Mate
   const removeFile = () => {
     setSelectedFile(null);
     if (fileInputRef.current) fileInputRef.current.value = "";
+    setErrorMessage("");
+    setShowCompressSuggestion(false);
   };
 
   const removeCover = () => {
@@ -92,9 +108,17 @@ export default function MaterialUploadModal({ isOpen, onClose, onSuccess }: Mate
   const handleUpload = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage("");
+    setShowCompressSuggestion(false);
 
     if (!selectedFile) {
       setErrorMessage("Please attach a PDF file to upload.");
+      return;
+    }
+
+    // Secondary Check for 9MB before request
+    if (selectedFile.size > 9 * 1024 * 1024) {
+      setErrorMessage("PDF ගොනුවේ ප්‍රමාණය උපරිම 9MB විය යුතුය. කරුණාකර එය Compress කර නැවත ලබා දෙන්න.");
+      setShowCompressSuggestion(true);
       return;
     }
 
@@ -176,7 +200,39 @@ export default function MaterialUploadModal({ isOpen, onClose, onSuccess }: Mate
 
         {errorMessage && (
           <div className="mb-4 p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800/50 text-red-700 dark:text-red-300 text-[11px] sm:text-xs font-medium">
-            {errorMessage}
+            <div className="flex items-start gap-2">
+              <AlertTriangle className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <p>{errorMessage}</p>
+                {showCompressSuggestion && (
+                  <div className="mt-2.5 pt-2 border-t border-red-200 dark:border-red-800/40">
+                    <p className="font-bold text-[10px] sm:text-[11px] text-red-800 dark:text-red-200 mb-1.5">
+                      Reliable websites where you can easily compress PDFs for free:
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      <a
+                        href="https://www.ilovepdf.com/compress_pdf"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-white dark:bg-slate-800 text-red-700 dark:text-red-300 border border-red-300 dark:border-red-700 font-bold text-[10px] sm:text-[11px] hover:bg-red-100 dark:hover:bg-slate-700 transition-colors shadow-sm"
+                      >
+                        <span>iLovePDF Compress</span>
+                        <ExternalLink size={11} />
+                      </a>
+                      <a
+                        href="https://smallpdf.com/compress-pdf"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-white dark:bg-slate-800 text-red-700 dark:text-red-300 border border-red-300 dark:border-red-700 font-bold text-[10px] sm:text-[11px] hover:bg-red-100 dark:hover:bg-slate-700 transition-colors shadow-sm"
+                      >
+                        <span>Smallpdf Compress</span>
+                        <ExternalLink size={11} />
+                      </a>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         )}
 
@@ -331,7 +387,6 @@ export default function MaterialUploadModal({ isOpen, onClose, onSuccess }: Mate
                   )}
                 </div>
 
-                {/* School Grade Custom Dropdown */}
                 {gradeCategory === "school" && (
                   <div className="relative">
                     <div 
@@ -365,7 +420,6 @@ export default function MaterialUploadModal({ isOpen, onClose, onSuccess }: Mate
                   </div>
                 )}
 
-                {/* University Semester Custom Dropdown */}
                 {gradeCategory === "university" && (
                   <div className="relative">
                     <div 
@@ -386,13 +440,13 @@ export default function MaterialUploadModal({ isOpen, onClose, onSuccess }: Mate
                           <div key={`Year ${yearIndex+1}`}>
                             <div className="px-3 py-1 text-[10px] font-bold text-indigo-400 uppercase">Year {yearIndex+1}</div>
                             <div 
-                              onClick={() => { setFormData({ ...formData, grade: `Year ${yearIndex+1} - Semester 1` }); setIsUniSemesterOpen(false); }}
+                              onClick={() => { setFormData({ ...formData, grade: `Year ${yearIndex+1} Semester 1` }); setIsUniSemesterOpen(false); }}
                               className={`px-4 py-1.5 text-xs rounded-lg cursor-pointer ${darkMode ? "hover:bg-slate-700" : "hover:bg-slate-100"}`}
                             >
                               Semester 1
                             </div>
                             <div 
-                              onClick={() => { setFormData({ ...formData, grade: `Year ${yearIndex+1} - Semester 2` }); setIsUniSemesterOpen(false); }}
+                              onClick={() => { setFormData({ ...formData, grade: `Year ${yearIndex+1} Semester 2` }); setIsUniSemesterOpen(false); }}
                               className={`px-4 py-1.5 text-xs rounded-lg cursor-pointer ${darkMode ? "hover:bg-slate-700" : "hover:bg-slate-100"}`}
                             >
                               Semester 2
@@ -517,7 +571,7 @@ export default function MaterialUploadModal({ isOpen, onClose, onSuccess }: Mate
                     Click to browse or drag and drop
                   </p>
                   <p className={`text-[10px] sm:text-xs mt-0.5 ${darkMode ? "text-slate-500" : "text-gray-500"}`}>
-                    Only PDF documents are supported (Max 20MB)
+                    Only PDF documents are supported (Max 9MB)
                   </p>
                 </>
               )}
